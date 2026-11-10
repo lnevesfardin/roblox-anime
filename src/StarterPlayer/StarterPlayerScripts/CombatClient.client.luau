@@ -99,7 +99,163 @@ local function inimigoPerto(root, maxDist)
 	return best
 end
 
--- combo
+---------------------------------------------------------------
+-- Animações dos golpes (feitas por código, mexendo nas juntas do corpo R15)
+-- Funciona só em personagem R15 e só aparece para o próprio jogador.
+---------------------------------------------------------------
+
+local ANIMS = {
+	combo1 = { -- soco direito
+		{ t = 0, p = {} },
+		{ t = 0.06, p = { RightShoulder = { x = 20 }, RightElbow = { x = 120 }, LeftShoulder = { x = 40 }, LeftElbow = { x = 100 }, Waist = { y = -12 } } },
+		{ t = 0.13, p = { RightShoulder = { x = 95 }, RightElbow = { x = 5 }, LeftShoulder = { x = 40 }, LeftElbow = { x = 100 }, Waist = { y = 30 }, Root = { y = 8 } } },
+		{ t = 0.30, p = {} },
+	},
+	combo2 = { -- soco esquerdo
+		{ t = 0, p = {} },
+		{ t = 0.06, p = { LeftShoulder = { x = 20 }, LeftElbow = { x = 120 }, RightShoulder = { x = 40 }, RightElbow = { x = 100 }, Waist = { y = 12 } } },
+		{ t = 0.13, p = { LeftShoulder = { x = 95 }, LeftElbow = { x = 5 }, RightShoulder = { x = 40 }, RightElbow = { x = 100 }, Waist = { y = -30 }, Root = { y = -8 } } },
+		{ t = 0.30, p = {} },
+	},
+	combo3 = { -- gancho direito
+		{ t = 0, p = {} },
+		{ t = 0.10, p = { RightShoulder = { x = 0, z = 95 }, RightElbow = { x = 70 }, LeftShoulder = { x = 40 }, LeftElbow = { x = 100 }, Waist = { y = -28 } } },
+		{ t = 0.20, p = { RightShoulder = { x = 75, z = 40 }, RightElbow = { x = 50 }, LeftShoulder = { x = 40 }, LeftElbow = { x = 100 }, Waist = { y = 45 }, Root = { y = 12 } } },
+		{ t = 0.36, p = {} },
+	},
+	combo4 = { -- chute
+		{ t = 0, p = {} },
+		{ t = 0.16, p = { Waist = { x = 8 }, RightHip = { x = -25 }, RightKnee = { x = -70 }, RightShoulder = { x = 30 }, LeftShoulder = { x = 40 } } },
+		{ t = 0.30, p = { Waist = { x = 16 }, RightHip = { x = 88 }, RightKnee = { x = -8 }, RightShoulder = { x = 20, z = 25 }, LeftShoulder = { x = 50, z = -20 } } },
+		{ t = 0.60, p = {} },
+	},
+	charge = { -- segurando o soco carregado
+		{ t = 0, p = {} },
+		{ t = 0.25, p = { RightShoulder = { x = -35 }, RightElbow = { x = 120 }, LeftShoulder = { x = 55 }, LeftElbow = { x = 90 }, Waist = { y = -30 }, Root = { x = -12 }, RightHip = { x = 28 }, LeftHip = { x = 28 }, RightKnee = { x = -45 }, LeftKnee = { x = -45 } } },
+	},
+	release = { -- solta o soco carregado
+		{ t = 0, p = { RightShoulder = { x = -35 }, RightElbow = { x = 120 }, LeftShoulder = { x = 55 }, LeftElbow = { x = 90 }, Waist = { y = -30 }, Root = { x = -12 }, RightHip = { x = 28 }, LeftHip = { x = 28 }, RightKnee = { x = -45 }, LeftKnee = { x = -45 } } },
+		{ t = 0.12, p = { RightShoulder = { x = 100 }, RightElbow = { x = 0 }, LeftShoulder = { x = 45 }, LeftElbow = { x = 100 }, Waist = { y = 50 }, Root = { x = -8 }, RightHip = { x = 45 }, RightKnee = { x = -35 }, LeftHip = { x = -28 }, LeftKnee = { x = -10 } } },
+		{ t = 0.45, p = {} },
+	},
+	air = { -- soco aéreo: braço lá em cima e desce batendo, pernas encolhidas
+		{ t = 0, p = {} },
+		{ t = 0.12, p = { RightShoulder = { x = 165 }, RightElbow = { x = 15 }, LeftShoulder = { x = 40 }, LeftElbow = { x = 100 }, RightHip = { x = 65 }, LeftHip = { x = 45 }, RightKnee = { x = -75 }, LeftKnee = { x = -60 }, Waist = { x = 8 } } },
+		{ t = 0.28, p = { RightShoulder = { x = 75 }, RightElbow = { x = 0 }, LeftShoulder = { x = 40 }, LeftElbow = { x = 100 }, Waist = { x = -30 }, RightHip = { x = 60 }, LeftHip = { x = 40 }, RightKnee = { x = -70 }, LeftKnee = { x = -55 } } },
+		{ t = 0.60, p = {} },
+	},
+	dash = { -- soco com investida: corpo inclinado e punho na frente
+		{ t = 0, p = {} },
+		{ t = 0.10, p = { Root = { x = -28 }, RightShoulder = { x = 95 }, RightElbow = { x = 0 }, LeftShoulder = { x = -35 }, LeftElbow = { x = 70 }, Waist = { y = 30 }, RightHip = { x = -40 }, LeftHip = { x = 45 }, LeftKnee = { x = -55 } } },
+		{ t = 0.32, p = { Root = { x = -28 }, RightShoulder = { x = 95 }, RightElbow = { x = 0 }, LeftShoulder = { x = -35 }, LeftElbow = { x = 70 }, Waist = { y = 30 }, RightHip = { x = -40 }, LeftHip = { x = 45 }, LeftKnee = { x = -55 } } },
+		{ t = 0.45, p = {} },
+	},
+}
+
+local motores, base, escrito = {}, {}, {}
+local anim -- { keys, t0, hold }
+
+local function ligarMotores(char)
+	for m, b in pairs(base) do
+		if m.Parent and escrito[m] then
+			m.Transform = b
+		end
+	end
+	motores, base, escrito = {}, {}, {}
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
+			motores[d.Name] = d
+		end
+	end
+end
+if player.Character then
+	ligarMotores(player.Character)
+end
+player.CharacterAdded:Connect(function(char)
+	anim = nil
+	task.wait(0.5)
+	ligarMotores(char)
+end)
+
+local function amostra(keys, t)
+	if t <= keys[1].t then
+		return keys[1].p, 1
+	end
+	for i = 2, #keys do
+		if t <= keys[i].t then
+			local a, b = keys[i - 1], keys[i]
+			local f = (t - a.t) / (b.t - a.t)
+			return a.p, f * f * (3 - 2 * f), b.p
+		end
+	end
+	return keys[#keys].p, 1
+end
+
+local function playAnim(nome, segurar)
+	anim = { keys = ANIMS[nome], t0 = os.clock(), hold = segurar }
+end
+
+local ultimoBind = 0
+-- Heartbeat roda depois do Animator do Roblox, então o golpe não é sobrescrito
+RunService.Heartbeat:Connect(function()
+	-- o corpo pode ainda estar sendo montado quando o script começa: liga as juntas de novo se precisar
+	local char = player.Character
+	local junta = motores.RightShoulder
+	if char and (not junta or not junta:IsDescendantOf(char)) and os.clock() - ultimoBind > 0.5 then
+		ultimoBind = os.clock()
+		ligarMotores(char)
+	end
+	local a = anim
+	local fim = a and a.keys[#a.keys].t
+	local el = a and (os.clock() - a.t0)
+	if a and not a.hold and el > fim then
+		anim = nil
+		a = nil
+	end
+	for nome, m in pairs(motores) do
+		if m.Parent then
+			-- o Animator do Roblox reescreve Transform a cada quadro; guardamos o valor dele e somamos o nosso golpe por cima
+			local atual = m.Transform
+			if atual ~= escrito[m] then
+				base[m] = atual
+			end
+			local rx, ry, rz = 0, 0, 0
+			local mexeu = false
+			if a then
+				local t = a.hold and math.min(el, fim) or el
+				local pa, f, pb = amostra(a.keys, t)
+				local w = math.min(el / 0.06, 1) -- entrada suave
+				local ja = pa[nome]
+				local jb
+				if pb then
+					jb = pb[nome]
+				else
+					jb = ja
+				end
+				if ja or jb then
+					ja, jb = ja or {}, jb or {}
+					rx = ((ja.x or 0) + ((jb.x or 0) - (ja.x or 0)) * f) * w
+					ry = ((ja.y or 0) + ((jb.y or 0) - (ja.y or 0)) * f) * w
+					rz = ((ja.z or 0) + ((jb.z or 0) - (ja.z or 0)) * f) * w
+					mexeu = true
+				end
+			end
+			if mexeu then
+				m.Transform = (base[m] or atual) * CFrame.Angles(math.rad(rx), math.rad(ry), math.rad(rz))
+				escrito[m] = m.Transform
+			else
+				if escrito[m] then
+					m.Transform = base[m] or atual
+				end
+				escrito[m] = nil
+			end
+		end
+	end
+end)
+
+-- combo (o cliente repete a conta do servidor só para saber qual animação tocar)
+local COMBO_WAIT = { 0.28, 0.28, 0.34, 0.6 }
+local comboN, comboLast, comboNext = 0, 0, 0
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -108,6 +264,16 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		or input.UserInputType == Enum.UserInputType.Touch
 		or input.KeyCode == Enum.KeyCode.F then
 		attackEvent:FireServer("combo")
+		local agora = os.clock()
+		if agora >= comboNext then
+			if agora - comboLast > 1.1 then
+				comboN = 0
+			end
+			comboN = comboN % 4 + 1
+			comboLast = agora
+			comboNext = agora + COMBO_WAIT[comboN]
+			playAnim("combo" .. comboN)
+		end
 	end
 end)
 
@@ -198,6 +364,7 @@ local function acaoCarregado(_, estado)
 			return Enum.ContextActionResult.Sink
 		end
 		charging, chargeStart = true, os.clock()
+		playAnim("charge", true)
 		chargeBall = Instance.new("Part")
 		chargeBall.Shape = Enum.PartType.Ball
 		chargeBall.Material = Enum.Material.Neon
@@ -218,6 +385,7 @@ local function acaoCarregado(_, estado)
 		pararCarga()
 		readyAt.X = os.clock() + CD.X
 		attackEvent:FireServer("charged", t)
+		playAnim("release")
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -232,6 +400,7 @@ local function acaoAereo(_, estado)
 		return Enum.ContextActionResult.Sink
 	end
 	readyAt.Y = os.clock() + CD.Y
+	playAnim("air")
 	if hum.FloorMaterial ~= Enum.Material.Air then
 		root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 55, root.AssemblyLinearVelocity.Z)
 		task.delay(0.3, function()
@@ -260,6 +429,7 @@ local function acaoInvestida(_, estado)
 	end
 	root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
 	attackEvent:FireServer("dash")
+	playAnim("dash")
 	task.spawn(function()
 		local t0 = os.clock()
 		while os.clock() - t0 < 0.28 and root.Parent do

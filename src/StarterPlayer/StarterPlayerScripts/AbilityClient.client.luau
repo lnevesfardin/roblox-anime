@@ -220,16 +220,21 @@ local function levarBola()
 	end
 	task.delay(0.4, function()
 		local alvo = nearestEnemy(root, 40)
-		if not alvo then
-			return
-		end
+		local frente = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+		frente = frente.Magnitude > 0.01 and frente.Unit or Vector3.new(0, 0, -1)
 		local t0 = os.clock()
-		while os.clock() - t0 < 0.9 and root.Parent and alvo.root.Parent do
-			local to = (alvo.root.Position - root.Position) * Vector3.new(1, 0, 1)
-			if to.Magnitude <= 4 + alvo.raio then
-				break
+		while os.clock() - t0 < (alvo and 0.9 or 0.6) and root.Parent do
+			local dir = frente
+			if alvo then
+				if not alvo.root.Parent then
+					break
+				end
+				local to = (alvo.root.Position - root.Position) * Vector3.new(1, 0, 1)
+				if to.Magnitude <= 4 + alvo.raio then
+					break
+				end
+				dir = to.Unit
 			end
-			local dir = to.Unit
 			root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
 			root.AssemblyLinearVelocity = dir * 75 + Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
 			RunService.Heartbeat:Wait()

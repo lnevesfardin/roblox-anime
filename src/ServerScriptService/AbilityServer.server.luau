@@ -367,25 +367,24 @@ ABILITIES.kenji_arashi = {
 		end
 		local look = flatLook(root)
 		local target = nearestEnemy(root.Position, look, 40)
-		if not target then
-			projectile({
-				parts = { orb, core }, start = orb.Position, dir = look, speed = 80, range = 14, radius = 3.5,
-				onEnd = explode,
-			})
-			return true
-		end
-		-- com alvo: o jogador corre (cliente) levando a bola na mão e acerta o inimigo de perto
+		-- o jogador corre (cliente) levando a bola na mão e empurra o inimigo com ela;
+		-- sem alvo, corre para a frente e a bola explode no primeiro inimigo que tocar
 		local pos = orb.Position
 		local t1 = os.clock()
-		while os.clock() - t1 < 1.1 and root.Parent do
+		local maxT = target and 1.1 or 0.8
+		while os.clock() - t1 < maxT and root.Parent do
 			pos = handPos(char, root) + root.CFrame.LookVector * 1.6
 			local cf = CFrame.new(pos) * CFrame.Angles(0, os.clock() * 20, 0)
 			orb.CFrame, core.CFrame = cf, cf
-			if target.hum.Health <= 0 or not target.model.Parent then
-				break
-			end
-			if flat(target.root.Position, root.Position) <= 5 + target.raio then
-				pos = target.root.Position
+			if target then
+				if target.hum.Health <= 0 or not target.model.Parent then
+					break
+				end
+				if flat(target.root.Position, root.Position) <= 5 + target.raio then
+					pos = target.root.Position
+					break
+				end
+			elseif #inRadius(pos, 4) > 0 then
 				break
 			end
 			task.wait()
@@ -698,17 +697,23 @@ ABILITIES.hana_midori = {
 		task.spawn(function()
 			local e = target
 			local orig = e.root.CFrame
-			local sky = orig.Position + Vector3.new(0, 20 + e.raio * 3, 0)
-			local size = 12 + e.raio * 3
-			-- esfera escura abre no ar e puxa o inimigo para cima
+			local center = orig.Position
+			local size = 9 + e.raio * 3
+			local function scaleTo(v)
+				pcall(function()
+					e.model:ScaleTo(v)
+				end)
+			end
+			-- a esfera abre no meio do inimigo e ele é sugado para dentro dela
 			e.root.Anchored = true
-			vortex(sky, size, 0.9, false, function(k)
+			vortex(center, size, 0.9, false, function(k)
 				if e.model.Parent then
-					local y = orig.Position:Lerp(sky, k * k)
-					e.model:PivotTo(CFrame.new(y) * CFrame.Angles(0, k * 14, 0))
+					scaleTo(math.max(1 - k * 0.95, 0.05))
+					e.model:PivotTo(CFrame.new(center) * CFrame.Angles(0, k * 14, 0))
 				end
 			end)
 			if e.hum.Health <= 0 or not e.model.Parent then
+				scaleTo(1)
 				e.root.Anchored = false
 				return
 			end
@@ -718,10 +723,13 @@ ABILITIES.hana_midori = {
 			if not e.model.Parent then
 				return
 			end
-			-- a esfera reabre no ar e o inimigo cai dela
-			e.model:PivotTo(CFrame.new(sky))
-			vortex(sky, size, 0.6, true)
-			e.model:PivotTo(CFrame.new(sky) * (orig - orig.Position))
+			-- a esfera reabre no mesmo lugar e o inimigo sai dela
+			e.model:PivotTo(CFrame.new(center))
+			vortex(center, size, 0.6, true, function(k)
+				scaleTo(0.05 + 0.95 * k)
+			end)
+			scaleTo(1)
+			e.model:PivotTo(orig)
 			e.root.Anchored = false
 			e.root.AssemblyLinearVelocity = Vector3.zero
 			e.model:SetAttribute("Sumido", nil)

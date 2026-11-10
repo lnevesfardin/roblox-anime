@@ -195,9 +195,20 @@ local function playAnim(nome, segurar)
 	anim = { keys = ANIMS[nome], t0 = os.clock(), hold = segurar }
 end
 
+-- estilo de corrida (Shift): tronco inclinado para a frente e braços esticados para trás
+local POSE_CORRIDA = {
+	Root = { x = -22 },
+	Waist = { x = -10 },
+	Neck = { x = 18 },
+	RightShoulder = { x = -50, z = 8 },
+	LeftShoulder = { x = -50, z = -8 },
+	RightElbow = { x = 10 },
+	LeftElbow = { x = 10 },
+}
+local pesoCorrida = 0
 local ultimoBind = 0
 -- Heartbeat roda depois do Animator do Roblox, então o golpe não é sobrescrito
-RunService.Heartbeat:Connect(function()
+RunService.Heartbeat:Connect(function(dt)
 	-- o corpo pode ainda estar sendo montado quando o script começa: liga as juntas de novo se precisar
 	local char = player.Character
 	local junta = motores.RightShoulder
@@ -206,6 +217,10 @@ RunService.Heartbeat:Connect(function()
 		ligarMotores(char)
 	end
 	local a = anim
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local correndo = player:GetAttribute("Correndo") and hum and hum.MoveDirection.Magnitude > 0.1
+	local alvoCorrida = (correndo and not a) and 1 or 0
+	pesoCorrida += (alvoCorrida - pesoCorrida) * math.min(dt * 10, 1)
 	local fim = a and a.keys[#a.keys].t
 	local el = a and (os.clock() - a.t0)
 	if a and not a.hold and el > fim then
@@ -239,6 +254,13 @@ RunService.Heartbeat:Connect(function()
 					rz = ((ja.z or 0) + ((jb.z or 0) - (ja.z or 0)) * f) * w
 					mexeu = true
 				end
+			end
+			local pc = POSE_CORRIDA[nome]
+			if pc and pesoCorrida > 0.01 then
+				rx += (pc.x or 0) * pesoCorrida
+				ry += (pc.y or 0) * pesoCorrida
+				rz += (pc.z or 0) * pesoCorrida
+				mexeu = true
 			end
 			if mexeu then
 				m.Transform = (base[m] or atual) * CFrame.Angles(math.rad(rx), math.rad(ry), math.rad(rz))

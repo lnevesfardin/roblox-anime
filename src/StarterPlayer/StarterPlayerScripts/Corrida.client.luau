@@ -24,6 +24,7 @@ local function aplicar()
 	if hum then
 		hum.WalkSpeed = correndo and RUN_SPEED or WALK_SPEED
 	end
+	player:SetAttribute("Correndo", correndo)
 	local cam = workspace.CurrentCamera
 	if cam then
 		TweenService:Create(cam, TweenInfo.new(0.25), { FieldOfView = correndo and FOV_RUN or FOV_NORMAL }):Play()

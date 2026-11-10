@@ -7,7 +7,7 @@ RPG de anime para Roblox: o jogador é ele mesmo, ganha personagens em caixas (C
 - **Caixas (gacha)** com 5 raridades e garantia: 20 aberturas sem Épico ou melhor garantem um Épico ou melhor.
 - **Coleção e equipar**: o personagem equipado muda vida e dano e ganha contorno da cor da raridade. Só dá para trocar no lobby.
 - **Progressão**: nível, XP e moedas, salvos em DataStore.
-- **Combate**: clique, toque ou F para atacar. O servidor decide o dano.
+- **Combate**: clique, toque ou F = combo de 4 golpes (3 socos + chute). X (segurar e soltar) = soco carregado, Y = soco aéreo, C = soco com investida. O servidor decide o dano.
 - **Poderes** (Q / E / R): 3 por personagem (2 básicos + 1 forte), com recarga e dano calculados no servidor.
 - **Mapa Snake's Den**: Lab Guinea Pigs → Sound Ninjas → Kab Clones → Red Cloud Team → boss **White Snake**, que tem golpe venenoso, mordidas e invoca cobras.
 - **Corrida**: Shift no PC, botão "Run" no celular, L3 no controle.

@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 
 local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
 local useEvent = ReplicatedStorage:WaitForChild("UseAbility")
@@ -188,6 +189,54 @@ local function investida()
 	end)
 end
 
+-- Spiral Orb (Karutto): depois de carregar a bola, o jogador corre até o inimigo mais próximo
+local function nearestEnemy(root, maxDist)
+	local look = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	look = look.Magnitude > 0.01 and look.Unit or Vector3.new(0, 0, -1)
+	local best, bestScore
+	for _, m in ipairs(CollectionService:GetTagged("Inimigo")) do
+		local h = m:FindFirstChildOfClass("Humanoid")
+		local r = m:FindFirstChild("HumanoidRootPart")
+		if h and r and h.Health > 0 and not m:GetAttribute("Sumido") then
+			local raio = math.max(m:GetAttribute("Raio") or 0, 0)
+			local dir = (r.Position - root.Position) * Vector3.new(1, 0, 1)
+			local d = dir.Magnitude
+			if d <= maxDist + raio and math.abs(r.Position.Y - root.Position.Y) < 30 then
+				local score = d - (d > 0.1 and dir.Unit:Dot(look) or 1) * 15
+				if not bestScore or score < bestScore then
+					best, bestScore = { root = r, raio = raio }, score
+				end
+			end
+		end
+	end
+	return best
+end
+
+local function levarBola()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	task.delay(0.4, function()
+		local alvo = nearestEnemy(root, 40)
+		if not alvo then
+			return
+		end
+		local t0 = os.clock()
+		while os.clock() - t0 < 0.9 and root.Parent and alvo.root.Parent do
+			local to = (alvo.root.Position - root.Position) * Vector3.new(1, 0, 1)
+			if to.Magnitude <= 4 + alvo.raio then
+				break
+			end
+			local dir = to.Unit
+			root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
+			root.AssemblyLinearVelocity = dir * 75 + Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+			RunService.Heartbeat:Wait()
+		end
+	end)
+end
+
 local function usar(slot)
 	local id, c = personagem()
 	if not c then
@@ -203,6 +252,8 @@ local function usar(slot)
 	useEvent:FireServer(slot)
 	if id == "hana_midori" and slot == 1 then
 		investida()
+	elseif id == "kenji_arashi" and slot == 1 then
+		levarBola()
 	end
 end
 

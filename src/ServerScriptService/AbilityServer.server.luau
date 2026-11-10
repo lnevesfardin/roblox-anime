@@ -181,6 +181,58 @@ local function projectile(o)
 	end)
 end
 
+-- raio em zigue-zague entre dois pontos
+local function zap(a, b, color, width, jitter, life)
+	local dir = b - a
+	local n = math.max(3, math.floor(dir.Magnitude / 3))
+	local pts = { a }
+	for i = 1, n - 1 do
+		pts[#pts + 1] = a + dir * (i / n) + Vector3.new(math.random() * 2 - 1, math.random() * 2 - 1, math.random() * 2 - 1) * jitter
+	end
+	pts[#pts + 1] = b
+	for i = 1, #pts - 1 do
+		local p0, p1 = pts[i], pts[i + 1]
+		local len = (p1 - p0).Magnitude
+		if len > 0.05 then
+			local part = fx({ size = Vector3.new(width, width, len), color = color, cf = CFrame.lookAt((p0 + p1) / 2, p1) })
+			fadeOut(part, life or 0.25)
+		end
+	end
+end
+
+-- esfera escura no ar com linhas que são sugadas para o centro (ou saem dele, se outward)
+local function vortex(center, maxSize, duration, outward, onStep)
+	local shell = fx({ shape = Enum.PartType.Ball, size = Vector3.one, color = Color3.fromRGB(12, 6, 20), trans = 0.15, mat = Enum.Material.SmoothPlastic, cf = CFrame.new(center) })
+	local core = fx({ shape = Enum.PartType.Ball, size = Vector3.one, color = Color3.fromRGB(240, 235, 255), cf = CFrame.new(center) })
+	light(core, Color3.fromRGB(190, 150, 255), 40, 3)
+	local streaks = {}
+	for i = 1, 22 do
+		local d = Vector3.new(math.random() * 2 - 1, math.random() * 2 - 1, math.random() * 2 - 1)
+		if d.Magnitude < 0.2 then d = Vector3.new(1, 0.3, 0) end
+		local st = fx({ size = Vector3.new(0.3, 0.3, 7), color = (i % 2 == 0) and Color3.fromRGB(235, 225, 255) or Color3.fromRGB(40, 20, 70), cf = CFrame.new(center) })
+		streaks[i] = { part = st, dir = d.Unit, phase = math.random() }
+	end
+	local t0 = os.clock()
+	while true do
+		local k = (os.clock() - t0) / duration
+		if k >= 1 then break end
+		local grow = outward and (1 - k) or math.min(k * 1.6, 1)
+		shell.Size = Vector3.one * maxSize * grow
+		core.Size = Vector3.one * maxSize * grow * 0.55
+		for _, st in ipairs(streaks) do
+			local ph = (k * 1.8 + st.phase) % 1
+			local r = outward and (ph * maxSize * 2.2) or ((1 - ph) * maxSize * 2.2)
+			st.part.CFrame = CFrame.lookAt(center + st.dir * (r + maxSize * 0.4), center)
+		end
+		if onStep then onStep(k) end
+		task.wait()
+	end
+	burst(center, maxSize * 1.6, Color3.fromRGB(215, 190, 255), 0.4, 0.3)
+	shell:Destroy()
+	core:Destroy()
+	for _, st in ipairs(streaks) do st.part:Destroy() end
+end
+
 local function bezier(a, b, c, t)
 	local u = 1 - t
 	return a * u * u + b * 2 * u * t + c * t * t
@@ -199,7 +251,7 @@ local function dragon(o)
 		table.insert(horns, fx({ size = Vector3.new(0.4, 0.4, o.headSize * 0.9), color = o.colorB, cf = CFrame.new(o.p0) }))
 	end
 	light(segs[1], o.colorA, 20, 3)
-	local lag = 0.045
+	local lag = o.lag or 0.045
 	local t0 = os.clock()
 	local struck = false
 	while true do
@@ -306,16 +358,41 @@ ABILITIES.kenji_arashi = {
 			core.Size, core.CFrame = Vector3.one * s * 0.55, cf
 			task.wait()
 		end
-		projectile({
-			parts = { orb, core }, start = orb.Position, dir = flatLook(root), speed = 80, range = 14, radius = 3.5,
-			onEnd = function(pos)
-				burst(pos, 15, BLUE, 0.45)
-				burst(pos, 8, BLUE_LIGHT, 0.3)
-				for _, e in ipairs(inRadius(pos, 7)) do
-					hit(e, dmg * 3.5, pos, 60)
-				end
-			end,
-		})
+		local function explode(pos)
+			burst(pos, 15, BLUE, 0.45)
+			burst(pos, 8, BLUE_LIGHT, 0.3)
+			for _, e in ipairs(inRadius(pos, 7)) do
+				hit(e, dmg * 3.5, pos, 60)
+			end
+		end
+		local look = flatLook(root)
+		local target = nearestEnemy(root.Position, look, 40)
+		if not target then
+			projectile({
+				parts = { orb, core }, start = orb.Position, dir = look, speed = 80, range = 14, radius = 3.5,
+				onEnd = explode,
+			})
+			return true
+		end
+		-- com alvo: o jogador corre (cliente) levando a bola na mão e acerta o inimigo de perto
+		local pos = orb.Position
+		local t1 = os.clock()
+		while os.clock() - t1 < 1.1 and root.Parent do
+			pos = handPos(char, root) + root.CFrame.LookVector * 1.6
+			local cf = CFrame.new(pos) * CFrame.Angles(0, os.clock() * 20, 0)
+			orb.CFrame, core.CFrame = cf, cf
+			if target.hum.Health <= 0 or not target.model.Parent then
+				break
+			end
+			if flat(target.root.Position, root.Position) <= 5 + target.raio then
+				pos = target.root.Position
+				break
+			end
+			task.wait()
+		end
+		orb:Destroy()
+		core:Destroy()
+		explode(pos)
 		return true
 	end,
 
@@ -429,19 +506,19 @@ ABILITIES.ren_kuroba = {
 	-- Q: Fireball — bola de fogo que explode ao bater
 	function(plr, char, root, dmg)
 		local look = flatLook(root)
-		local ball = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 3, color = FIRE, cf = CFrame.new(handPos(char, root) + look * 2) })
-		local inner = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 1.8, color = Color3.fromRGB(255, 220, 120), cf = ball.CFrame })
+		local ball = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 7, color = FIRE, cf = CFrame.new(handPos(char, root) + look * 4) })
+		local inner = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 4, color = Color3.fromRGB(255, 220, 120), cf = ball.CFrame })
 		local fire = Instance.new("Fire")
-		fire.Size = 6
-		fire.Heat = 4
+		fire.Size = 14
+		fire.Heat = 6
 		fire.Parent = ball
-		light(ball, FIRE, 18, 3)
+		light(ball, FIRE, 28, 3)
 		projectile({
-			parts = { ball, inner }, start = ball.Position, dir = look, speed = 60, range = 60, radius = 3.5,
+			parts = { ball, inner }, start = ball.Position, dir = look, speed = 60, range = 60, radius = 6,
 			onEnd = function(pos)
-				burst(pos, 18, FIRE, 0.5)
-				burst(pos, 10, Color3.fromRGB(255, 230, 140), 0.3)
-				for _, e in ipairs(inRadius(pos, 9)) do
+				burst(pos, 30, FIRE, 0.6)
+				burst(pos, 18, Color3.fromRGB(255, 230, 140), 0.4)
+				for _, e in ipairs(inRadius(pos, 14)) do
 					hit(e, dmg * 2.5, pos, 40)
 				end
 			end,
@@ -468,8 +545,8 @@ ABILITIES.ren_kuroba = {
 		local fire = Instance.new("Fire")
 		fire.Color = Color3.fromRGB(10, 10, 12)
 		fire.SecondaryColor = Color3.fromRGB(70, 0, 90)
-		fire.Size = 8 + target.raio * 2
-		fire.Heat = 12
+		fire.Size = 12 + target.raio * 2
+		fire.Heat = 14
 		fire.Parent = target.root
 		local hl = Instance.new("Highlight")
 		hl.FillColor = Color3.fromRGB(10, 0, 15)
@@ -497,16 +574,19 @@ ABILITIES.ren_kuroba = {
 		local cloud = fx({ shape = Enum.PartType.Ball, size = Vector3.new(44, 10, 44), color = Color3.fromRGB(45, 45, 55),
 			mat = Enum.Material.SmoothPlastic, trans = 0.15, cf = CFrame.new(tpos + Vector3.new(0, 58, 0)) })
 		light(cloud, Color3.fromRGB(200, 220, 255), 40, 2)
-		task.wait(0.4)
+		task.wait(0.25)
 		dragon({
 			p0 = tpos + Vector3.new(0, 56, 0) + right * 22,
 			p1 = tpos + Vector3.new(0, 40, 0) - right * 26,
 			p2 = tpos + Vector3.new(0, 1, 0),
-			count = 14, headSize = 4, duration = 1.0,
+			count = 22, headSize = 4, duration = 0.3, lag = 0.011,
 			colorA = Color3.fromRGB(255, 245, 160), colorB = Color3.fromRGB(150, 200, 255),
 			onArrive = function(pos)
 				local bolt = fx({ size = Vector3.new(1.4, 60, 1.4), color = Color3.fromRGB(240, 245, 255), cf = CFrame.new(pos + Vector3.new(0, 30, 0)) })
 				fadeOut(bolt, 0.35)
+				for _ = 1, 4 do
+					zap(pos + Vector3.new(0, 55, 0), pos + Vector3.new(math.random(-6, 6), 0, math.random(-6, 6)), Color3.fromRGB(235, 240, 255), 0.9, 5, 0.3)
+				end
 				burst(pos, 36, Color3.fromRGB(255, 240, 150), 0.6, 0.1)
 				burst(pos, 20, Color3.fromRGB(180, 210, 255), 0.4, 0.2)
 				for _, e in ipairs(inRadius(pos, 17)) do
@@ -542,14 +622,30 @@ ABILITIES.hana_midori = {
 		local startPos = root.Position
 		local endPos = startPos + look * 22
 		local t0 = os.clock()
+		local lastZap = 0
 		while os.clock() - t0 < 0.45 and root.Parent do
-			spark.CFrame = CFrame.new(handPos(char, root))
+			local hp = handPos(char, root)
+			spark.CFrame = CFrame.new(hp)
+			if os.clock() - lastZap > 0.04 then
+				lastZap = os.clock()
+				for _ = 1, 2 do
+					local off = Vector3.new(math.random() * 2 - 1, math.random() * 2 - 1, math.random() * 2 - 1).Unit * (4 + math.random() * 4)
+					zap(hp, hp + off, SPARK, 0.25, 1.2, 0.15)
+				end
+			end
 			task.wait()
 		end
 		spark:Destroy()
 		local trail = fx({ size = Vector3.new(0.6, 0.6, 22), color = SPARK, cf = CFrame.lookAt((startPos + endPos) / 2, endPos) })
 		fadeOut(trail, 0.3)
 		burst(endPos, 10, SPARK, 0.3)
+		zap(startPos, endPos, Color3.fromRGB(255, 255, 255), 0.9, 2, 0.35)
+		for _ = 1, 8 do
+			local f1, f2 = math.random(), math.random()
+			local base1, base2 = startPos + look * (22 * f1), startPos + look * (22 * f2)
+			local o = Vector3.new(math.random(-5, 5), math.random(-2, 4), math.random(-5, 5))
+			zap(base1 + o, base2 - o, SPARK, 0.35, 2.5, 0.3)
+		end
 		local a, b = Vector2.new(startPos.X, startPos.Z), Vector2.new(endPos.X, endPos.Z)
 		for _, e in ipairs(getEnemies()) do
 			local p = Vector2.new(e.root.Position.X, e.root.Position.Z)
@@ -558,6 +654,9 @@ ABILITIES.hana_midori = {
 			local d = (p - (a + ab * t)).Magnitude
 			if d <= 5 + e.raio and math.abs(e.root.Position.Y - endPos.Y) < 12 then
 				hit(e, dmg * 3.5, startPos, 45)
+				for _ = 1, 3 do
+					zap(e.root.Position + Vector3.new(0, 6, 0), e.root.Position + Vector3.new(math.random(-3, 3), -1, math.random(-3, 3)), SPARK, 0.4, 1.5, 0.3)
+				end
 			end
 		end
 		return true
@@ -570,9 +669,9 @@ ABILITIES.hana_midori = {
 		local hitSet = {}
 		dragon({
 			p0 = base + look * 3 - Vector3.new(0, 3, 0),
-			p1 = base + look * 14 + Vector3.new(0, 5, 0),
-			p2 = base + look * 45,
-			count = 12, headSize = 3.6, duration = 0.8, trans = 0.15,
+			p1 = base + look * 20 + Vector3.new(0, 6, 0),
+			p2 = base + look * 70,
+			count = 24, headSize = 4.2, duration = 1.2, trans = 0.15,
 			colorA = WATER, colorB = Color3.fromRGB(200, 235, 255),
 			onStep = function(head)
 				for _, e in ipairs(inRadius(head, 9)) do
@@ -599,39 +698,33 @@ ABILITIES.hana_midori = {
 		task.spawn(function()
 			local e = target
 			local orig = e.root.CFrame
-			local groundY = orig.Position.Y - (e.hum.HipHeight + e.root.Size.Y / 2) + 0.2
-			local function portal(open)
-				local d = 10 + e.raio * 2
-				local disc = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.3, open and 1 or d, open and 1 or d),
-					color = Color3.fromRGB(70, 30, 110), trans = 0.15,
-					cf = CFrame.new(orig.Position.X, groundY, orig.Position.Z) * CFrame.Angles(0, 0, math.rad(90)) })
-				local ring = fx({ shape = Enum.PartType.Cylinder, size = disc.Size + Vector3.new(0, 1.2, 1.2),
-					color = Color3.fromRGB(170, 110, 255), trans = 0.5, cf = disc.CFrame * CFrame.new(-0.05, 0, 0) })
-				local goal = open and Vector3.new(0.3, d, d) or Vector3.new(0.3, 1, 1)
-				TweenService:Create(disc, TweenInfo.new(0.35), { Size = goal }):Play()
-				TweenService:Create(ring, TweenInfo.new(0.35), { Size = goal + Vector3.new(0, 1.2, 1.2) }):Play()
-				Debris:AddItem(disc, 0.6)
-				Debris:AddItem(ring, 0.6)
-			end
-			portal(true)
-			task.wait(0.4)
+			local sky = orig.Position + Vector3.new(0, 20 + e.raio * 3, 0)
+			local size = 12 + e.raio * 3
+			-- esfera escura abre no ar e puxa o inimigo para cima
+			e.root.Anchored = true
+			vortex(sky, size, 0.9, false, function(k)
+				if e.model.Parent then
+					local y = orig.Position:Lerp(sky, k * k)
+					e.model:PivotTo(CFrame.new(y) * CFrame.Angles(0, k * 14, 0))
+				end
+			end)
 			if e.hum.Health <= 0 or not e.model.Parent then
+				e.root.Anchored = false
 				return
 			end
-			burst(orig.Position, 8, Color3.fromRGB(120, 60, 200), 0.3)
 			e.model:SetAttribute("Sumido", true)
-			e.root.Anchored = true
 			e.model:PivotTo(orig + Vector3.new(0, 3000, 0))
 			task.wait(5)
 			if not e.model.Parent then
 				return
 			end
-			portal(true)
-			task.wait(0.3)
-			e.model:PivotTo(orig)
+			-- a esfera reabre no ar e o inimigo cai dela
+			e.model:PivotTo(CFrame.new(sky))
+			vortex(sky, size, 0.6, true)
+			e.model:PivotTo(CFrame.new(sky) * (orig - orig.Position))
 			e.root.Anchored = false
+			e.root.AssemblyLinearVelocity = Vector3.zero
 			e.model:SetAttribute("Sumido", nil)
-			burst(orig.Position, 10, Color3.fromRGB(140, 80, 220), 0.4)
 			local extra = (e.raio <= 2) and e.hum.MaxHealth * 0.3 or 0
 			hit(e, dmg * 6 + extra, nil, 0)
 		end)

@@ -46,6 +46,51 @@ MapData.Maps = {
 		RewardXP = 250,
 		RewardCoins = 200,
 	},
+
+	-- Arena flutuante do Exame Ninja (mapa Mapa_ExameNinja). Boss sem tema de cobra.
+	ExameNinja = {
+		Name = "Ninja Exam",
+
+		Waves = {
+			{ Name = "Exam Candidates", Enemies = {
+				{ Name = "Exam Candidate", Color = Color3.fromRGB(235, 215, 170), Health = 40, Damage = 4, Speed = 12, Count = 5, Extra = 2 },
+			} },
+			{ Name = "Rival Squads", Enemies = {
+				{ Name = "Rival Genin", Color = Color3.fromRGB(60, 100, 170), Health = 55, Damage = 5, Speed = 15, Count = 5, Extra = 2 },
+				{ Name = "Rival Scout", Color = Color3.fromRGB(95, 160, 210), Health = 40, Damage = 5, Speed = 18, Scale = 0.95, Count = 2, Extra = 1 },
+			} },
+			{ Name = "Masked Examiners", Enemies = {
+				{ Name = "Masked Examiner", Color = Color3.fromRGB(90, 90, 105), Health = 70, Damage = 6, Speed = 16, Count = 6, Extra = 2 },
+			} },
+			{ Name = "Elite Jonin Squad", Enemies = {
+				{ Name = "Jonin: Fang", Color = Color3.fromRGB(200, 200, 220), Health = 95, Damage = 8, Speed = 17, Count = 1 },
+				{ Name = "Jonin: Bulwark", Color = Color3.fromRGB(120, 125, 140), Health = 190, Damage = 10, Speed = 10, Scale = 1.4, Count = 1 },
+				{ Name = "Jonin: Whisper", Color = Color3.fromRGB(160, 190, 235), Health = 70, Damage = 7, Speed = 19, Scale = 0.95, Count = 1 },
+				{ Name = "Jonin: Spark", Color = Color3.fromRGB(235, 205, 90), Health = 80, Damage = 8, Speed = 15, Count = 1 },
+			} },
+		},
+
+		-- Onda 5: o boss
+		BossName = "Grand Proctor",
+		BossColor = Color3.fromRGB(70, 60, 95),
+		BossHealth = 1400,
+		BossDamage = 22,
+		PlainBoss = true,                          -- sem enfeites de cobra
+		BossScale = 2.3,
+		BossSlamEvery = 8,
+		BossBiteEvery = 12,
+		BossSummonEvery = 14,
+		SlamLabel = "Shockwave!",
+		SlamColor = Color3.fromRGB(120, 170, 255),
+		SlamPool = false,
+		BiteLabel = "Watch out: kunai rain!",
+		BiteColor = Color3.fromRGB(255, 200, 90),
+		SummonLabel = " summons shadow shades!",
+		Minion = { Name = "Proctor Shade", Color = Color3.fromRGB(45, 40, 60), Health = 30, Damage = 6, Speed = 20 },
+
+		RewardXP = 400,
+		RewardCoins = 300,
+	},
 }
 
 return MapData

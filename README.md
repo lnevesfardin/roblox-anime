@@ -42,7 +42,7 @@ Arquivos `.server.luau` são Script, `.client.luau` são LocalScript e `.luau` s
 
 ## Mapa e construções
 
-As construções, como a vila, a floresta, os destinos e a arena `Mapa_Ninja`, ficam salvas no próprio place do Roblox (placeId `80763788407481`), não neste repositório. Para guardar uma cópia, use no Studio **File → Save to File As…** e coloque o `.rbxl` aqui.
+As construções, como a vila, a floresta, os destinos e as arenas `Mapa_Ninja` (Snake's Den) e `Mapa_ExameNinja` (Ninja Exam, arena flutuante com boss Grand Proctor), ficam salvas no próprio place do Roblox (placeId `80763788407481`), não neste repositório. Para guardar uma cópia, use no Studio **File → Save to File As…** e coloque o `.rbxl` aqui.
 
 ## Como usar o código
 

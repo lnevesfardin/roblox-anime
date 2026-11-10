@@ -205,7 +205,7 @@ local function getTemplate()
 	return template
 end
 
-local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed)
+local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor)
 	local tpl = getTemplate()
 	if not tpl then
 		return nil
@@ -248,7 +248,7 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 	model:SetAttribute("Raio", (scale - 1) * 3)
 	CollectionService:AddTag(model, "Inimigo")
 	model.Parent = workspace
-	if isBoss then
+	if isBoss and not noDecor then
 		decorateBoss(model, scale)
 	end
 
@@ -410,12 +410,14 @@ local function bossSlam(e, cfg, floorY)
 	print("[WaveServer] Boss: golpe venenoso")
 	local center = e.root.Position
 	local radius = 16 + e.radius
-	local m = mark(center, radius, floorY + 0.25, Color3.fromRGB(80, 220, 70))
+	local m = mark(center, radius, floorY + 0.25, cfg.SlamColor or Color3.fromRGB(80, 220, 70))
 	task.delay(1.5, function()
 		if enemyAlive(e) and state == "running" then
 			damageInRadius(center, radius, cfg.BossDamage * 1.6)
 			m.Transparency = 0.2
-			venomPool(center, radius * 0.7, 5, floorY)
+			if cfg.SlamPool ~= false then
+				venomPool(center, radius * 0.7, 5, floorY)
+			end
 		end
 		Debris:AddItem(m, 0.2)
 	end)
@@ -430,7 +432,7 @@ local function bossBites(e, cfg, floorY)
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		if hum and root and hum.Health > 0 then
 			local pos = root.Position
-			local m = mark(pos, 7, floorY + 0.25, Color3.fromRGB(150, 255, 90))
+			local m = mark(pos, 7, floorY + 0.25, cfg.BiteColor or Color3.fromRGB(150, 255, 90))
 			task.delay(1.4, function()
 				if state == "running" then
 					damageInRadius(pos, 7, cfg.BossDamage * 1.2)
@@ -446,7 +448,7 @@ end
 local function bossSummon(e, cfg, floorY, centro)
 	local alive = 0
 	for _, x in ipairs(enemies) do
-		if x.isSnake and enemyAlive(x) then
+		if (x.isSnake or x.isMinion) and enemyAlive(x) then
 			alive += 1
 		end
 	end
@@ -459,7 +461,15 @@ local function bossSummon(e, cfg, floorY, centro)
 		local p = e.root.Position + Vector3.new(math.cos(ang) * 9, 0, math.sin(ang) * 9)
 		local x = math.clamp(p.X, centro.Position.X - 46, centro.Position.X + 46)
 		local z = math.clamp(p.Z, centro.Position.Z - 46, centro.Position.Z + 46)
-		spawnSnake(cfg, Vector3.new(x, floorY + 1, z))
+		if cfg.Minion then
+			local mn = cfg.Minion
+			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed)
+			if ent then
+				ent.isMinion = true
+			end
+		else
+			spawnSnake(cfg, Vector3.new(x, floorY + 1, z))
+		end
 	end
 end
 
@@ -487,17 +497,17 @@ local function aiLoop(cfg, floorY, centro)
 					if e.isBoss then
 						if now >= e.nextSlam then
 							e.nextSlam = now + cfg.BossSlamEvery
-							setAviso(cfg.BossName .. ": Venom Slam!")
+							setAviso(cfg.BossName .. ": " .. (cfg.SlamLabel or "Venom Slam!"))
 							bossSlam(e, cfg, floorY)
 						end
 						if now >= e.nextBite then
 							e.nextBite = now + cfg.BossBiteEvery
-							setAviso("Watch out: snake bites!")
+							setAviso(cfg.BiteLabel or "Watch out: snake bites!")
 							bossBites(e, cfg, floorY)
 						end
 						if now >= e.nextSummon then
 							e.nextSummon = now + cfg.BossSummonEvery
-							setAviso(cfg.BossName .. " summons snakes!")
+							setAviso(cfg.BossName .. (cfg.SummonLabel or " summons snakes!"))
 							bossSummon(e, cfg, floorY, centro)
 						end
 					end
@@ -619,8 +629,8 @@ local function runMap(mapId)
 		print("[WaveServer] Boss: " .. cfg.BossName)
 		broadcast({ text = ("Wave %d/%d: BOSS %s!"):format(total, total, cfg.BossName) })
 		task.wait(3)
-		local boss = spawnEnemy(cfg.BossName, cfg.BossColor, 2.5, cfg.BossHealth * hpScale, cfg.BossDamage,
-			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true)
+		local boss = spawnEnemy(cfg.BossName, cfg.BossColor, cfg.BossScale or 2.5, cfg.BossHealth * hpScale, cfg.BossDamage,
+			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss)
 		if boss then
 			boss.nextSlam = os.clock() + cfg.BossSlamEvery
 			boss.nextBite = os.clock() + 5
@@ -635,7 +645,7 @@ local function runMap(mapId)
 		end
 		victory = boss ~= nil and not enemyAlive(boss) and aliveParticipants() > 0
 		for _, e in ipairs(enemies) do
-			if e.isSnake and enemyAlive(e) then
+			if (e.isSnake or e.isMinion) and enemyAlive(e) then
 				e.hum.Health = 0
 			end
 		end

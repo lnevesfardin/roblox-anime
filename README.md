@@ -8,6 +8,7 @@ RPG de anime para Roblox: o jogador é ele mesmo, ganha personagens em caixas (C
 - **Coleção e equipar**: o personagem equipado muda vida e dano e ganha contorno da cor da raridade. Só dá para trocar no lobby.
 - **Progressão**: nível, XP e moedas, salvos em DataStore.
 - **Combate**: clique, toque ou F para atacar. O servidor decide o dano.
+- **Poderes** (Q / E / R): 3 por personagem (2 básicos + 1 forte), com recarga e dano calculados no servidor.
 - **Mapa Snake's Den**: Lab Guinea Pigs → Sound Ninjas → Kab Clones → Red Cloud Team → boss **White Snake**, que tem golpe venenoso, mordidas e invoca cobras.
 - **Corrida**: Shift no PC, botão "Run" no celular, L3 no controle.
 - **Lobby**: vila japonesa com reta de saída, floresta e 5 destinos (Snake's Den, Sand Village, Hideout, Ninja World War, Valley of the End).
@@ -26,12 +27,14 @@ src/
     CrateServer             abre caixas (RemoteFunction OpenCrate)
     EquipServer             coleção e equipar (GetCollection / EquipCharacter)
     CombatServer            ataque do jogador (RemoteEvent Attack)
+    AbilityServer           os 9 poderes dos personagens (RemoteEvent UseAbility)
     WaveServer              partida: contagem, ondas, boss, recompensa
     NascerNaVila            faz o jogador nascer na praça da vila
   StarterPlayer/StarterPlayerScripts/
     PainelCaixa             painel de nível/moedas + botão de caixa
     PainelColecao           janela de coleção
     CombatClient            ataque + HUD das ondas e barra do boss
+    AbilityClient           teclas Q/E/R, HUD de recarga, investida do Tatashi
     Corrida                 correr
 ```
 

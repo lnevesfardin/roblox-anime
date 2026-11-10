@@ -18,12 +18,32 @@ CharacterData.Rarities = {
 -- Por enquanto só há personagens do tema Ninja (MVP).
 -- Health e Damage são valores BASE, antes da raridade e do nível.
 CharacterData.Characters = {
-	-- Look = descrição visual para você montar o modelo. Ability = "TBD" até você me dizer.
-	{ Id = "kenji_arashi",  Name = "Karutto",  Theme = "Ninja", Rarity = "Epico",  Health = 100, Damage = 10, Ability = "TBD",
+	-- Look = descrição visual para você montar o modelo.
+	-- Abilities = poderes na ordem Q, E, R (R é o forte). Cooldown em segundos.
+	-- O que cada poder faz fica em ServerScriptService > AbilityServer.
+	{ Id = "kenji_arashi",  Name = "Karutto",  Theme = "Ninja", Rarity = "Epico",  Health = 100, Damage = 10,
+		Ability = "Spiral Orb · Leaf Clones · Storm Shuriken",
+		Abilities = {
+			{ Name = "Spiral Orb", Cooldown = 6 },        -- esfera de energia azul na mão
+			{ Name = "Leaf Clones", Cooldown = 14 },      -- 2 clones lutam por 8s
+			{ Name = "Storm Shuriken", Cooldown = 30 },   -- shuriken gigante que explode
+		},
 		Look = "Energetic young guy, zip-up jacket, baggy pants, leg pouch, headband, spiky hair. Colors: green and white." },
-	{ Id = "ren_kuroba",    Name = "Kakuse",    Theme = "Ninja", Rarity = "Raro",  Health = 90,  Damage = 12, Ability = "TBD",
+	{ Id = "ren_kuroba",    Name = "Kakuse",    Theme = "Ninja", Rarity = "Raro",  Health = 90,  Damage = 12,
+		Ability = "Fireball · Black Flame · Thunder Dragon",
+		Abilities = {
+			{ Name = "Fireball", Cooldown = 6 },          -- bola de fogo que explode
+			{ Name = "Black Flame", Cooldown = 12 },      -- fogo preto queima o alvo por 5s
+			{ Name = "Thunder Dragon", Cooldown = 35 },   -- dragão de raios desce do céu
+		},
 		Look = "Serious young guy, straight dark hair, short-sleeve shirt, shorts, wraps on arms and legs, hands in pockets. Colors: dark gray and cream." },
-	{ Id = "hana_midori",   Name = "Tatashi",   Theme = "Ninja", Rarity = "Comum",   Health = 95,  Damage = 14, Ability = "TBD",
+	{ Id = "hana_midori",   Name = "Tatashi",   Theme = "Ninja", Rarity = "Comum",   Health = 95,  Damage = 14,
+		Ability = "Lightning Hand · Water Dragon · Vanish",
+		Abilities = {
+			{ Name = "Lightning Hand", Cooldown = 7 },    -- relâmpago na mão + investida
+			{ Name = "Water Dragon", Cooldown = 12 },     -- dragão de água avança e empurra
+			{ Name = "Vanish", Cooldown = 30 },           -- inimigo some 5s e volta com menos vida
+		},
 		Look = "Confident young fighter, short hair, sleeveless top with shorts, gloves, attack pose. Colors: turquoise and white." },
 }
 

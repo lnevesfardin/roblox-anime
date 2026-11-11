@@ -656,8 +656,9 @@ local function runMap(mapId)
 	if victory then
 		local survivors = {}
 		for plr in pairs(participants) do
-			PlayerData.AddXP(plr, cfg.RewardXP)
-			PlayerData.AddCoins(plr, cfg.RewardCoins)
+			-- boosts 2x XP / 2x moedas (itens do Battle Pass) multiplicam a recompensa
+			PlayerData.AddXP(plr, cfg.RewardXP * PlayerData.GetBoostMult(plr, "XP"))
+			PlayerData.AddCoins(plr, cfg.RewardCoins * PlayerData.GetBoostMult(plr, "Coins"))
 			table.insert(survivors, plr)
 		end
 		print("[WaveServer] Vitória!")

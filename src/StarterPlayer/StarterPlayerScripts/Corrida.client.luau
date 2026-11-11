@@ -8,8 +8,10 @@ local UserInputService = game:GetService("UserInputService")
 
 local WALK_SPEED = 16
 local RUN_SPEED = 26
-local FOV_NORMAL = 70
-local FOV_RUN = 78
+-- campo de visão base vem das Configurações (atributo FOVBase); correndo abre +8
+local function fovNormal()
+	return Players.LocalPlayer:GetAttribute("FOVBase") or 70
+end
 
 local player = Players.LocalPlayer
 local correndo = false
@@ -27,7 +29,7 @@ local function aplicar()
 	player:SetAttribute("Correndo", correndo)
 	local cam = workspace.CurrentCamera
 	if cam then
-		TweenService:Create(cam, TweenInfo.new(0.25), { FieldOfView = correndo and FOV_RUN or FOV_NORMAL }):Play()
+		TweenService:Create(cam, TweenInfo.new(0.25), { FieldOfView = correndo and fovNormal() + 8 or fovNormal() }):Play()
 	end
 	local botao = ContextActionService:GetButton("Correr")
 	if botao then
@@ -57,6 +59,8 @@ end
 ContextActionService:BindAction("Correr", acao, true, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
 ContextActionService:SetTitle("Correr", "Run")
 ContextActionService:SetPosition("Correr", UDim2.new(1, -150, 1, -150))
+
+player:GetAttributeChangedSignal("FOVBase"):Connect(aplicar)
 
 -- ao renascer (ex.: depois de uma partida) volta a andar normal
 player.CharacterAdded:Connect(function(char)

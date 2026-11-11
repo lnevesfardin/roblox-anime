@@ -47,9 +47,14 @@ CharacterData.Characters = {
 		Look = "Confident young fighter, short hair, sleeveless top with shorts, gloves, attack pose. Colors: turquoise and white." },
 }
 
--- Caixas. Cost em moedas do jogo. Depois você pode criar caixas pagas com Robux.
+-- Caixas. Currency = "Coins" (moedas do jogo) ou "Gems" (Gemas do Rikudou).
+-- Weights opcional: chance de cada raridade só nessa caixa (senão usa a das raridades).
 CharacterData.Crates = {
-	Basica = { Name = "Basic Crate", Cost = 100 },
+	Basica = { Name = "Basic Crate", Cost = 100, Currency = "Coins", Pity = true },
+	Rikudou = {
+		Name = "Rikudou Crate", Cost = 50, Currency = "Gems", Pity = false,
+		Weights = { Comum = 0, Raro = 50, Epico = 30, Lendario = 15, Mistico = 5 },
+	},
 }
 
 -- Garantia: depois de PityLimit aberturas sem Épico ou melhor, a próxima vem Épico ou melhor.
@@ -79,6 +84,52 @@ function CharacterData.GetCharacter(id)
 		end
 	end
 	return nil
+end
+
+-- Peso de uma raridade numa caixa
+function CharacterData.GetWeight(crateId, rarityIndex)
+	local crate = CharacterData.Crates[crateId]
+	local r = CharacterData.Rarities[rarityIndex]
+	if crate and crate.Weights and crate.Weights[r.Id] ~= nil then
+		return crate.Weights[r.Id]
+	end
+	return r.Weight
+end
+
+function CharacterData.HasRarity(rarityId)
+	for _, c in ipairs(CharacterData.Characters) do
+		if c.Rarity == rarityId then
+			return true
+		end
+	end
+	return false
+end
+
+-- Chances REAIS que aparecem para o jogador (em %). Se uma raridade ainda não tem
+-- personagem, a chance dela passa para a raridade abaixo que tem, igual ao sorteio do servidor.
+function CharacterData.GetCrateOdds(crateId)
+	local n = #CharacterData.Rarities
+	local w = {}
+	local total = 0
+	for i = 1, n do
+		w[i] = CharacterData.GetWeight(crateId, i)
+		total += w[i]
+	end
+	local eff = table.create(n, 0)
+	for i = n, 1, -1 do
+		local j = i
+		while j >= 1 and not CharacterData.HasRarity(CharacterData.Rarities[j].Id) do
+			j -= 1
+		end
+		if j >= 1 then
+			eff[j] += w[i]
+		end
+	end
+	local out = {}
+	for i = 1, n do
+		out[i] = { Id = CharacterData.Rarities[i].Id, Name = CharacterData.Rarities[i].Name, Percent = total > 0 and eff[i] / total * 100 or 0 }
+	end
+	return out
 end
 
 -- XP necessário para subir do nível informado para o próximo

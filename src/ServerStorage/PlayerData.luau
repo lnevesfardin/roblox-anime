@@ -1,11 +1,13 @@
 -- ModuleScript: ServerStorage > PlayerData
--- Guarda e salva os dados de cada jogador (nível, XP, moedas, personagens, garantia).
+-- Guarda e salva os dados de cada jogador (nível, XP, moedas, gemas, personagens, garantia,
+-- Battle Pass, itens, acessórios, boosts e configurações). Tudo num DataStore só.
 -- Outros scripts do servidor usam as funções daqui; não precisam mexer no DataStore.
 
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
+local EconomyData = require(ReplicatedStorage:WaitForChild("EconomyData"))
 
 -- Se o jogo não estiver publicado (ou a API estiver desligada), o DataStore falha.
 -- Nesse caso o jogo continua funcionando, mas sem salvar o progresso.
@@ -19,6 +21,7 @@ end
 local MAX_TRIES = 3
 
 local PlayerData = {}
+
 local cache = {} -- [player] = { Data = {...}, CanSave = bool, Saving = bool }
 
 local function keyFor(player)
@@ -33,7 +36,33 @@ local function defaultData()
 		Owned = {},      -- [idDoPersonagem] = quantidade de cópias
 		Equipped = nil,
 		Pity = 0,
+		Gems = 0,                         -- Gemas do Rikudou (só Robux ou Battle Pass)
+		BattlePass = { XP = 0, Claimed = {} }, -- Claimed["7"] = true
+		Items = {},                       -- [idDoItem] = quantidade
+		Cosmetics = {},                   -- [slot] = idDoItem equipado
+		Boosts = {},                      -- [XP/Coins] = os.time() em que acaba
+		Settings = {},                    -- configurações do jogador
+		Purchases = {},                   -- IDs de compras em Robux já entregues
 	}
+end
+
+local DEFAULT_SETTINGS = {
+	Music = 0.5, MusicOn = true,
+	SFX = 0.8, SFXOn = true,
+	Sensitivity = 1, FOV = 70,
+	LowGraphics = false,
+}
+PlayerData.DEFAULT_SETTINGS = DEFAULT_SETTINGS
+
+local function deepCopy(t)
+	if type(t) ~= "table" then
+		return t
+	end
+	local c = {}
+	for k, v in pairs(t) do
+		c[k] = deepCopy(v)
+	end
+	return c
 end
 
 -- Completa campos que faltarem em dados salvos de versões antigas
@@ -45,8 +74,23 @@ local function withDefaults(loaded)
 	for key, value in pairs(loaded) do
 		data[key] = value
 	end
-	if type(data.Owned) ~= "table" then
-		data.Owned = {}
+	for _, key in ipairs({ "Owned", "Items", "Cosmetics", "Boosts", "Settings", "Purchases" }) do
+		if type(data[key]) ~= "table" then
+			data[key] = {}
+		end
+	end
+	if type(data.BattlePass) ~= "table" then
+		data.BattlePass = { XP = 0, Claimed = {} }
+	end
+	data.BattlePass.XP = tonumber(data.BattlePass.XP) or 0
+	if type(data.BattlePass.Claimed) ~= "table" then
+		data.BattlePass.Claimed = {}
+	end
+	data.Gems = tonumber(data.Gems) or 0
+	for k, v in pairs(DEFAULT_SETTINGS) do
+		if type(data.Settings[k]) ~= type(v) then
+			data.Settings[k] = v
+		end
 	end
 	return data
 end
@@ -76,9 +120,16 @@ local function refreshStats(player)
 	if not entry or not folder then
 		return
 	end
-	folder.Level.Value = entry.Data.Level
-	folder.XP.Value = entry.Data.XP
-	folder.Coins.Value = entry.Data.Coins
+	local d = entry.Data
+	folder.Level.Value = d.Level
+	folder.XP.Value = d.XP
+	folder.Coins.Value = d.Coins
+	-- valores que o HUD lê (só leitura no cliente; quem muda é o servidor)
+	player:SetAttribute("Gems", d.Gems)
+	player:SetAttribute("BPXP", d.BattlePass.XP)
+	player:SetAttribute("BoostXP", d.Boosts.XP or 0)
+	player:SetAttribute("BoostCoins", d.Boosts.Coins or 0)
+	player:SetAttribute("ItemsRev", (player:GetAttribute("ItemsRev") or 0) + 1)
 end
 
 local function setupPlayer(player)
@@ -141,6 +192,9 @@ function PlayerData.AddXP(player, amount)
 	if not data or amount <= 0 then
 		return
 	end
+	-- o XP do Battle Pass sobe junto
+	local bp = EconomyData.BattlePass
+	data.BattlePass.XP = math.min(data.BattlePass.XP + math.floor(amount), bp.MaxLevel * bp.XPPerLevel)
 	data.XP += math.floor(amount)
 	while data.Level < CharacterData.MaxLevel do
 		local needed = CharacterData.XPForLevel(data.Level)
@@ -154,6 +208,104 @@ function PlayerData.AddXP(player, amount)
 		data.XP = 0
 	end
 	refreshStats(player)
+end
+
+---------------------------------------------------------------
+-- Gemas do Rikudou
+---------------------------------------------------------------
+function PlayerData.AddGems(player, amount)
+	local data = PlayerData.Get(player)
+	if not data or amount <= 0 then
+		return
+	end
+	data.Gems += math.floor(amount)
+	refreshStats(player)
+end
+
+function PlayerData.SpendGems(player, amount)
+	local data = PlayerData.Get(player)
+	if not data or amount < 0 or data.Gems < amount then
+		return false
+	end
+	data.Gems -= amount
+	refreshStats(player)
+	return true
+end
+
+---------------------------------------------------------------
+-- Itens (boosts, acessórios e caixas grátis)
+---------------------------------------------------------------
+function PlayerData.AddItem(player, itemId, amount)
+	local data = PlayerData.Get(player)
+	if not data or not EconomyData.Items[itemId] then
+		return
+	end
+	data.Items[itemId] = (data.Items[itemId] or 0) + (amount or 1)
+	refreshStats(player)
+end
+
+function PlayerData.TakeItem(player, itemId, amount)
+	local data = PlayerData.Get(player)
+	amount = amount or 1
+	if not data or (data.Items[itemId] or 0) < amount then
+		return false
+	end
+	data.Items[itemId] -= amount
+	if data.Items[itemId] <= 0 then
+		data.Items[itemId] = nil
+	end
+	refreshStats(player)
+	return true
+end
+
+-- Multiplicador de boost ativo (1 ou 2)
+function PlayerData.GetBoostMult(player, stat)
+	local data = PlayerData.Get(player)
+	if data and (data.Boosts[stat] or 0) > os.time() then
+		return 2
+	end
+	return 1
+end
+
+-- Usa um boost do inventário. Se já tiver um ativo, o tempo soma.
+function PlayerData.UseBoost(player, itemId)
+	local item = EconomyData.Items[itemId]
+	local data = PlayerData.Get(player)
+	if not data or not item or item.Type ~= "Boost" then
+		return false
+	end
+	if not PlayerData.TakeItem(player, itemId, 1) then
+		return false
+	end
+	local now = os.time()
+	data.Boosts[item.Stat] = math.max(now, data.Boosts[item.Stat] or 0) + item.Minutes * 60
+	refreshStats(player)
+	return true
+end
+
+-- Entrega uma recompensa do Battle Pass (ou de qualquer outro lugar no futuro)
+function PlayerData.GrantReward(player, reward)
+	local data = PlayerData.Get(player)
+	if not data or type(reward) ~= "table" then
+		return false
+	end
+	if reward.Coins then
+		PlayerData.AddCoins(player, reward.Coins)
+	end
+	if reward.Gems then
+		PlayerData.AddGems(player, reward.Gems)
+	end
+	if reward.Crates then
+		PlayerData.AddItem(player, "caixa_gratis", reward.Crates)
+	end
+	if reward.Item then
+		PlayerData.AddItem(player, reward.Item, 1)
+	end
+	if reward.Character and CharacterData.GetCharacter(reward.Character) then
+		PlayerData.GiveCharacter(player, reward.Character)
+	end
+	refreshStats(player)
+	return true
 end
 
 -- Dá um personagem ao jogador. Retorna (éNovo, totalDeCópias)
@@ -203,27 +355,39 @@ function PlayerData.GetCombatStats(player)
 	return { Health = math.floor(100 * mult), Damage = math.floor(10 * mult) }
 end
 
-function PlayerData.Save(player)
+-- Salva. Retorna true se salvou. force = salva mesmo se outro salvamento estiver rodando
+-- (usado nas compras com Robux, que precisam confirmar o salvamento).
+function PlayerData.Save(player, force)
 	local entry = cache[player]
-	if not entry or not entry.CanSave or entry.Saving then
-		return
+	if not entry or not entry.CanSave then
+		return false
+	end
+	if entry.Saving and not force then
+		return false
 	end
 	entry.Saving = true
 	-- Copia os dados no momento do salvamento
-	local snapshot = table.clone(entry.Data)
-	snapshot.Owned = table.clone(entry.Data.Owned)
+	local snapshot = deepCopy(entry.Data)
+	local saved = false
 
 	for attempt = 1, MAX_TRIES do
 		local ok, err = pcall(function()
 			store:SetAsync(keyFor(player), snapshot)
 		end)
 		if ok then
+			saved = true
 			break
 		end
 		warn("[PlayerData] Falha ao salvar " .. player.Name .. " (tentativa " .. attempt .. "): " .. tostring(err))
 		task.wait(1)
 	end
 	entry.Saving = false
+	return saved
+end
+
+function PlayerData.CanSave(player)
+	local entry = cache[player]
+	return entry ~= nil and entry.CanSave
 end
 
 -- Liga tudo. Chamado uma vez pelo script ProgressionServer.

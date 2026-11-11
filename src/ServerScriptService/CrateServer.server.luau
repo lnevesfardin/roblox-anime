@@ -1,6 +1,7 @@
 -- Script: ServerScriptService > CrateServer
--- Abre caixas: cobra moedas, sorteia a raridade (com garantia) e entrega o personagem.
--- Toda a lógica fica no servidor para o jogador não conseguir trapacear.
+-- Abre caixas: cobra moedas ou gemas (ou usa uma caixa grátis do Battle Pass),
+-- sorteia a raridade (com garantia na caixa básica) e entrega o personagem.
+-- Toda a lógica fica no servidor: o cliente só pede e mostra a animação do resultado.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -16,28 +17,26 @@ openCrate.Parent = ReplicatedStorage
 local busy = {} -- impede abrir duas caixas ao mesmo tempo
 
 -- Sorteia o índice de uma raridade. minIndex limita ao mínimo (usado pela garantia).
-local function rollRarityIndex(minIndex)
+local function rollRarityIndex(crateId, minIndex)
 	local total = 0
-	for i, r in ipairs(CharacterData.Rarities) do
-		if i >= minIndex then
-			total += r.Weight
-		end
+	for i = minIndex, #CharacterData.Rarities do
+		total += CharacterData.GetWeight(crateId, i)
 	end
 	local pick = math.random() * total
 	local acc = 0
-	for i, r in ipairs(CharacterData.Rarities) do
-		if i >= minIndex then
-			acc += r.Weight
-			if pick <= acc then
-				return i
-			end
+	for i = minIndex, #CharacterData.Rarities do
+		local w = CharacterData.GetWeight(crateId, i)
+		acc += w
+		if w > 0 and pick <= acc then
+			return i
 		end
 	end
 	return #CharacterData.Rarities
 end
 
 -- Escolhe um personagem da raridade sorteada.
--- Se ainda não existir nenhum dessa raridade (MVP), desce para a raridade abaixo.
+-- Se ainda não existir nenhum dessa raridade, desce para a raridade abaixo
+-- (as chances mostradas no jogo já levam isso em conta: CharacterData.GetCrateOdds).
 local function pickCharacter(rarityIndex)
 	for i = rarityIndex, 1, -1 do
 		local rarityId = CharacterData.Rarities[i].Id
@@ -54,7 +53,8 @@ local function pickCharacter(rarityIndex)
 	return nil
 end
 
-openCrate.OnServerInvoke = function(player, crateId)
+-- useFree = true: usa uma "caixa grátis" do inventário (só a caixa básica)
+openCrate.OnServerInvoke = function(player, crateId, useFree)
 	if player:GetAttribute("InRun") then
 		return { ok = false, reason = "Crates can only be opened in the lobby." }
 	end
@@ -65,9 +65,9 @@ openCrate.OnServerInvoke = function(player, crateId)
 
 	local result
 	local success, err = pcall(function()
-		local crate = CharacterData.Crates[crateId]
+		local crate = type(crateId) == "string" and CharacterData.Crates[crateId]
 		local data = PlayerData.Get(player)
-		if type(crateId) ~= "string" or not crate then
+		if not crate then
 			result = { ok = false, reason = "Invalid crate." }
 			return
 		end
@@ -75,30 +75,49 @@ openCrate.OnServerInvoke = function(player, crateId)
 			result = { ok = false, reason = "Your data is still loading." }
 			return
 		end
-		if not PlayerData.SpendCoins(player, crate.Cost) then
-			result = { ok = false, reason = "Not enough coins." }
-			return
+
+		-- pagamento
+		local refund
+		if useFree == true then
+			if crateId ~= "Basica" or not PlayerData.TakeItem(player, "caixa_gratis", 1) then
+				result = { ok = false, reason = "You have no free crates." }
+				return
+			end
+			refund = function() PlayerData.AddItem(player, "caixa_gratis", 1) end
+		elseif crate.Currency == "Gems" then
+			if not PlayerData.SpendGems(player, crate.Cost) then
+				result = { ok = false, reason = "Not enough Rikudou Gems." }
+				return
+			end
+			refund = function() PlayerData.AddGems(player, crate.Cost) end
+		else
+			if not PlayerData.SpendCoins(player, crate.Cost) then
+				result = { ok = false, reason = "Not enough coins." }
+				return
+			end
+			refund = function() PlayerData.AddCoins(player, crate.Cost) end
 		end
 
-		-- Garantia
-		data.Pity += 1
+		-- Garantia (só nas caixas com Pity)
 		local pityIndex = CharacterData.GetRarityIndex(CharacterData.PityMinRarity)
 		local minIndex = 1
-		if data.Pity >= CharacterData.PityLimit then
-			minIndex = pityIndex
+		if crate.Pity then
+			data.Pity += 1
+			if data.Pity >= CharacterData.PityLimit then
+				minIndex = pityIndex
+			end
 		end
 
-		local rarityIndex = rollRarityIndex(minIndex)
-		if rarityIndex >= pityIndex then
-			data.Pity = 0
-		end
-
+		local rarityIndex = rollRarityIndex(crateId, minIndex)
 		local character = pickCharacter(rarityIndex)
 		if not character then
-			-- Não deveria acontecer, mas devolve as moedas por segurança
-			PlayerData.AddCoins(player, crate.Cost)
+			-- Não deveria acontecer, mas devolve o pagamento por segurança
+			refund()
 			result = { ok = false, reason = "No character available." }
 			return
+		end
+		if crate.Pity and CharacterData.GetRarityIndex(character.Rarity) >= pityIndex then
+			data.Pity = 0
 		end
 
 		local isNew, copies = PlayerData.GiveCharacter(player, character.Id)
@@ -109,6 +128,7 @@ openCrate.OnServerInvoke = function(player, crateId)
 			rarity = character.Rarity,
 			isNew = isNew,
 			copies = copies,
+			pity = data.Pity,
 		}
 	end)
 

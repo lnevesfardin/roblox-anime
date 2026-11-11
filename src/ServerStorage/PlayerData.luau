@@ -12,7 +12,7 @@ local EconomyData = require(ReplicatedStorage:WaitForChild("EconomyData"))
 -- Se o jogo não estiver publicado (ou a API estiver desligada), o DataStore falha.
 -- Nesse caso o jogo continua funcionando, mas sem salvar o progresso.
 local okStore, store = pcall(function()
-	return DataStoreService:GetDataStore("RPGAnime_v2")
+	return DataStoreService:GetDataStore("RPGCarreira_v1") -- store novo da fase de carreira (os saves de teste do RPGAnime_v2 ficaram para trás)
 end)
 if not okStore then
 	warn("[PlayerData] Salvamento desligado: publique o jogo e ative a API (Game Settings > Security). Progresso NÃO será salvo nesta sessão.")
@@ -43,6 +43,8 @@ local function defaultData()
 		Boosts = {},                      -- [XP/Coins] = os.time() em que acaba
 		Settings = {},                    -- configurações do jogador
 		Purchases = {},                   -- IDs de compras em Robux já entregues
+		Cla = nil,                        -- clã (preenchido em withDefaults)
+		Altura = 1,                       -- estatura do personagem (0.9 a 1.1)
 	}
 end
 
@@ -87,6 +89,18 @@ local function withDefaults(loaded)
 		data.BattlePass.Claimed = {}
 	end
 	data.Gems = tonumber(data.Gems) or 0
+	-- clã: Id (nil até escolher), giros grátis, opções sorteadas à espera de escolha, contadores de garantia e caminho do clã
+	if type(data.Cla) ~= "table" then
+		data.Cla = { Giros = 3 }
+	end
+	local c = data.Cla
+	c.Giros = tonumber(c.Giros) or 0
+	c.Pity10 = tonumber(c.Pity10) or 0
+	c.Pity100 = tonumber(c.Pity100) or 0
+	c.Etapa = tonumber(c.Etapa) or 0
+	if type(c.Opcoes) ~= "table" then c.Opcoes = {} end
+	if type(c.Progresso) ~= "table" then c.Progresso = {} end
+	data.Altura = math.clamp(tonumber(data.Altura) or 1, 0.9, 1.1)
 	for k, v in pairs(DEFAULT_SETTINGS) do
 		if type(data.Settings[k]) ~= type(v) then
 			data.Settings[k] = v

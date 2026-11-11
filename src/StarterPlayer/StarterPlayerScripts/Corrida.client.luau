@@ -24,7 +24,8 @@ end
 local function aplicar()
 	local hum = humanoid()
 	if hum then
-		hum.WalkSpeed = correndo and RUN_SPEED or WALK_SPEED
+		-- BonusVelocidade vem do clã (servidor)
+		hum.WalkSpeed = (correndo and RUN_SPEED or WALK_SPEED) + (player:GetAttribute("BonusVelocidade") or 0)
 	end
 	player:SetAttribute("Correndo", correndo)
 	local cam = workspace.CurrentCamera
@@ -61,6 +62,7 @@ ContextActionService:SetTitle("Correr", "Run")
 ContextActionService:SetPosition("Correr", UDim2.new(1, -150, 1, -150))
 
 player:GetAttributeChangedSignal("FOVBase"):Connect(aplicar)
+player:GetAttributeChangedSignal("BonusVelocidade"):Connect(aplicar)
 
 -- ao renascer (ex.: depois de uma partida) volta a andar normal
 player.CharacterAdded:Connect(function(char)

@@ -116,6 +116,9 @@ local function treinar(player, id)
 		data.Treino.Feitos = 0
 	end
 	data.Treino.Feitos += 1
+	-- missões de treino contam este treino
+	local prog = ServerStorage:FindFirstChild("MissaoProgresso")
+	if prog then prog:Fire(player, "treinar", 1) end
 	data.Atributos[id] += 1
 	aplicar(player)
 	notice:FireClient(player, ("+1 %s  (%d trainings left today)"):format(info.Name, treinoRestante(data)), true)

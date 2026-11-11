@@ -82,6 +82,23 @@ end
 abrir.MouseButton1Click:Connect(function()
 	lista.Visible = not lista.Visible
 end)
+
+-- tremor de câmera no pouso do lançamento
+local RunService = game:GetService("RunService")
+ReplicatedStorage:WaitForChild("ImpactoPouso").OnClientEvent:Connect(function()
+	local t0 = os.clock()
+	local DUR = 0.45
+	RunService:BindToRenderStep("TremorPouso", Enum.RenderPriority.Camera.Value + 2, function()
+		local e = os.clock() - t0
+		if e > DUR then
+			RunService:UnbindFromRenderStep("TremorPouso")
+			return
+		end
+		local f = (1 - e / DUR) * 0.6
+		local cam = workspace.CurrentCamera
+		cam.CFrame = cam.CFrame * CFrame.new((math.random() - 0.5) * f, (math.random() - 0.5) * f, 0) * CFrame.Angles(0, 0, math.rad((math.random() - 0.5) * 3 * f))
+	end)
+end)
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or not gui.Enabled then return end
 	if input.KeyCode == Enum.KeyCode.T then

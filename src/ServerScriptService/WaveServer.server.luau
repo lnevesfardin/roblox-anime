@@ -14,6 +14,11 @@ local statusEvent = Instance.new("RemoteEvent")
 statusEvent.Name = "RunStatus"
 statusEvent.Parent = ReplicatedStorage
 
+-- ligação com as missões: MissionServer começa a partida do Exame e fica sabendo da vitória
+local partidaVencida = Instance.new("BindableEvent")
+partidaVencida.Name = "PartidaVencida"
+partidaVencida.Parent = ServerStorage
+
 -- animações padrão do Roblox (parado e correndo)
 local ANIM_IDLE = "rbxassetid://507766666"
 local ANIM_RUN = "rbxassetid://507767714"
@@ -660,6 +665,7 @@ local function runMap(mapId)
 			PlayerData.AddXP(plr, cfg.RewardXP * PlayerData.GetBoostMult(plr, "XP"))
 			PlayerData.AddCoins(plr, cfg.RewardCoins * PlayerData.GetBoostMult(plr, "Coins"))
 			table.insert(survivors, plr)
+			partidaVencida:Fire(plr, mapId)
 		end
 		print("[WaveServer] Vitória!")
 		broadcast({ text = ("VICTORY!   +%d XP   +%d coins"):format(cfg.RewardXP, cfg.RewardCoins) })
@@ -703,6 +709,11 @@ local function onPortal(player, mapId)
 	player:SetAttribute("InRun", true)
 	task.spawn(runMap, mapId)
 end
+
+local iniciarPartida = Instance.new("BindableEvent")
+iniciarPartida.Name = "IniciarPartida"
+iniciarPartida.Parent = ServerStorage
+iniciarPartida.Event:Connect(onPortal)
 
 for _, pad in ipairs(CollectionService:GetTagged("Portal")) do
 	local prompt = pad:FindFirstChildOfClass("ProximityPrompt")

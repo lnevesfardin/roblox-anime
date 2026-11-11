@@ -14,6 +14,10 @@ local travel = Instance.new("RemoteFunction")
 travel.Name = "Travel"
 travel.Parent = ReplicatedStorage
 
+local impactoEv = Instance.new("RemoteEvent")
+impactoEv.Name = "ImpactoPouso" -- o cliente treme a câmera no pouso
+impactoEv.Parent = ReplicatedStorage
+
 local proximo = {} -- [player] = os.clock() em que pode lançar de novo
 local voando = {}
 
@@ -30,6 +34,42 @@ local function fumaca(pos)
 	p.Parent = workspace
 	TweenService:Create(p, TweenInfo.new(0.5), { Size = Vector3.one * 9, Transparency = 1 }):Play()
 	Debris:AddItem(p, 0.6)
+end
+
+-- pouso forte: onda de choque no chão, poeira em volta e rachaduras que somem aos poucos
+local function impacto(chao)
+	local onda = Instance.new("Part")
+	onda.Shape = Enum.PartType.Cylinder
+	onda.Anchored = true
+	onda.CanCollide, onda.CanQuery, onda.CanTouch = false, false, false
+	onda.Material = Enum.Material.SmoothPlastic
+	onda.Color = Color3.fromRGB(245, 235, 210)
+	onda.Transparency = 0.25
+	onda.Size = Vector3.new(0.3, 3, 3)
+	onda.CFrame = CFrame.new(chao + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	onda.Parent = workspace
+	TweenService:Create(onda, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(0.3, 34, 34), Transparency = 1 }):Play()
+	Debris:AddItem(onda, 0.6)
+	for i = 1, 8 do
+		local a = i / 8 * math.pi * 2
+		fumaca(chao + Vector3.new(math.cos(a) * 5, 1.2, math.sin(a) * 5))
+	end
+	for i = 1, 7 do
+		local a = i / 7 * math.pi * 2 + math.random() * 0.4
+		local comp = 4 + math.random() * 4
+		local r = Instance.new("Part")
+		r.Anchored = true
+		r.CanCollide, r.CanQuery, r.CanTouch = false, false, false
+		r.Material = Enum.Material.Slate
+		r.Color = Color3.fromRGB(70, 60, 50)
+		r.Size = Vector3.new(0.5, 0.12, comp)
+		r.CFrame = CFrame.new(chao + Vector3.new(math.cos(a) * (comp / 2 + 0.8), 0.08, math.sin(a) * (comp / 2 + 0.8))) * CFrame.Angles(0, -a + math.pi / 2, 0)
+		r.Parent = workspace
+		task.delay(2.5, function()
+			TweenService:Create(r, TweenInfo.new(1.2), { Transparency = 1 }):Play()
+		end)
+		Debris:AddItem(r, 4)
+	end
 end
 
 local function criarClone(char, root, lado)
@@ -130,18 +170,32 @@ travel.OnServerInvoke = function(player, id)
 		while t < T and root.Parent and hum.Health > 0 do
 			t += RunService.Heartbeat:Wait()
 			local x = math.min(t / T, 1)
-			local a = 1 - (1 - x) ^ 2.2 -- sai disparado e vai perdendo velocidade
-			local pos = p0:Lerp(fim, a) + Vector3.new(0, 4 * H * a * (1 - a), 0)
+			local a = 1 - (1 - x) ^ 1.5 -- sai disparado e vai perdendo velocidade na horizontal
+			-- altura: sobe até o topo em 40% do voo e despenca no final (pouso forte)
+			local PICO = 0.4
+			local u = x < PICO and (PICO - x) / PICO or (x - PICO) / (1 - PICO)
+			local pos = p0:Lerp(fim, a) + Vector3.new(0, H * (1 - u * u), 0)
 			-- inclina o corpo: sobe de frente, desce apontando para o chão
-			local inclina = math.rad(-60 + 120 * a)
+			local inclina = math.rad(-60 + 130 * x)
 			root.CFrame = CFrame.lookAt(pos, pos + olhar) * CFrame.Angles(inclina, 0, 0)
 		end
 		if root.Parent then
-			root.CFrame = CFrame.lookAt(fim, fim + olhar)
+			-- pouso: agacha com o impacto e levanta
+			local chaoPos = fim - Vector3.new(0, altura - 0.5, 0)
+			impacto(chaoPos)
+			impactoEv:FireClient(player)
+			local pouso = CFrame.lookAt(fim, fim + olhar)
+			local tp = 0
+			while tp < 0.45 and root.Parent do
+				tp += RunService.Heartbeat:Wait()
+				local k = math.min(tp / 0.45, 1)
+				local agacha = math.sin(k * math.pi) -- desce e volta
+				root.CFrame = pouso * CFrame.new(0, -1.3 * agacha, 0) * CFrame.Angles(math.rad(-22 * agacha), 0, 0)
+			end
+			root.CFrame = pouso
 			root.AssemblyLinearVelocity = Vector3.zero
 			root.AssemblyAngularVelocity = Vector3.zero
 			root.Anchored = false
-			fumaca(fim - Vector3.new(0, altura - 1, 0))
 		end
 		limpar()
 		voando[player] = nil

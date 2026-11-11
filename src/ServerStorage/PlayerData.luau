@@ -48,6 +48,8 @@ local function defaultData()
 		Altura = 1,                       -- estatura do personagem (0.9 a 1.1)
 		Atributos = nil,                  -- 5 atributos + Pontos livres (preenchido em withDefaults)
 		Treino = nil,                     -- treinos do dia: { Dia = "2026-11-11", Feitos = 0 }
+		Missoes = nil,                    -- missão ativa, história e recargas (MissionServer)
+		Rank = "Estudante",               -- rank ninja (Estudante, Genin, Chunin...)
 	}
 end
 

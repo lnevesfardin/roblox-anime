@@ -347,17 +347,17 @@ new("UIScale", { Scale = 0.8, Parent = menu })
 
 -- seta ao lado do menu: esconde e mostra os botões
 local MENU_X = 26
-local setaQuadro, _, cSeta = placa(raiz, 26, 58, PLACA, { Name = "SetaMenu", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, MENU_X + 91, 0.5, 44) })
-local chevron = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(16, 20), BackgroundTransparency = 1, Parent = cSeta })
-traco(chevron, UDim2.fromOffset(11, 2), UDim2.new(0.5, 1, 0.5, -3), -45)
-traco(chevron, UDim2.fromOffset(11, 2), UDim2.new(0.5, 1, 0.5, 3), 45)
+-- fica em cima do primeiro botão do menu, pequena; só gira ao esconder/mostrar
+local setaQuadro, _, cSeta = placa(raiz, 30, 20, PLACA, { Name = "SetaMenu", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, MENU_X + 2, 0.5, 44 - 196) })
+local chevron = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 14), BackgroundTransparency = 1, Parent = cSeta })
+traco(chevron, UDim2.fromOffset(7, 2), UDim2.new(0.5, 0, 0.5, -2), -45)
+traco(chevron, UDim2.fromOffset(7, 2), UDim2.new(0.5, 0, 0.5, 2), 45)
 local botaoSeta = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", Parent = cSeta })
 local menuAberto = true
 botaoSeta.Activated:Connect(function()
 	som("Clique")
 	menuAberto = not menuAberto
 	tween(menu, 0.25, { Position = UDim2.new(0, menuAberto and MENU_X or -110, 0.5, 44) })
-	tween(setaQuadro, 0.25, { Position = UDim2.new(0, menuAberto and (MENU_X + 91) or 8, 0.5, 44) })
 	tween(chevron, 0.25, { Rotation = menuAberto and 0 or 180 })
 end)
 

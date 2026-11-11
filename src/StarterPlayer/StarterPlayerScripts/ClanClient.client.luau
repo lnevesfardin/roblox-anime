@@ -56,9 +56,19 @@ until estado
 ---------------------------------------------------------------
 -- Botão do clã (lateral esquerda)
 ---------------------------------------------------------------
-local badge = new("TextButton", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.42, 0), Size = UDim2.fromOffset(132, 40), BackgroundColor3 = COR.painel, Text = "", AutoButtonColor = true, Parent = gui })
+local badge = new("TextButton", { Size = UDim2.fromOffset(132, 40), BackgroundColor3 = COR.painel, Text = "", AutoButtonColor = true, Parent = gui })
 corner(badge, 10)
 local badgeStroke = stroke(badge, COR.linha, 2)
+-- fica logo abaixo da barra de nível do HUD (mesma escala do HUD)
+local badgeEscala = new("UIScale", { Parent = badge })
+local function posicionarBadge()
+	local v = workspace.CurrentCamera.ViewportSize
+	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1)
+	badgeEscala.Scale = sc
+	badge.Position = UDim2.fromOffset(16 * sc, game:GetService("GuiService"):GetGuiInset().Y + 62 * sc)
+end
+posicionarBadge()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(posicionarBadge)
 local badgeSimbolo = label(badge, "?", 20, COR.texto, { Size = UDim2.fromOffset(36, 40) })
 local badgeNome = label(badge, "CLAN", 14, COR.texto, { Position = UDim2.fromOffset(38, 0), Size = UDim2.new(1, -42, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 

@@ -92,7 +92,7 @@ do
 	R[17] = { Item = "bandana_vermelha" }
 	R[20] = { Crates = 2 }
 	R[22] = { Item = "boost_coins_15" }
-	R[25] = { Character = "kenji_arashi", Gems = 150 }
+	R[25] = { Gems = 150 }
 	R[27] = { Item = "aura_azul" }
 	R[30] = { Crates = 2 }
 	R[32] = { Item = "boost_xp_30" }

@@ -109,25 +109,38 @@ openCrate.OnServerInvoke = function(player, crateId, useFree)
 		end
 
 		local rarityIndex = rollRarityIndex(crateId, minIndex)
-		local character = pickCharacter(rarityIndex)
-		if not character then
+		local rarityId = CharacterData.Rarities[rarityIndex].Id
+		local tabela = CharacterData.CrateRewards[crateId]
+		local rw = tabela and tabela[rarityId]
+		if not rw then
 			-- Não deveria acontecer, mas devolve o pagamento por segurança
 			refund()
-			result = { ok = false, reason = "No character available." }
+			result = { ok = false, reason = "No reward available." }
 			return
 		end
-		if crate.Pity and CharacterData.GetRarityIndex(character.Rarity) >= pityIndex then
+		if crate.Pity and rarityIndex >= pityIndex then
 			data.Pity = 0
 		end
 
-		local isNew, copies = PlayerData.GiveCharacter(player, character.Id)
+		-- a caixa entrega moedas ou gemas (não dá mais personagens)
+		local reward, nome, simbolo
+		if rw.Gems then
+			local n = math.random(rw.Gems[1], rw.Gems[2])
+			PlayerData.AddGems(player, n)
+			reward, nome, simbolo = { Gems = n }, "+" .. n .. " GEMS", "💎"
+		else
+			local n = math.random(rw.Coins[1], rw.Coins[2])
+			PlayerData.AddCoins(player, n)
+			reward, nome, simbolo = { Coins = n }, "+" .. n .. " COINS", "💰"
+		end
 		result = {
 			ok = true,
-			id = character.Id,
-			name = character.Name,
-			rarity = character.Rarity,
-			isNew = isNew,
-			copies = copies,
+			name = nome,
+			symbol = simbolo,
+			rarity = rarityId,
+			reward = reward,
+			isNew = false,
+			copies = 0,
 			pity = data.Pity,
 		}
 	end)

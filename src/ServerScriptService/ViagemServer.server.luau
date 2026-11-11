@@ -32,7 +32,7 @@ local function fumaca(pos)
 	Debris:AddItem(p, 0.6)
 end
 
-local function criarClone(char, root)
+local function criarClone(char, root, lado)
 	local ok, clone = pcall(function()
 		char.Archivable = true
 		local c = char:Clone()
@@ -53,7 +53,9 @@ local function criarClone(char, root)
 	if hum then
 		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
-	clone:PivotTo(root.CFrame * CFrame.new(0, 0, 2.4))
+	-- lado = -1 (esquerda) ou 1 (direita): um pouco atrás, virado para o jogador
+	local pos = (root.CFrame * CFrame.new(lado * 3, 0, 1.6)).Position
+	clone:PivotTo(CFrame.lookAt(pos, root.Position + root.CFrame.LookVector * 2))
 	clone.Parent = workspace
 	fumaca(clone:GetPivot().Position)
 	return clone
@@ -94,13 +96,29 @@ travel.OnServerInvoke = function(player, id)
 		local fim = chao + Vector3.new(0, altura, 0)
 		pcall(function() player:RequestStreamAroundAsync(fim, 5) end)
 
-		local clone = criarClone(char, root)
-		task.wait(0.35) -- o clone "pega impulso"
-		if not root.Parent then voando[player] = nil return end
+		-- dois clones, um de cada lado, seguram o jogador e pegam impulso
+		local clones = { criarClone(char, root, -1), criarClone(char, root, 1) }
+		local function limpar()
+			for _, c in pairs(clones) do
+				fumaca(c:GetPivot().Position)
+				c:Destroy()
+			end
+		end
+		root.Anchored = true
+		local base = root.CFrame
+		local IMPULSO = 0.9
+		local ti = 0
+		while ti < IMPULSO and root.Parent do
+			ti += RunService.Heartbeat:Wait()
+			local k = math.min(ti / IMPULSO, 1)
+			-- o jogador é puxado para trás e para baixo, como numa catapulta
+			root.CFrame = base * CFrame.new(0, -0.8 * k, 1.6 * k) * CFrame.Angles(math.rad(18 * k), 0, 0)
+		end
+		if not root.Parent then limpar() voando[player] = nil return end
 
 		local p0 = root.Position
 		local dist = (fim - p0).Magnitude
-		local T = math.clamp(dist / 140, 1.2, 3.2)
+		local T = math.clamp(dist / 80, 2.2, 5.5) -- voo mais lento e pesado
 		local H = math.clamp(dist * 0.22, 25, 120)
 		local plano = Vector3.new(fim.X - p0.X, 0, fim.Z - p0.Z)
 		local olhar = plano.Magnitude > 1 and plano.Unit or root.CFrame.LookVector
@@ -108,7 +126,8 @@ travel.OnServerInvoke = function(player, id)
 		local t = 0
 		while t < T and root.Parent and hum.Health > 0 do
 			t += RunService.Heartbeat:Wait()
-			local a = math.min(t / T, 1)
+			local x = math.min(t / T, 1)
+			local a = 1 - (1 - x) ^ 1.7 -- sai com força e vai perdendo velocidade
 			local pos = p0:Lerp(fim, a) + Vector3.new(0, 4 * H * a * (1 - a), 0)
 			-- inclina o corpo: sobe de frente, desce apontando para o chão
 			local inclina = math.rad(-60 + 120 * a)
@@ -121,10 +140,7 @@ travel.OnServerInvoke = function(player, id)
 			root.Anchored = false
 			fumaca(fim - Vector3.new(0, altura - 1, 0))
 		end
-		if clone then
-			fumaca(clone:GetPivot().Position)
-			clone:Destroy()
-		end
+		limpar()
 		voando[player] = nil
 	end)
 	return { ok = true, espera = TravelData.COOLDOWN }

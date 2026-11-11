@@ -31,6 +31,14 @@ ClanData.Clans = {
 	Inu = { Name = "Inu", Rarity = "Common", Weight = 30, Symbol = "🐕", Color = Color3.fromRGB(190, 120, 80), Trait = "A dog companion follows you" },
 }
 
+-- Kit de poderes provisório de cada clã (até a Fase 4 trazer o caminho de poderes de cada um).
+-- Os ids são os kits que já existem no AbilityServer.
+ClanData.Kit = {
+	Uzu = "kenji_arashi", Enma = "kenji_arashi", Inu = "kenji_arashi", Lee = "kenji_arashi",
+	Uchiwa = "ren_kuroba",
+	Shirokiba = "hana_midori", Mokuton = "hana_midori", Byakugan = "hana_midori",
+}
+
 ClanData.Order = { "Uzu", "Uchiwa", "Mokuton", "Byakugan", "Lee", "Shirokiba", "Enma", "Inu" }
 
 function ClanData.RarityOrder(clanId)

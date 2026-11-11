@@ -38,7 +38,8 @@ local function botao(parent, texto, cor, size, pos)
 	return b
 end
 
-local abrir = botao(gui, "🌀 TRAVEL  [T]", Color3.fromRGB(20, 20, 23), UDim2.fromOffset(132, 36), UDim2.new(0, 12, 0.42, 28))
+-- canto inferior esquerdo
+local abrir = botao(gui, "🌀 TRAVEL  [T]", Color3.fromRGB(20, 20, 23), UDim2.fromOffset(132, 36), UDim2.new(0, 12, 1, -48))
 local borda = Instance.new("UIStroke")
 borda.Color = Color3.fromRGB(58, 58, 64)
 borda.Thickness = 2
@@ -46,7 +47,8 @@ borda.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 borda.Parent = abrir
 
 local lista = Instance.new("Frame")
-lista.Position = UDim2.new(0, 152, 0.42, 28)
+lista.AnchorPoint = Vector2.new(0, 1)
+lista.Position = UDim2.new(0, 12, 1, -56) -- abre para cima do botão
 lista.Size = UDim2.fromOffset(190, #TravelData.Destinos * 40 + 34)
 lista.BackgroundColor3 = Color3.fromRGB(20, 20, 23)
 lista.Visible = false

@@ -770,12 +770,12 @@ local function animarAbertura(crateId, r, deNovo)
 	corner(retrato, 999)
 	grad(retrato, cor:Lerp(Color3.new(1, 1, 1), 0.35), cor:Lerp(Color3.new(0, 0, 0), 0.4), 120)
 	stroke(retrato, Color3.new(1, 1, 1), 4)
-	label(retrato, r.name:sub(1, 1), 70, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+	label(retrato, r.symbol or r.name:sub(1, 1), 70, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
 	label(card, r.name, 28, COR.texto, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 196), Font = Enum.Font.GothamBlack })
-	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 240), Size = UDim2.fromOffset(160, 32), BackgroundColor3 = r.isNew and COR.verde or COR.azul, Parent = card })
+	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 240), Size = UDim2.fromOffset(160, 32), BackgroundColor3 = (r.isNew or r.reward) and COR.verde or COR.azul, Parent = card })
 	corner(tag, 6)
-	label(tag, r.isNew and "NEW!" or ("COPY  x" .. tostring(r.copies)), 17, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
-	if not r.isNew then
+	label(tag, r.reward and "ADDED!" or r.isNew and "NEW!" or ("COPY  x" .. tostring(r.copies)), 17, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+	if not r.isNew and not r.reward then
 		label(card, ("Duplicates can be converted in Collection (+%d coins each)"):format(EconomyData.DupeCoins[r.rarity] or 0), 12, COR.fraco, { Size = UDim2.new(1, -30, 0, 34), Position = UDim2.fromOffset(15, 282) })
 	end
 

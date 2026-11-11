@@ -57,11 +57,23 @@ CharacterData.Crates = {
 	},
 }
 
+-- O que cada caixa entrega por raridade: moedas ou gemas (mínimo, máximo). As caixas não dão mais personagens.
+CharacterData.CrateRewards = {
+	Basica = {
+		Comum = { Coins = { 30, 60 } }, Raro = { Coins = { 80, 100 } }, Epico = { Coins = { 200, 240 } },
+		Lendario = { Gems = { 8, 8 } }, Mistico = { Gems = { 25, 25 } },
+	},
+	Rikudou = {
+		Raro = { Coins = { 1500, 1500 } }, Epico = { Coins = { 4000, 4000 } },
+		Lendario = { Gems = { 80, 80 } }, Mistico = { Gems = { 250, 250 } },
+	},
+}
+
 -- Garantia: depois de PityLimit aberturas sem Épico ou melhor, a próxima vem Épico ou melhor.
 CharacterData.PityLimit = 20
 CharacterData.PityMinRarity = "Epico"
 
-CharacterData.MaxLevel = 60
+CharacterData.MaxLevel = 100
 CharacterData.StartingCoins = 500
 
 ---------------------------------------------------------------
@@ -117,13 +129,7 @@ function CharacterData.GetCrateOdds(crateId)
 	end
 	local eff = table.create(n, 0)
 	for i = n, 1, -1 do
-		local j = i
-		while j >= 1 and not CharacterData.HasRarity(CharacterData.Rarities[j].Id) do
-			j -= 1
-		end
-		if j >= 1 then
-			eff[j] += w[i]
-		end
+		eff[i] += w[i] -- toda raridade tem recompensa (CrateRewards), então a chance mostrada é a do sorteio
 	end
 	local out = {}
 	for i = 1, n do
@@ -134,7 +140,7 @@ end
 
 -- XP necessário para subir do nível informado para o próximo
 function CharacterData.XPForLevel(level)
-	return math.floor(100 * level ^ 1.5)
+	return math.floor(80 * level ^ 1.6)
 end
 
 -- Vida e dano finais de um personagem para um dado nível do jogador

@@ -12,6 +12,7 @@ local TweenService = game:GetService("TweenService")
 
 local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
+local ClanKit = require(ReplicatedStorage:WaitForChild("ClanData")).Kit -- kit provisório de poderes por clã
 
 local useEvent = Instance.new("RemoteEvent")
 useEvent.Name = "UseAbility"
@@ -753,7 +754,8 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		return
 	end
 	local data = PlayerData.Get(plr)
-	local id = data and data.Equipped
+	-- sem personagem equipado, usa o kit provisório do clã
+	local id = data and (data.Equipped or (data.Cla and data.Cla.Id and ClanKit[data.Cla.Id]))
 	local c = id and CharacterData.GetCharacter(id)
 	if not c or not c.Abilities or not ABILITIES[id] then
 		feedback(plr, { msg = "Equip a character first (Collection)." })
@@ -774,7 +776,7 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 	local info = c.Abilities[slot]
 	cooldowns[plr][key] = now + info.Cooldown
 	feedback(plr, { slot = slot, cooldown = info.Cooldown })
-	local dmg = PlayerData.GetCombatStats(plr).Damage
+	local dmg = PlayerData.GetCombatStats(plr).PowerDamage
 	task.spawn(function()
 		local ok, res = pcall(ABILITIES[id][slot], plr, char, root, dmg)
 		if not ok then

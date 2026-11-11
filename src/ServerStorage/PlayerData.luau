@@ -8,6 +8,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
 local EconomyData = require(ReplicatedStorage:WaitForChild("EconomyData"))
+local AttributeData = require(ReplicatedStorage:WaitForChild("AttributeData"))
 
 -- Se o jogo não estiver publicado (ou a API estiver desligada), o DataStore falha.
 -- Nesse caso o jogo continua funcionando, mas sem salvar o progresso.
@@ -45,6 +46,8 @@ local function defaultData()
 		Purchases = {},                   -- IDs de compras em Robux já entregues
 		Cla = nil,                        -- clã (preenchido em withDefaults)
 		Altura = 1,                       -- estatura do personagem (0.9 a 1.1)
+		Atributos = nil,                  -- 5 atributos + Pontos livres (preenchido em withDefaults)
+		Treino = nil,                     -- treinos do dia: { Dia = "2026-11-11", Feitos = 0 }
 	}
 end
 
@@ -101,6 +104,19 @@ local function withDefaults(loaded)
 	if type(c.Opcoes) ~= "table" then c.Opcoes = {} end
 	if type(c.Progresso) ~= "table" then c.Progresso = {} end
 	data.Altura = math.clamp(tonumber(data.Altura) or 1, 0.9, 1.1)
+	-- atributos: quem nunca teve começa com os pontos do nível atual
+	if type(data.Atributos) ~= "table" then
+		data.Atributos = { Pontos = AttributeData.POINTS_PER_LEVEL * (tonumber(data.Level) or 1) }
+	end
+	for _, info in ipairs(AttributeData.List) do
+		data.Atributos[info.Id] = math.max(0, math.floor(tonumber(data.Atributos[info.Id]) or 0))
+	end
+	data.Atributos.Pontos = math.max(0, math.floor(tonumber(data.Atributos.Pontos) or 0))
+	if type(data.Treino) ~= "table" then
+		data.Treino = {}
+	end
+	data.Treino.Dia = tostring(data.Treino.Dia or "")
+	data.Treino.Feitos = tonumber(data.Treino.Feitos) or 0
 	for k, v in pairs(DEFAULT_SETTINGS) do
 		if type(data.Settings[k]) ~= type(v) then
 			data.Settings[k] = v
@@ -140,6 +156,7 @@ local function refreshStats(player)
 	folder.Coins.Value = d.Coins
 	-- valores que o HUD lê (só leitura no cliente; quem muda é o servidor)
 	player:SetAttribute("Gems", d.Gems)
+	player:SetAttribute("PontosAtributo", d.Atributos.Pontos)
 	player:SetAttribute("BPXP", d.BattlePass.XP)
 	player:SetAttribute("BoostXP", d.Boosts.XP or 0)
 	player:SetAttribute("BoostCoins", d.Boosts.Coins or 0)
@@ -217,6 +234,7 @@ function PlayerData.AddXP(player, amount)
 		end
 		data.XP -= needed
 		data.Level += 1
+		data.Atributos.Pontos += AttributeData.POINTS_PER_LEVEL -- pontos de atributo por nível
 	end
 	if data.Level >= CharacterData.MaxLevel then
 		data.XP = 0
@@ -357,16 +375,15 @@ end
 function PlayerData.GetCombatStats(player)
 	local data = PlayerData.Get(player)
 	if not data then
-		return { Health = 100, Damage = 10 }
+		return { Health = 100, Damage = 10, PowerDamage = 10 }
 	end
-	if data.Equipped then
-		local s = CharacterData.GetStats(data.Equipped, data.Level)
-		if s then
-			return s
-		end
-	end
-	local mult = 1 + 0.05 * (data.Level - 1)
-	return { Health = math.floor(100 * mult), Damage = math.floor(10 * mult) }
+	-- vem dos atributos: Vigor dá vida, Força dá dano de golpe, Ninjutsu dá dano de poder
+	local a = data.Atributos
+	return {
+		Health = AttributeData.Health(a.Vigor),
+		Damage = math.floor(10 * AttributeData.MeleeMult(a.Forca) + 0.5),
+		PowerDamage = math.floor(10 * AttributeData.PowerMult(a.Ninjutsu) + 0.5),
+	}
 end
 
 -- Salva. Retorna true se salvou. force = salva mesmo se outro salvamento estiver rodando

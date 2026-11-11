@@ -301,8 +301,24 @@ fundo:GetPropertyChangedSignal("Visible"):Connect(function()
 end)
 
 render()
-if not estado.Id then
-	fundo.Visible = true -- primeira vez: a roleta abre sozinha
+-- Só aparece depois do PLAY na tela de entrada (script Titulo). Quem ainda não tem clã vai direto para a sala da roleta.
+local function aposEntrada()
+	gui.Enabled = true
+	if not estado.Id then
+		fundo.Visible = true
+	end
+end
+gui.Enabled = false
+if player:GetAttribute("Jogando") then
+	aposEntrada()
+else
+	local con
+	con = player:GetAttributeChangedSignal("Jogando"):Connect(function()
+		if player:GetAttribute("Jogando") then
+			con:Disconnect()
+			aposEntrada()
+		end
+	end)
 end
 
 ---------------------------------------------------------------

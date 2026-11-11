@@ -1398,3 +1398,15 @@ end)
 player:GetAttributeChangedSignal("OwnedRev"):Connect(function()
 	if telaAtual == "colecao" and abaAtual == "pers" then task.spawn(carregarColecao) end
 end)
+
+-- A tela de entrada (script Titulo) pede para abrir as Configurações e é avisada quando o painel fecha
+player:GetAttributeChangedSignal("PedirConfig"):Connect(function()
+	if not (telaAtual == "config" and painel.Visible) then
+		abrirTela("config")
+	end
+end)
+painel:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not painel.Visible then
+		player:SetAttribute("ConfigFechou", os.clock())
+	end
+end)

@@ -24,7 +24,8 @@ local function cuidar(m)
 	if not hum or not hrp then
 		return
 	end
-	local casa = m:GetAttribute("Casa") or hrp.Position
+	-- a "casa" é onde o boneco foi deixado no Studio: ele passeia em volta desse ponto
+	local casa = hrp.Position
 	-- não deixa o boneco tombar nem mudar de tamanho
 	hum.AutomaticScalingEnabled = false
 	hum.BreakJointsOnDeath = false

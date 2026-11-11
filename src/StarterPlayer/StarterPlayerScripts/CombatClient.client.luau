@@ -208,8 +208,9 @@ local POSE_CORRIDA = {
 }
 local pesoCorrida = 0
 local ultimoBind = 0
--- Heartbeat roda depois do Animator do Roblox, então o golpe não é sobrescrito
-RunService.Heartbeat:Connect(function(dt)
+-- PreSimulation roda depois do Animator do Roblox e antes da física: é o único momento em que a pose vale
+-- tanto nas juntas antigas (Motor6D) quanto nas novas (AnimationConstraint)
+RunService.PreSimulation:Connect(function(dt)
 	-- o corpo pode ainda estar sendo montado quando o script começa: liga as juntas de novo se precisar
 	local char = player.Character
 	local junta = motores.RightShoulder

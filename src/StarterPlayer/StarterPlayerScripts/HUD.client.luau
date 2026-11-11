@@ -304,11 +304,16 @@ label(moeda, "$", 15, Color3.fromRGB(240, 145, 40), { Size = UDim2.fromScale(1, 
 local txtMoedas = label(cMoedas, "0", 22, BRANCO, { Position = UDim2.fromOffset(62, 0), Size = UDim2.new(1, -78, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 
 local _, _, cGemas = placa(topo, 124, 52)
-local hexa = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 24, 0.5, 0), Size = UDim2.fromOffset(26, 26), BackgroundTransparency = 1, Parent = cGemas })
-for i = 0, 2 do -- hexágono = 3 retângulos girados
-	new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(13, 22), Rotation = i * 60, BackgroundColor3 = Color3.fromRGB(150, 24, 24), BorderSizePixel = 0, Parent = hexa })
+if EconomyData.Gems.IconId ~= "" then
+	-- ícone oficial das Gemas do Rikudou (imagem enviada ao Roblox)
+	iconeGema(cGemas, UDim2.fromOffset(34, 34), UDim2.new(0, 19, 0.5, -17))
+else
+	local hexa = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 24, 0.5, 0), Size = UDim2.fromOffset(26, 26), BackgroundTransparency = 1, Parent = cGemas })
+	for i = 0, 2 do -- hexágono = 3 retângulos girados
+		new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(13, 22), Rotation = i * 60, BackgroundColor3 = Color3.fromRGB(150, 24, 24), BorderSizePixel = 0, Parent = hexa })
+	end
+	new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(7, 12), BackgroundColor3 = Color3.fromRGB(215, 60, 50), BorderSizePixel = 0, Parent = hexa })
 end
-new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(7, 12), BackgroundColor3 = Color3.fromRGB(215, 60, 50), BorderSizePixel = 0, Parent = hexa })
 local txtGemas = label(cGemas, "0", 22, BRANCO, { Position = UDim2.fromOffset(60, 0), Size = UDim2.new(1, -72, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 
 local quadroMais, _, cMais = placa(topo, 52, 44, Color3.fromRGB(42, 42, 46))

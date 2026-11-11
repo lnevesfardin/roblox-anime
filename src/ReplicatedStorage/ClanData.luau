@@ -8,7 +8,9 @@ ClanData.RESPIN_GEMS = 50      -- preço de um giro extra
 ClanData.FREE_SPINS = 3        -- giros grátis ao nascer
 ClanData.PITY_RARE = 10        -- raro ou melhor garantido em até 10 giros
 ClanData.PITY_LEGENDARY = 100  -- lendário garantido em até 100 giros
-ClanData.HEIGHTS = { 0.9, 0.95, 1, 1.05, 1.1 } -- estaturas permitidas
+ClanData.HEIGHT_MIN = 0.9      -- estatura: limites e passo dos botões - e +
+ClanData.HEIGHT_MAX = 1.1
+ClanData.HEIGHT_STEP = 0.02
 
 ClanData.Rarities = {
 	Common = { Order = 1, Name = "Common", Color = Color3.fromRGB(170, 176, 186) },

@@ -226,12 +226,9 @@ action.OnServerInvoke = function(player, acao, valor)
 			r = { ok = false, erro = "Choose a clan." }
 		end
 	elseif acao == "altura" then
-		local ok = false
-		for _, h in ipairs(ClanData.HEIGHTS) do
-			if valor == h then ok = true end
-		end
-		if ok then
-			data.Altura = valor
+		if type(valor) == "number" and valor == valor then
+			-- arredonda para 2 casas e prende nos limites
+			data.Altura = math.clamp(math.floor(valor * 100 + 0.5) / 100, ClanData.HEIGHT_MIN, ClanData.HEIGHT_MAX)
 			aplicar(player)
 			r = { ok = true }
 		else

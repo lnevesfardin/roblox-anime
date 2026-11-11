@@ -100,22 +100,30 @@ local aviso = label(painel, "", 14, COR.vermelho, { Position = UDim2.fromOffset(
 
 -- estatura
 label(painel, "HEIGHT", 14, COR.fraco, { Position = UDim2.fromOffset(20, 420), Size = UDim2.fromOffset(80, 34), TextXAlignment = Enum.TextXAlignment.Left })
-local alturaBtns = {}
-local nomesAltura = { "Short", "", "Medium", "", "Tall" }
-for i, h in ipairs(ClanData.HEIGHTS) do
-	local b = botao(painel, nomesAltura[i] ~= "" and nomesAltura[i] or tostring(h), COR.card, UDim2.fromOffset(100, 34), UDim2.fromOffset(100 + (i - 1) * 108, 420))
-	b.TextSize = 14
-	alturaBtns[h] = b
-	b.MouseButton1Click:Connect(function()
-		local r = action:InvokeServer("altura", h)
-		if r and r.estado then
-			estado = r.estado
-			for hh, bb in pairs(alturaBtns) do
-				bb.BackgroundColor3 = hh == estado.Altura and COR.verde or COR.card
-			end
-		end
-	end)
+local menosBtn = botao(painel, "-", COR.card, UDim2.fromOffset(44, 34), UDim2.fromOffset(100, 420))
+local alturaTxt = label(painel, "1.00", 18, COR.texto, { Position = UDim2.fromOffset(150, 420), Size = UDim2.fromOffset(70, 34), Font = Enum.Font.GothamBlack })
+local maisBtn = botao(painel, "+", COR.card, UDim2.fromOffset(44, 34), UDim2.fromOffset(226, 420))
+menosBtn.TextSize, maisBtn.TextSize = 22, 22
+local alturaDica = label(painel, "", 13, COR.fraco, { Position = UDim2.fromOffset(282, 420), Size = UDim2.fromOffset(358, 34), TextXAlignment = Enum.TextXAlignment.Left })
+local function mostrarAltura()
+	local a = estado.Altura
+	alturaTxt.Text = string.format("%.2f", a)
+	-- no limite o botão fica apagado
+	menosBtn.BackgroundTransparency = a <= ClanData.HEIGHT_MIN + 0.001 and 0.6 or 0
+	maisBtn.BackgroundTransparency = a >= ClanData.HEIGHT_MAX - 0.001 and 0.6 or 0
+	alturaDica.Text = a <= ClanData.HEIGHT_MIN + 0.001 and "Minimum height" or a >= ClanData.HEIGHT_MAX - 0.001 and "Maximum height" or "Shorter or taller: small effect on gameplay"
 end
+local function mudarAltura(delta)
+	local alvo = math.clamp(estado.Altura + delta, ClanData.HEIGHT_MIN, ClanData.HEIGHT_MAX)
+	if math.abs(alvo - estado.Altura) < 0.001 then return end
+	local r = action:InvokeServer("altura", alvo)
+	if r and r.estado then
+		estado = r.estado
+		mostrarAltura()
+	end
+end
+menosBtn.MouseButton1Click:Connect(function() mudarAltura(-ClanData.HEIGHT_STEP) end)
+maisBtn.MouseButton1Click:Connect(function() mudarAltura(ClanData.HEIGHT_STEP) end)
 
 local girando = false
 local confirmar -- índice esperando segundo clique (troca de clã)
@@ -161,9 +169,7 @@ function render(destaque)
 	girarBtn.Text = estado.Giros > 0 and ("SPIN  (" .. estado.Giros .. " free)") or ("SPIN  (" .. ClanData.RESPIN_GEMS .. " gems)")
 	fechar.Visible = temCla and #estado.Opcoes == 0
 	manterBtn.Visible = temCla and #estado.Opcoes > 0
-	for h, b in pairs(alturaBtns) do
-		b.BackgroundColor3 = h == estado.Altura and COR.verde or COR.card
-	end
+	mostrarAltura()
 	mostrarGrande(destaque or estado.Opcoes[#estado.Opcoes] or estado.Id)
 	-- opções
 	for _, f in ipairs(lista:GetChildren()) do
@@ -239,6 +245,34 @@ badge.MouseButton1Click:Connect(function()
 	aviso.Text = ""
 	render()
 	fundo.Visible = true
+end)
+
+-- Sala da roleta: enquanto o painel está aberto, a câmera fica dentro do quarto japonês (workspace.SalaRoleta)
+local RunService = game:GetService("RunService")
+local function cameraSala(ligar)
+	local cam = workspace.CurrentCamera
+	local sala = workspace:FindFirstChild("SalaRoleta")
+	local pos = sala and sala:FindFirstChild("CameraPos")
+	local alvo = sala and sala:FindFirstChild("CameraAlvo")
+	RunService:UnbindFromRenderStep("CameraSalaRoleta")
+	if ligar and pos and alvo then
+		fundo.BackgroundTransparency = 1
+		cam.CameraType = Enum.CameraType.Scriptable
+		-- balanço bem leve para a sala não parecer uma foto parada
+		RunService:BindToRenderStep("CameraSalaRoleta", Enum.RenderPriority.Camera.Value + 1, function()
+			local t = os.clock()
+			cam.CameraType = Enum.CameraType.Scriptable
+			cam.CFrame = CFrame.lookAt(pos.Position + Vector3.new(math.sin(t * 0.3) * 0.6, math.sin(t * 0.45) * 0.15, 0), alvo.Position)
+			cam.FieldOfView = 70
+		end)
+	else
+		fundo.BackgroundTransparency = 0.35
+		cam.CameraType = Enum.CameraType.Custom
+		cam.FieldOfView = player:GetAttribute("FOVBase") or 70
+	end
+end
+fundo:GetPropertyChangedSignal("Visible"):Connect(function()
+	cameraSala(fundo.Visible)
 end)
 
 render()

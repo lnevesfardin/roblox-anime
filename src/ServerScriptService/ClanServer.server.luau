@@ -23,6 +23,52 @@ pastaCaes.Parent = workspace
 local caes = {} -- [player] = Model
 
 ---------------------------------------------------------------
+-- Sala da roleta: o personagem fica parado dentro do quarto, ao lado do painel,
+-- para o jogador ver o tamanho e o traço do clã enquanto escolhe
+---------------------------------------------------------------
+local naSala = {} -- [player] = CFrame de onde ele estava
+
+local function posicionarNaSala(player)
+	local sala = workspace:FindFirstChild("SalaRoleta")
+	local ponto = sala and sala:FindFirstChild("PontoJogador")
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (ponto and root and hum) then return false end
+	root.Anchored = true
+	root.AssemblyLinearVelocity = Vector3.zero
+	-- pés no chão do quarto, qualquer que seja a estatura
+	local pe = root.Position.Y - (hum.HipHeight + root.Size.Y / 2)
+	if hum.RigType == Enum.HumanoidRigType.R6 then pe = root.Position.Y - 3 * char:GetScale() end
+	char:PivotTo(ponto.CFrame + Vector3.new(0, root.Position.Y - pe, 0))
+	return true
+end
+
+local function entrarSala(player)
+	if player:GetAttribute("InRun") then return false end
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return false end
+	if not naSala[player] then
+		naSala[player] = char:GetPivot()
+	end
+	return posicionarNaSala(player)
+end
+
+local function sairSala(player)
+	local volta = naSala[player]
+	naSala[player] = nil
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	if volta then
+		pcall(function() player:RequestStreamAroundAsync(volta.Position, 5) end)
+		char:PivotTo(volta)
+	end
+	root.Anchored = false
+	root.AssemblyLinearVelocity = Vector3.zero
+end
+
+---------------------------------------------------------------
 -- Traços visíveis
 ---------------------------------------------------------------
 local function olhos(char, cor)
@@ -132,6 +178,9 @@ local function aplicar(player)
 	elseif cla == "Shirokiba" then
 		cabeloBranco(char)
 	end
+	if naSala[player] then
+		posicionarNaSala(player) -- a estatura mudou: encosta os pés no chão de novo
+	end
 end
 
 ---------------------------------------------------------------
@@ -209,6 +258,13 @@ action.OnServerInvoke = function(player, acao, valor)
 	if acao == "estado" then
 		return { ok = true, estado = estado(player) }
 	end
+	if acao == "sala" then
+		if valor == true then
+			return { ok = entrarSala(player), estado = estado(player) }
+		end
+		sairSala(player)
+		return { ok = true, estado = estado(player) }
+	end
 	if ocupado[player] then
 		return { ok = false, erro = "Wait..." }
 	end
@@ -271,6 +327,7 @@ for _, p in ipairs(Players:GetPlayers()) do setup(p) end
 Players.PlayerRemoving:Connect(function(player)
 	tirarCao(player)
 	ocupado[player] = nil
+	naSala[player] = nil
 end)
 
 -- Mokuton: regenera 1% da vida por segundo

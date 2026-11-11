@@ -66,13 +66,14 @@ local badgeNome = label(badge, "CLAN", 14, COR.texto, { Position = UDim2.fromOff
 -- Painel
 ---------------------------------------------------------------
 local fundo = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, Text = "", AutoButtonColor = false, Visible = false, Parent = gui })
-local painel = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(660, 470), BackgroundColor3 = COR.painel, Parent = fundo })
+-- painel encostado na esquerda: o lado direito da tela fica livre para o personagem dentro da sala
+local painel = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 20, 0.5, 0), Size = UDim2.fromOffset(660, 470), BackgroundColor3 = COR.painel, Parent = fundo })
 corner(painel, 18)
 stroke(painel, COR.laranja, 3)
 local escala = new("UIScale", { Parent = painel })
 local function ajustarEscala()
 	local vp = workspace.CurrentCamera.ViewportSize
-	escala.Scale = math.clamp(math.min(vp.X / 720, vp.Y / 520), 0.5, 1.15)
+	escala.Scale = math.clamp(math.min(vp.X * 0.52 / 660, vp.Y / 520), 0.4, 1.1) -- ocupa no máximo metade da largura
 end
 ajustarEscala()
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajustarEscala)
@@ -271,8 +272,32 @@ local function cameraSala(ligar)
 		cam.FieldOfView = player:GetAttribute("FOVBase") or 70
 	end
 end
+local pedidoSala = 0
+local function sala(ligar)
+	cameraSala(ligar)
+	pedidoSala += 1
+	local meu = pedidoSala
+	task.spawn(function()
+		if ligar then
+			-- espera o personagem existir (primeira entrada no jogo) e pede ao servidor para colocá-lo no quarto
+			for _ = 1, 40 do
+				if meu ~= pedidoSala then return end
+				local char = player.Character
+				if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") then
+					task.wait(1)
+					if meu ~= pedidoSala then return end
+					local r = action:InvokeServer("sala", true)
+					if r and r.ok then return end
+				end
+				task.wait(0.5)
+			end
+		else
+			action:InvokeServer("sala", false)
+		end
+	end)
+end
 fundo:GetPropertyChangedSignal("Visible"):Connect(function()
-	cameraSala(fundo.Visible)
+	sala(fundo.Visible)
 end)
 
 render()

@@ -37,6 +37,7 @@ src/
     AbilityServer           os 9 poderes dos personagens (RemoteEvent UseAbility)
     WaveServer              partida: contagem, ondas, boss, recompensa
     NascerNaVila            faz o jogador nascer na praça da vila
+    DiaNoite                ciclo de dia (12 min) e noite (6 min)
   StarterPlayer/StarterPlayerScripts/
     HUD                     todas as telas (substitui PainelCaixa e PainelColecao)
     CombatClient            ataque + HUD das ondas e barra do boss

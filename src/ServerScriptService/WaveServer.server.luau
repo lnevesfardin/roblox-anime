@@ -549,7 +549,8 @@ end
 
 local function runMap(mapId)
 	local cfg = MapData.Maps[mapId]
-	local arena = workspace:FindFirstChild("Mapa_" .. mapId)
+	-- cfg.Arena: usa a arena de outro mapa (o Exame Ninja luta na arena Mapa_Ninja)
+	local arena = workspace:FindFirstChild("Mapa_" .. ((cfg and cfg.Arena) or mapId))
 	local spawnPart = arena and arena:FindFirstChild("ArenaSpawn")
 	local centro = arena and arena:FindFirstChild("Centro")
 	if not (cfg and spawnPart and centro) then

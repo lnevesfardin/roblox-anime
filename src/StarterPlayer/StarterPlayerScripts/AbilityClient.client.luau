@@ -270,8 +270,23 @@ local POS_TOQUE = {
 	UDim2.new(1, -215, 1, -195),
 	UDim2.new(1, -140, 1, -230),
 }
+-- Quando um botão de interação (ProximityPrompt) com a mesma tecla está na tela,
+-- a tecla vai para ele (falar, treinar, coletar) e o poder não é usado.
+local promptsNaTela = {}
+local PPS = game:GetService("ProximityPromptService")
+PPS.PromptShown:Connect(function(p) promptsNaTela[p] = true end)
+PPS.PromptHidden:Connect(function(p) promptsNaTela[p] = nil end)
+local function promptComTecla(tecla)
+	for p in pairs(promptsNaTela) do
+		if p.Parent and p.Enabled and p.KeyboardKeyCode == tecla then return true end
+	end
+	return false
+end
 for i = 1, 3 do
-	ContextActionService:BindAction("Poder" .. i, function(_, state)
+	ContextActionService:BindAction("Poder" .. i, function(_, state, input)
+		if input and input.UserInputType == Enum.UserInputType.Keyboard and promptComTecla(input.KeyCode) then
+			return Enum.ContextActionResult.Pass
+		end
 		if state == Enum.UserInputState.Begin then
 			usar(i)
 		end

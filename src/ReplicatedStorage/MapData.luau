@@ -50,6 +50,7 @@ MapData.Maps = {
 	-- Arena flutuante do Exame Ninja (mapa Mapa_ExameNinja). Boss sem tema de cobra.
 	ExameNinja = {
 		Name = "Ninja Exam",
+		Arena = "Ninja", -- luta na arena Mapa_Ninja
 
 		Waves = {
 			{ Name = "Exam Candidates", Enemies = {

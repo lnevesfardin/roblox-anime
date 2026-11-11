@@ -593,6 +593,31 @@ task.spawn(function()
 end)
 
 ---------------------------------------------------------------
+-- Gancho de teste (só existe dentro do Studio; no jogo publicado não é criado)
+-- ServerStorage.MissaoTeste:Invoke(player, "falar", npc) | "estado" | "nivel", n
+---------------------------------------------------------------
+if game:GetService("RunService"):IsStudio() then
+	local teste = Instance.new("BindableFunction")
+	teste.Name = "MissaoTeste"
+	teste.OnInvoke = function(player, acao, valor)
+		local data, m = dados(player)
+		if not data then return "sem dados" end
+		if acao == "falar" then
+			conversar(player, valor)
+		elseif acao == "nivel" then
+			data.Level = valor
+			PlayerData.Refresh(player)
+		end
+		return {
+			Historia = m.Historia, Ativa = m.Ativa and (m.Ativa.Id .. " " .. m.Ativa.P) or "-",
+			Rank = data.Rank, Level = data.Level, XP = data.XP, Coins = data.Coins,
+			Pontos = data.Atributos and data.Atributos.Pontos,
+		}
+	end
+	teste.Parent = ServerStorage
+end
+
+---------------------------------------------------------------
 -- Jogadores
 ---------------------------------------------------------------
 local function setup(player)

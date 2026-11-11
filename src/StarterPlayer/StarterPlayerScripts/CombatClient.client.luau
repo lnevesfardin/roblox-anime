@@ -195,15 +195,16 @@ local function playAnim(nome, segurar)
 	anim = { keys = ANIMS[nome], t0 = os.clock(), hold = segurar }
 end
 
--- estilo de corrida (Shift): tronco inclinado para a frente e braços esticados para trás
+-- estilo de corrida (Shift): tronco bem inclinado para a frente, cabeça olhando adiante e braços retos e firmes para trás.
+-- fixo = true: o braço fica parado nessa posição (ignora o balanço da corrida padrão do Roblox)
 local POSE_CORRIDA = {
-	Root = { x = -22 },
-	Waist = { x = -10 },
-	Neck = { x = 18 },
-	RightShoulder = { x = -50, z = 8 },
-	LeftShoulder = { x = -50, z = -8 },
-	RightElbow = { x = 10 },
-	LeftElbow = { x = 10 },
+	Root = { x = -30 },
+	Waist = { x = -12 },
+	Neck = { x = 26 },
+	RightShoulder = { x = -58, z = 4, fixo = true },
+	LeftShoulder = { x = -58, z = -4, fixo = true },
+	RightElbow = { x = 0, fixo = true },
+	LeftElbow = { x = 0, fixo = true },
 }
 local pesoCorrida = 0
 local ultimoBind = 0
@@ -256,14 +257,24 @@ RunService.Heartbeat:Connect(function(dt)
 				end
 			end
 			local pc = POSE_CORRIDA[nome]
-			if pc and pesoCorrida > 0.01 then
+			local fixa = pc and pc.fixo and pesoCorrida > 0.01
+			if pc and not pc.fixo and pesoCorrida > 0.01 then
 				rx += (pc.x or 0) * pesoCorrida
 				ry += (pc.y or 0) * pesoCorrida
 				rz += (pc.z or 0) * pesoCorrida
 				mexeu = true
 			end
+			if fixa then
+				mexeu = true
+			end
 			if mexeu then
-				m.Transform = (base[m] or atual) * CFrame.Angles(math.rad(rx), math.rad(ry), math.rad(rz))
+				local cf = (base[m] or atual) * CFrame.Angles(math.rad(rx), math.rad(ry), math.rad(rz))
+				if fixa then
+					-- mistura o balanço do Roblox com a pose firme de corrida conforme o peso (0 a 1)
+					local alvo = CFrame.Angles(math.rad(pc.x or 0), math.rad(pc.y or 0), math.rad(pc.z or 0))
+					cf = cf:Lerp(alvo, pesoCorrida)
+				end
+				m.Transform = cf
 				escrito[m] = m.Transform
 			else
 				if escrito[m] then

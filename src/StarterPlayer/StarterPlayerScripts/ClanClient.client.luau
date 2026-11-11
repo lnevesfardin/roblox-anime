@@ -107,6 +107,11 @@ new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.Layou
 
 local girarBtn = botao(painel, "SPIN", COR.laranja, UDim2.fromOffset(250, 48), UDim2.fromOffset(20, 338))
 local manterBtn = botao(painel, "KEEP MY CLAN", COR.card, UDim2.fromOffset(354, 48), UDim2.fromOffset(286, 338))
+-- CONTINUE: canto inferior direito da tela; aparece quando o clã já foi escolhido
+local continuar = botao(fundo, "CONTINUE", COR.laranja, UDim2.fromOffset(230, 58), UDim2.new(1, -24, 1, -24))
+continuar.AnchorPoint = Vector2.new(1, 1)
+continuar.TextSize = 22
+continuar.Visible = false
 local aviso = label(painel, "", 14, COR.vermelho, { Position = UDim2.fromOffset(20, 390), Size = UDim2.new(1, -40, 0, 18) })
 
 -- estatura
@@ -178,7 +183,8 @@ function render(destaque)
 		sub.Text = "Your clan: " .. c.Name .. ". Spin again to try another one."
 	end
 	girarBtn.Text = estado.Giros > 0 and ("SPIN  (" .. estado.Giros .. " free)") or ("SPIN  (" .. ClanData.RESPIN_GEMS .. " gems)")
-	fechar.Visible = temCla and #estado.Opcoes == 0
+	fechar.Visible = false -- quem fecha agora é o CONTINUE
+	continuar.Visible = temCla and #estado.Opcoes == 0
 	manterBtn.Visible = temCla and #estado.Opcoes > 0
 	mostrarAltura()
 	mostrarGrande(destaque or estado.Opcoes[#estado.Opcoes] or estado.Id)
@@ -249,6 +255,10 @@ end)
 fechar.MouseButton1Click:Connect(function()
 	fundo.Visible = false
 end)
+continuar.MouseButton1Click:Connect(function()
+	if girando then return end
+	fundo.Visible = false
+end)
 badge.MouseButton1Click:Connect(function()
 	local r = action:InvokeServer("estado")
 	if r and r.estado then estado = r.estado end
@@ -306,8 +316,31 @@ local function sala(ligar)
 		end
 	end)
 end
+-- Enquanto a sala está aberta, o resto da interface some (HUD, poderes, viagem, atributos e o botão do clã).
+-- Tudo volta só depois do CONTINUE.
+local StarterGui = game:GetService("StarterGui")
+local OUTRAS = { "HUD", "HudOnda", "HudPoderes", "ViagemUI", "AtributosUI" }
+local function outras(ligar)
+	local pg = player.PlayerGui
+	for _, n in ipairs(OUTRAS) do
+		local g = pg:FindFirstChild(n)
+		if g and g:IsA("ScreenGui") then g.Enabled = ligar end
+	end
+	pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, ligar) end)
+	badge.Visible = ligar
+end
 fundo:GetPropertyChangedSignal("Visible"):Connect(function()
 	sala(fundo.Visible)
+	outras(not fundo.Visible)
+	if fundo.Visible then
+		-- outras telas podem ser criadas depois: esconde de novo enquanto a sala estiver aberta
+		task.spawn(function()
+			while fundo.Visible do
+				outras(false)
+				task.wait(0.5)
+			end
+		end)
+	end
 end)
 
 render()

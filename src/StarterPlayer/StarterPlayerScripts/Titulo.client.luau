@@ -46,6 +46,10 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajustar
 
 local LARANJA = Color3.fromRGB(255, 140, 40)
 
+-- Arte da entrada: cole aqui o ID da imagem enviada ao Roblox, no formato "rbxassetid://123456".
+-- Vazio = usa o logo desenhado por código (losango SL + SHINOBI LEGENDS).
+local IMAGEM_ENTRADA = ""
+
 -- emblema: losango escuro com borda laranja e as letras SL
 local losango = Instance.new("Frame")
 losango.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -86,8 +90,21 @@ local function texto(t, tam, cor, y, alt)
 	s.Parent = l
 	return l
 end
-texto("SHINOBI", 78, Color3.new(1, 1, 1), 186, 80)
-texto("LEGENDS", 78, LARANJA, 258, 80)
+local nome1 = texto("SHINOBI", 78, Color3.new(1, 1, 1), 186, 80)
+local nome2 = texto("LEGENDS", 78, LARANJA, 258, 80)
+if IMAGEM_ENTRADA ~= "" then
+	-- a arte já traz o logo: cobre a tela inteira e esconde o logo de código
+	local arte = Instance.new("ImageLabel")
+	arte.Size = UDim2.fromScale(1, 1)
+	arte.BackgroundTransparency = 1
+	arte.Image = IMAGEM_ENTRADA
+	arte.ScaleType = Enum.ScaleType.Crop
+	arte.ZIndex = 0
+	arte.Parent = raiz
+	raiz.BackgroundTransparency = 0
+	grad.Enabled = false
+	losango.Visible, sl.Visible, nome1.Visible, nome2.Visible = false, false, false, false
+end
 
 local function botao(t, cor, y)
 	local b = Instance.new("TextButton")

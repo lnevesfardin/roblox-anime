@@ -85,6 +85,26 @@ MissionData.Missoes = {
 		Tipo = "derrotar", Alvo = "Acampamento", N = 10, Recompensa = { XP = 1500, Coins = 200, Pontos = 1 } },
 }
 
+-- Missões do clã (Fase 4): liberam o 2º e o 3º poder do clã. Dadas pela Lady Tsuna,
+-- só aparecem para quem é daquele clã (Cla), feitas uma vez só (Unica).
+-- RankMin = rank mínimo. Requer = missão que precisa estar feita antes. Recompensa.Poder = posição do poder liberado.
+do
+	local ClanPowers = require(script.Parent:WaitForChild("ClanPowers"))
+	for _, clan in ipairs({ "Uzu", "Uchiwa", "Mokuton", "Byakugan", "Lee", "Shirokiba", "Enma", "Inu" }) do
+		local c = ClanPowers.Clans[clan]
+		local nivel2, rank2 = ClanPowers.Requisito(clan, 2)
+		local nivel3, rank3 = ClanPowers.Requisito(clan, 3)
+		table.insert(MissionData.Missoes, { Id = "C2_" .. clan, Npc = "Tsunade", Rank = "C", Cla = clan, Unica = true,
+			Name = "Clan Secret: " .. c.Powers[2].Name, Nivel = nivel2, RankMin = rank2,
+			Desc = "The Elder knows your clan's secret. Defeat 8 bandits at the camp to prove you are ready.",
+			Tipo = "derrotar", Alvo = "Acampamento", N = 8, Recompensa = { XP = 800, Coins = 150, Poder = 2 } })
+		table.insert(MissionData.Missoes, { Id = "C3_" .. clan, Npc = "Tsunade", Rank = "B", Cla = clan, Unica = true, Requer = "C2_" .. clan,
+			Name = "Clan Trial: " .. c.Powers[3].Name, Nivel = nivel3, RankMin = rank3,
+			Desc = "The final trial of your clan. Defeat 15 bandits at the camp to master your strongest technique.",
+			Tipo = "derrotar", Alvo = "Acampamento", N = 15, Recompensa = { XP = 2500, Coins = 400, Poder = 3 } })
+	end
+end
+
 function MissionData.Get(id)
 	for _, m in ipairs(MissionData.Missoes) do
 		if m.Id == id then

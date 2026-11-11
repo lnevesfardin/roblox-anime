@@ -1,7 +1,9 @@
 -- Script: ServerScriptService > AbilityServer
--- Poderes dos personagens (Q, E, R). O cliente só avisa qual poder usou;
--- o servidor confere o personagem equipado, a recarga e calcula o dano.
--- Nomes e recargas ficam em ReplicatedStorage > CharacterData (campo Abilities).
+-- Poderes do clã (Q, E, R) — Fase 4. O cliente só avisa qual posição usou;
+-- o servidor confere o clã, se o poder está liberado, a recarga e o chakra, e calcula o dano.
+-- Nomes, recargas, custos e requisitos ficam em ReplicatedStorage > ClanPowers.
+-- Estado para o cliente: atributos do jogador "PoderesEstado" (JSON), "Chakra" e "ChakraMax".
+-- Buffs temporários: atributos "BuffDano" (multiplicador extra) e "BuffVelocidade" (studs/s).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,9 +12,10 @@ local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
 
-local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
+local HttpService = game:GetService("HttpService")
+
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
-local ClanKit = require(ReplicatedStorage:WaitForChild("ClanData")).Kit -- kit provisório de poderes por clã
+local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
 
 local useEvent = Instance.new("RemoteEvent")
 useEvent.Name = "UseAbility"
@@ -22,10 +25,7 @@ local feedbackEvent = Instance.new("RemoteEvent")
 feedbackEvent.Name = "AbilityFeedback"
 feedbackEvent.Parent = ReplicatedStorage
 
-local ANIM_IDLE = "rbxassetid://507766666"
-local ANIM_RUN = "rbxassetid://507767714"
-
-local cooldowns = {} -- [player] = { [idDoPersonagem .. slot] = horaLiberada }
+local cooldowns = {} -- [player] = { [idDoPoder] = horaLiberada }
 
 ---------------------------------------------------------------
 -- Auxiliares
@@ -292,27 +292,6 @@ local function dragon(o)
 	end
 end
 
-local function animate(hum)
-	pcall(function()
-		local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
-		local idle, run = Instance.new("Animation"), Instance.new("Animation")
-		idle.AnimationId = ANIM_IDLE
-		run.AnimationId = ANIM_RUN
-		local it, rt = animator:LoadAnimation(idle), animator:LoadAnimation(run)
-		it.Looped, rt.Looped = true, true
-		it:Play()
-		hum.Running:Connect(function(speed)
-			if speed > 1 and not rt.IsPlaying then
-				it:Stop(0.1)
-				rt:Play(0.1)
-			elseif speed <= 1 and rt.IsPlaying then
-				rt:Stop(0.1)
-				it:Play(0.1)
-			end
-		end)
-	end)
-end
-
 local function smoke(pos, color)
 	burst(pos + Vector3.new(0, 2, 0), 9, Color3.fromRGB(235, 235, 235), 0.5, 0.3)
 	if color then
@@ -327,419 +306,670 @@ local function feedback(plr, payload)
 end
 
 ---------------------------------------------------------------
--- Poderes
+-- Auxiliares dos poderes de clã
 ---------------------------------------------------------------
 
-local BLUE = Color3.fromRGB(70, 170, 255)
-local BLUE_LIGHT = Color3.fromRGB(215, 240, 255)
-
-local ABILITIES = {}
-
--- KARUTTO ----------------------------------------------------
-ABILITIES.kenji_arashi = {
-	-- Q: Spiral Orb — esfera de energia azul na mão, empurra e machuca na frente
-	function(plr, char, root, dmg)
-		local orb = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 1.2, color = BLUE, trans = 0.15 })
-		local core = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 0.7, color = BLUE_LIGHT })
-		light(orb, BLUE, 14, 3)
-		local pe = Instance.new("ParticleEmitter")
-		pe.Color = ColorSequence.new(Color3.fromRGB(140, 210, 255))
-		pe.LightEmission = 1
-		pe.Size = NumberSequence.new(0.35, 0)
-		pe.Lifetime = NumberRange.new(0.25, 0.45)
-		pe.Rate = 70
-		pe.Speed = NumberRange.new(2, 5)
-		pe.SpreadAngle = Vector2.new(180, 180)
-		pe.Parent = orb
-		local t0 = os.clock()
-		while os.clock() - t0 < 0.4 and root.Parent do
-			local s = 1.2 + (os.clock() - t0) / 0.4 * 1.6
-			local cf = CFrame.new(handPos(char, root) + root.CFrame.LookVector) * CFrame.Angles(0, os.clock() * 20, 0)
-			orb.Size, orb.CFrame = Vector3.one * s, cf
-			core.Size, core.CFrame = Vector3.one * s * 0.55, cf
-			task.wait()
-		end
-		local function explode(pos)
-			burst(pos, 15, BLUE, 0.45)
-			burst(pos, 8, BLUE_LIGHT, 0.3)
-			for _, e in ipairs(inRadius(pos, 7)) do
-				hit(e, dmg * 3.5, pos, 60)
-			end
-		end
-		local look = flatLook(root)
-		local target = nearestEnemy(root.Position, look, 40)
-		-- o jogador corre (cliente) levando a bola na mão e empurra o inimigo com ela;
-		-- sem alvo, corre para a frente e a bola explode no primeiro inimigo que tocar
-		local pos = orb.Position
-		local t1 = os.clock()
-		local maxT = target and 1.1 or 0.8
-		while os.clock() - t1 < maxT and root.Parent do
-			pos = handPos(char, root) + root.CFrame.LookVector * 1.6
-			local cf = CFrame.new(pos) * CFrame.Angles(0, os.clock() * 20, 0)
-			orb.CFrame, core.CFrame = cf, cf
-			if target then
-				if target.hum.Health <= 0 or not target.model.Parent then
-					break
-				end
-				if flat(target.root.Position, root.Position) <= 5 + target.raio then
-					pos = target.root.Position
-					break
-				end
-			elseif #inRadius(pos, 4) > 0 then
-				break
-			end
-			task.wait()
-		end
-		orb:Destroy()
-		core:Destroy()
-		explode(pos)
-		return true
-	end,
-
-	-- E: Leaf Clones — duas cópias do jogador que lutam por 8 segundos
-	function(plr, char, root, dmg)
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		local okD, desc = pcall(function()
-			return hum:GetAppliedDescription()
-		end)
-		for _, side in ipairs({ -1, 1 }) do
-			task.spawn(function()
-				local ok, clone = pcall(function()
-					return Players:CreateHumanoidModelFromDescription(okD and desc or Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
-				end)
-				if not ok or not clone or not root.Parent then
-					return
-				end
-				clone.Name = "Leaf Clone"
-				local ch = clone:FindFirstChildOfClass("Humanoid")
-				ch.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-				ch.WalkSpeed = 22
-				local hl = Instance.new("Highlight")
-				hl.FillColor = Color3.fromRGB(120, 220, 120)
-				hl.FillTransparency = 0.8
-				hl.OutlineColor = Color3.fromRGB(120, 255, 140)
-				hl.Parent = clone
-				local spawnCF = root.CFrame * CFrame.new(side * 4, 0, 0)
-				clone:PivotTo(spawnCF)
-				clone.Parent = workspace
-				local cr = clone:FindFirstChild("HumanoidRootPart")
-				pcall(function()
-					cr:SetNetworkOwner(nil)
-				end)
-				animate(ch)
-				smoke(spawnCF.Position, Color3.fromRGB(120, 200, 90))
-				local t0, last = os.clock(), 0
-				while os.clock() - t0 < 8 and clone.Parent and ch.Health > 0 do
-					local target = nearestEnemy(cr.Position, cr.CFrame.LookVector, 70)
-					if target then
-						local d = flat(cr.Position, target.root.Position)
-						if d <= 4.5 + target.raio then
-							ch:MoveTo(cr.Position)
-							if os.clock() - last >= 0.7 then
-								last = os.clock()
-								hit(target, dmg * 0.6, cr.Position, 15)
-								burst(cr.Position + cr.CFrame.LookVector * 3, 3, Color3.fromRGB(150, 255, 160), 0.15)
-							end
-						else
-							ch:MoveTo(target.root.Position)
-						end
-					elseif root.Parent then
-						ch:MoveTo(root.Position + root.CFrame.RightVector * side * 4)
-					end
-					task.wait(0.2)
-				end
-				if clone.Parent then
-					smoke(cr.Position, Color3.fromRGB(120, 200, 90))
-					clone:Destroy()
-				end
-			end)
-		end
-		return true
-	end,
-
-	-- R: Storm Shuriken — shuriken gigante de energia que explode numa esfera
-	function(plr, char, root, dmg)
-		local m = Instance.new("Model")
-		m.Name = "StormShuriken"
-		local core = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 3.2, color = BLUE, parent = m })
-		fx({ shape = Enum.PartType.Ball, size = Vector3.one * 1.8, color = BLUE_LIGHT, parent = m })
-		for i = 0, 3 do
-			fx({ size = Vector3.new(10, 0.25, 1.4), color = BLUE_LIGHT, trans = 0.2, cf = CFrame.Angles(0, math.rad(i * 45), 0), parent = m })
-		end
-		m.PrimaryPart = core
-		light(core, BLUE, 24, 4)
-		m.Parent = workspace
-		local t0 = os.clock()
-		while os.clock() - t0 < 0.7 and root.Parent do
-			local k = (os.clock() - t0) / 0.7
-			m:ScaleTo(math.max(0.25 + k * 0.75, 0.25))
-			m:PivotTo(CFrame.new(root.Position + Vector3.new(0, 5, 0) + root.CFrame.LookVector * 2) * CFrame.Angles(0, os.clock() * 18, 0))
-			task.wait()
-		end
-		m:ScaleTo(1)
-		projectile({
-			model = m, start = root.Position + Vector3.new(0, 2, 0) + flatLook(root) * 4, dir = flatLook(root),
-			speed = 55, range = 70, radius = 5, spin = 18,
-			onEnd = function(pos)
-				burst(pos, 30, BLUE_LIGHT, 0.6, 0.1)
-				burst(pos, 22, BLUE, 0.8, 0.3)
-				for _, e in ipairs(inRadius(pos, 14)) do
-					hit(e, dmg * 4, pos, 30)
-				end
-				for _ = 1, 3 do
-					task.wait(0.25)
-					burst(pos, 20, BLUE, 0.25, 0.5)
-					for _, e in ipairs(inRadius(pos, 14)) do
-						hit(e, dmg, nil, 0)
-					end
-				end
-			end,
-		})
-		return true
-	end,
-}
-
--- KAKUSE -----------------------------------------------------
+local GOLD = Color3.fromRGB(255, 205, 80)
 local FIRE = Color3.fromRGB(255, 120, 30)
+local FIRE_LIGHT = Color3.fromRGB(255, 220, 120)
+local LIGHTNING = Color3.fromRGB(150, 210, 255)
+local WHITE = Color3.fromRGB(240, 245, 255)
+local WOOD = Color3.fromRGB(120, 80, 45)
+local LEAF = Color3.fromRGB(90, 170, 80)
+local CHAKRA_BLUE = Color3.fromRGB(120, 190, 255)
+local ASH = Color3.fromRGB(90, 85, 85)
 
-ABILITIES.ren_kuroba = {
-	-- Q: Fireball — bola de fogo que explode ao bater
-	function(plr, char, root, dmg)
-		local look = flatLook(root)
-		local ball = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 7, color = FIRE, cf = CFrame.new(handPos(char, root) + look * 4) })
-		local inner = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 4, color = Color3.fromRGB(255, 220, 120), cf = ball.CFrame })
-		local fire = Instance.new("Fire")
-		fire.Size = 14
-		fire.Heat = 6
-		fire.Parent = ball
-		light(ball, FIRE, 28, 3)
-		projectile({
-			parts = { ball, inner }, start = ball.Position, dir = look, speed = 60, range = 60, radius = 6,
-			onEnd = function(pos)
-				burst(pos, 30, FIRE, 0.6)
-				burst(pos, 18, Color3.fromRGB(255, 230, 140), 0.4)
-				for _, e in ipairs(inRadius(pos, 14)) do
-					hit(e, dmg * 2.5, pos, 40)
-				end
-			end,
-		})
-		return true
-	end,
+-- bate em cada inimigo só uma vez por uso
+local function hitOnce(set, e, amount, from, force)
+	if set[e.model] then
+		return
+	end
+	set[e.model] = true
+	hit(e, amount, from, force)
+end
 
-	-- E: Black Flame — chama preta que queima o alvo por 5 segundos
-	function(plr, char, root, dmg)
-		local look = flatLook(root)
-		local target = nearestEnemy(root.Position, look, 45)
-		burst(handPos(char, root), 4, Color3.fromRGB(20, 0, 30), 0.3, 0.1)
-		if not target then
-			local pos = root.Position + look * 10
-			burst(pos, 12, Color3.fromRGB(15, 10, 20), 0.5, 0.1)
-			for _, e in ipairs(inRadius(pos, 6)) do
-				hit(e, dmg * 1.5, pos, 20)
+-- inimigos numa faixa reta (origem, direção já normalizada, comprimento, largura)
+local function inLine(origin, dir, len, width)
+	local out = {}
+	for _, e in ipairs(getEnemies()) do
+		local rel = (e.root.Position - origin) * Vector3.new(1, 0, 1)
+		local along = rel:Dot(dir)
+		if along >= -2 and along <= len + e.raio then
+			local side = (rel - dir * along).Magnitude
+			if side <= width / 2 + e.raio and math.abs(e.root.Position.Y - origin.Y) < 12 then
+				table.insert(out, e)
 			end
-			return true
 		end
-		local a, b = handPos(char, root), target.root.Position
-		local beam = fx({ size = Vector3.new(0.5, 0.5, (b - a).Magnitude), color = Color3.fromRGB(20, 0, 30), cf = CFrame.lookAt((a + b) / 2, b) })
-		fadeOut(beam, 0.3)
-		local fire = Instance.new("Fire")
-		fire.Color = Color3.fromRGB(10, 10, 12)
-		fire.SecondaryColor = Color3.fromRGB(70, 0, 90)
-		fire.Size = 12 + target.raio * 2
-		fire.Heat = 14
-		fire.Parent = target.root
-		local hl = Instance.new("Highlight")
-		hl.FillColor = Color3.fromRGB(10, 0, 15)
-		hl.FillTransparency = 0.45
-		hl.OutlineColor = Color3.fromRGB(110, 0, 140)
-		hl.Parent = target.model
-		for _ = 1, 10 do
-			task.wait(0.5)
-			if target.hum.Health <= 0 or not target.model.Parent then
-				break
+	end
+	return out
+end
+
+-- inimigos num cone na frente (alcance, metade do ângulo em graus)
+local function inCone(origin, look, range, halfDeg)
+	local out = {}
+	local minDot = math.cos(math.rad(halfDeg))
+	for _, e in ipairs(inRadius(origin, range)) do
+		local d = (e.root.Position - origin) * Vector3.new(1, 0, 1)
+		if d.Magnitude < 2 or d.Unit:Dot(look) >= minDot then
+			table.insert(out, e)
+		end
+	end
+	return out
+end
+
+-- segura o inimigo parado por alguns segundos
+local function prender(e, dur)
+	if e.raio > 2 then
+		dur *= 0.4 -- o boss se solta mais rápido
+	end
+	local hum = e.hum
+	if hum:GetAttribute("VelPreso") == nil then
+		hum:SetAttribute("VelPreso", hum.WalkSpeed)
+	end
+	local token = (hum:GetAttribute("PresoToken") or 0) + 1
+	hum:SetAttribute("PresoToken", token)
+	hum.WalkSpeed = 0
+	task.delay(dur, function()
+		if hum.Parent and hum:GetAttribute("PresoToken") == token then
+			hum.WalkSpeed = hum:GetAttribute("VelPreso") or 13
+			hum:SetAttribute("VelPreso", nil)
+		end
+	end)
+end
+
+-- buff de dano/velocidade com brilho no personagem
+local function buff(plr, char, dano, vel, dur, color)
+	local token = (plr:GetAttribute("BuffToken") or 0) + 1
+	plr:SetAttribute("BuffToken", token)
+	plr:SetAttribute("BuffDano", dano)
+	plr:SetAttribute("BuffVelocidade", vel)
+	local old = char:FindFirstChild("BuffBrilho")
+	if old then old:Destroy() end
+	local hl = Instance.new("Highlight")
+	hl.Name = "BuffBrilho"
+	hl.FillColor = color
+	hl.FillTransparency = 0.75
+	hl.OutlineColor = color
+	hl.OutlineTransparency = 0.2
+	hl.DepthMode = Enum.HighlightDepthMode.Occluded
+	hl.Parent = char
+	task.delay(dur, function()
+		if plr:GetAttribute("BuffToken") == token then
+			plr:SetAttribute("BuffDano", 0)
+			plr:SetAttribute("BuffVelocidade", 0)
+		end
+		if hl.Parent then hl:Destroy() end
+	end)
+end
+
+-- anel achatado no chão que cresce
+local function ring(pos, diameter, color, time)
+	local r = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.3, 1, 1), color = color, trans = 0.2,
+		cf = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)) })
+	TweenService:Create(r, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(0.3, diameter, diameter), Transparency = 1 }):Play()
+	Debris:AddItem(r, time + 0.1)
+end
+
+local function chao(root)
+	return root.Position - Vector3.new(0, 2.6, 0)
+end
+
+-- durante "dur" segundos, bate em quem encostar no jogador (para poderes com investida)
+local function contatoDurante(root, dur, raio, onHit)
+	local set = {}
+	local t0 = os.clock()
+	while os.clock() - t0 < dur and root.Parent do
+		for _, e in ipairs(inRadius(root.Position, raio)) do
+			if not set[e.model] then
+				set[e.model] = true
+				onHit(e)
 			end
-			hit(target, dmg * 0.5, nil, 0)
 		end
-		fire:Destroy()
-		hl:Destroy()
-		return true
-	end,
+		task.wait()
+	end
+end
 
-	-- R: Thunder Dragon — dragão de raios desce do céu sobre os inimigos
-	function(plr, char, root, dmg)
-		local look = flatLook(root)
-		local target = nearestEnemy(root.Position, look, 80)
-		local tpos = target and target.root.Position or (root.Position + look * 25)
-		local right = look:Cross(Vector3.new(0, 1, 0))
-		local cloud = fx({ shape = Enum.PartType.Ball, size = Vector3.new(44, 10, 44), color = Color3.fromRGB(45, 45, 55),
-			mat = Enum.Material.SmoothPlastic, trans = 0.15, cf = CFrame.new(tpos + Vector3.new(0, 58, 0)) })
-		light(cloud, Color3.fromRGB(200, 220, 255), 40, 2)
-		task.wait(0.25)
-		dragon({
-			p0 = tpos + Vector3.new(0, 56, 0) + right * 22,
-			p1 = tpos + Vector3.new(0, 40, 0) - right * 26,
-			p2 = tpos + Vector3.new(0, 1, 0),
-			count = 22, headSize = 4, duration = 0.3, lag = 0.011,
-			colorA = Color3.fromRGB(255, 245, 160), colorB = Color3.fromRGB(150, 200, 255),
-			onArrive = function(pos)
-				local bolt = fx({ size = Vector3.new(1.4, 60, 1.4), color = Color3.fromRGB(240, 245, 255), cf = CFrame.new(pos + Vector3.new(0, 30, 0)) })
-				fadeOut(bolt, 0.35)
-				for _ = 1, 4 do
-					zap(pos + Vector3.new(0, 55, 0), pos + Vector3.new(math.random(-6, 6), 0, math.random(-6, 6)), Color3.fromRGB(235, 240, 255), 0.9, 5, 0.3)
-				end
-				burst(pos, 36, Color3.fromRGB(255, 240, 150), 0.6, 0.1)
-				burst(pos, 20, Color3.fromRGB(180, 210, 255), 0.4, 0.2)
-				for _, e in ipairs(inRadius(pos, 17)) do
-					hit(e, dmg * 7, pos, 45)
-				end
-			end,
-		})
-		fadeOut(cloud, 0.6)
-		return true
-	end,
-}
+local function cao(plr)
+	local pasta = workspace:FindFirstChild("Companheiros")
+	return pasta and pasta:FindFirstChild("Cao_" .. plr.Name)
+end
 
--- TATASHI ----------------------------------------------------
-local WATER = Color3.fromRGB(60, 150, 255)
-local SPARK = Color3.fromRGB(190, 230, 255)
+---------------------------------------------------------------
+-- Poderes (função por id; recebem plr, char, root, dmg)
+---------------------------------------------------------------
 
-ABILITIES.hana_midori = {
-	-- Q: Lightning Hand — relâmpago na mão + investida (o movimento é feito no cliente)
-	function(plr, char, root, dmg)
-		local spark = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 1.4, color = SPARK })
-		light(spark, SPARK, 16, 4)
-		local pe = Instance.new("ParticleEmitter")
-		pe.Color = ColorSequence.new(Color3.fromRGB(200, 235, 255))
-		pe.LightEmission = 1
-		pe.Size = NumberSequence.new(0.3, 0)
-		pe.Lifetime = NumberRange.new(0.1, 0.25)
-		pe.Rate = 120
-		pe.Speed = NumberRange.new(8, 14)
-		pe.SpreadAngle = Vector2.new(180, 180)
-		pe.Parent = spark
-		-- zona de dano fixa à frente de onde o jogador estava ao ativar (não depende da investida no cliente)
-		local look = flatLook(root)
-		local startPos = root.Position
-		local endPos = startPos + look * 22
+local P = {}
+
+-- UZU ---------------------------------------------------------
+P.uzu_correntes = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local from = handPos(char, root)
+	local alvos = inLine(root.Position, look, 32, 7)
+	local pontos = {}
+	if #alvos == 0 then
+		for k = -1, 1 do
+			table.insert(pontos, root.Position + (CFrame.Angles(0, math.rad(k * 12), 0) * look) * 28)
+		end
+	end
+	local set = {}
+	for _, e in ipairs(alvos) do
+		table.insert(pontos, e.root.Position)
+		hitOnce(set, e, dmg * 2, nil, 0)
+		prender(e, 2.5)
+	end
+	for _, pt in ipairs(pontos) do
+		local len = (pt - from).Magnitude
+		local c = fx({ size = Vector3.new(0.35, 0.35, 0.1), color = GOLD, mat = Enum.Material.Neon, cf = CFrame.lookAt(from, pt) })
+		light(c, GOLD, 8, 2)
+		TweenService:Create(c, TweenInfo.new(0.18), { Size = Vector3.new(0.35, 0.35, len), CFrame = CFrame.lookAt(from, pt) * CFrame.new(0, 0, -len / 2) }):Play()
+		task.delay(1.6, function() fadeOut(c, 0.4) end)
+		burst(pt, 4, GOLD, 0.3, 0.3)
+	end
+end
+
+P.uzu_selamento = function(plr, char, root, dmg)
+	local c = chao(root)
+	local selo = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.2, 4, 4), color = GOLD, trans = 0.35,
+		cf = CFrame.new(c) * CFrame.Angles(0, 0, math.rad(90)) })
+	TweenService:Create(selo, TweenInfo.new(0.45, Enum.EasingStyle.Quad), { Size = Vector3.new(0.2, 34, 34) }):Play()
+	task.wait(0.5)
+	ring(c, 40, Color3.fromRGB(255, 240, 180), 0.5)
+	burst(root.Position, 22, GOLD, 0.45, 0.4)
+	local set = {}
+	for _, e in ipairs(inRadius(root.Position, 17)) do
+		hitOnce(set, e, dmg * 3, root.Position, 55)
+	end
+	fadeOut(selo, 0.4)
+end
+
+P.uzu_espiral = function(plr, char, root, dmg)
+	local orb = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 0.6, color = CHAKRA_BLUE, trans = 0.15 })
+	local core = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 0.4, color = WHITE })
+	light(orb, CHAKRA_BLUE, 22, 4)
+	local t0 = os.clock()
+	local set = {}
+	while os.clock() - t0 < 1.35 and root.Parent do
+		local k = math.min((os.clock() - t0) / 0.5, 1)
+		local pos = handPos(char, root) + root.CFrame.LookVector * (1 + k * 1.5)
+		orb.Size = Vector3.one * (0.6 + k * 4.4)
+		core.Size = orb.Size * 0.6
+		orb.CFrame = CFrame.new(pos) * CFrame.Angles(os.clock() * 9, os.clock() * 7, 0)
+		core.CFrame = CFrame.new(pos)
+		-- encostou num inimigo durante a corrida: explode já
+		if os.clock() - t0 > 0.45 and #inRadius(pos, 3) > 0 then
+			break
+		end
+		task.wait()
+	end
+	local pos = orb.Position
+	orb:Destroy()
+	core:Destroy()
+	task.spawn(vortex, pos, 9, 0.45, true)
+	ring(pos - Vector3.new(0, 2, 0), 36, CHAKRA_BLUE, 0.5)
+	for _, e in ipairs(inRadius(pos, 13)) do
+		hitOnce(set, e, dmg * 7, pos, 75)
+	end
+end
+
+-- UCHIWA ------------------------------------------------------
+P.uchiwa_fogo = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local start = handPos(char, root) + look * 2
+	local ball = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 4, color = FIRE, trans = 0.1 })
+	local inner = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2.6, color = FIRE_LIGHT })
+	light(ball, FIRE, 20, 4)
+	local fire = Instance.new("Fire")
+	fire.Size = 8
+	fire.Heat = 12
+	fire.Parent = ball
+	projectile({ start = start, dir = look, speed = 75, range = 60, radius = 4, parts = { ball, inner },
+		onEnd = function(pos)
+			burst(pos, 16, FIRE, 0.45, 0.15)
+			burst(pos, 10, FIRE_LIGHT, 0.3, 0.2)
+			local set = {}
+			for _, e in ipairs(inRadius(pos, 10)) do
+				hitOnce(set, e, dmg * 3.5, pos, 40)
+			end
+		end })
+end
+
+P.uchiwa_sharingan = function(plr, char, root, dmg)
+	local head = char:FindFirstChild("Head")
+	if head then
+		burst(head.Position, 5, Color3.fromRGB(220, 20, 30), 0.35, 0.3)
+	end
+	buff(plr, char, 0.35, 4, 8, Color3.fromRGB(220, 30, 40))
+end
+
+P.uchiwa_chidori = function(plr, char, root, dmg)
+	local t0 = os.clock()
+	while os.clock() - t0 < 0.35 and root.Parent do
+		local h = handPos(char, root)
+		zap(h, h + Vector3.new(math.random() * 4 - 2, math.random() * 3 - 1, math.random() * 4 - 2), LIGHTNING, 0.18, 0.8, 0.12)
+		task.wait(0.04)
+	end
+	contatoDurante(root, 0.35, 6, function(e)
+		hit(e, dmg * 6, root.Position, 65)
+		zap(handPos(char, root), e.root.Position, LIGHTNING, 0.3, 1.2, 0.3)
+		burst(e.root.Position, 8, LIGHTNING, 0.3, 0.3)
+	end)
+end
+
+-- MOKUTON -----------------------------------------------------
+P.moku_estacas = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local base = chao(root)
+	for i = 1, 9 do
+		local pos = base + look * (2 + i * 3)
+		local spike = fx({ size = Vector3.new(1.4, 0.2, 1.4), color = WOOD, mat = Enum.Material.Wood,
+			cf = CFrame.new(pos) * CFrame.Angles(math.rad(math.random(-15, 15)), math.rad(math.random(0, 90)), 0) })
+		TweenService:Create(spike, TweenInfo.new(0.12, Enum.EasingStyle.Back), { Size = Vector3.new(1.4, 6, 1.4), CFrame = spike.CFrame * CFrame.new(0, 3, 0) }):Play()
+		task.delay(1.4, function() fadeOut(spike, 0.4) end)
+		task.wait(0.03)
+	end
+	local set = {}
+	for _, e in ipairs(inLine(root.Position, look, 30, 6)) do
+		hitOnce(set, e, dmg * 2.8, nil, 0)
+		e.root.AssemblyLinearVelocity = Vector3.new(0, 45, 0)
+	end
+end
+
+P.moku_muro = function(plr, char, root, dmg)
+	local dome = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2, color = WOOD, mat = Enum.Material.Wood, trans = 0.35, cf = CFrame.new(root.Position) })
+	TweenService:Create(dome, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Size = Vector3.one * 16 }):Play()
+	local ff = Instance.new("ForceField")
+	ff.Visible = false
+	ff.Parent = char
+	local set = {}
+	for _, e in ipairs(inRadius(root.Position, 12)) do
+		hitOnce(set, e, dmg * 1.5, root.Position, 85)
+	end
+	task.wait(3)
+	if ff.Parent then ff:Destroy() end
+	fadeOut(dome, 0.4)
+end
+
+P.moku_floresta = function(plr, char, root, dmg)
+	local center = root.Position
+	local base = chao(root)
+	local trees = {}
+	for i = 1, 10 do
+		local a = (i / 10) * math.pi * 2 + math.random() * 0.4
+		local r = 6 + math.random() * 12
+		local pos = base + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+		local trunk = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.5, 2, 2), color = WOOD, mat = Enum.Material.Wood,
+			cf = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)) })
+		local top = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 0.5, color = LEAF, mat = Enum.Material.Grass, cf = CFrame.new(pos) })
+		TweenService:Create(trunk, TweenInfo.new(0.5, Enum.EasingStyle.Back), { Size = Vector3.new(12, 2.2, 2.2), CFrame = CFrame.new(pos + Vector3.new(0, 6, 0)) * CFrame.Angles(0, 0, math.rad(90)) }):Play()
+		TweenService:Create(top, TweenInfo.new(0.6, Enum.EasingStyle.Back), { Size = Vector3.one * 8, CFrame = CFrame.new(pos + Vector3.new(0, 12, 0)) }):Play()
+		table.insert(trees, trunk)
+		table.insert(trees, top)
+	end
+	for _, e in ipairs(inRadius(center, 19)) do
+		prender(e, 3.2)
+	end
+	for _ = 1, 5 do
+		task.wait(0.55)
+		for _, e in ipairs(inRadius(center, 19)) do
+			hit(e, dmg * 1.3, nil, 0)
+		end
+	end
+	for _, t in ipairs(trees) do
+		fadeOut(t, 0.6)
+	end
+end
+
+-- BYAKUGAN ----------------------------------------------------
+P.byaku_punho = function(plr, char, root, dmg)
+	task.wait(0.12)
+	local look = flatLook(root)
+	for _ = 1, 6 do
+		local alvos = inCone(root.Position, look, 9, 50)
+		local pos = root.Position + look * 3 + Vector3.new(math.random() * 2 - 1, math.random() * 2, math.random() * 2 - 1)
+		burst(pos, 2.5, CHAKRA_BLUE, 0.15, 0.2)
+		for _, e in ipairs(alvos) do
+			hit(e, dmg * 0.5, root.Position, 6)
+		end
+		task.wait(0.08)
+	end
+end
+
+P.byaku_palma = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local start = root.Position + look * 2
+	local wave = fx({ shape = Enum.PartType.Ball, size = Vector3.new(3, 3, 1), color = WHITE, trans = 0.55 })
+	projectile({ start = start, dir = look, speed = 120, range = 36, radius = 0.1, parts = { wave },
+		onEnd = function(pos) burst(pos, 8, WHITE, 0.3, 0.5) end })
+	TweenService:Create(wave, TweenInfo.new(0.3), { Size = Vector3.new(9, 9, 2) }):Play()
+	local set = {}
+	for _, e in ipairs(inLine(root.Position, look, 36, 7)) do
+		hitOnce(set, e, dmg * 2.5, root.Position, 115)
+	end
+end
+
+P.byaku_rotacao = function(plr, char, root, dmg)
+	local center = root.Position
+	local dome = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2, color = CHAKRA_BLUE, trans = 0.45, cf = CFrame.new(center) })
+	light(dome, CHAKRA_BLUE, 30, 3)
+	TweenService:Create(dome, TweenInfo.new(0.55, Enum.EasingStyle.Quad), { Size = Vector3.one * 26 }):Play()
+	for i = 1, 3 do
+		task.delay(i * 0.12, function() ring(chao(root), 30, WHITE, 0.4) end)
+	end
+	task.wait(0.4)
+	local set = {}
+	for _, e in ipairs(inRadius(center, 14)) do
+		hitOnce(set, e, dmg * 6, center, 95)
+	end
+	fadeOut(dome, 0.35)
+end
+
+-- LEE ---------------------------------------------------------
+P.lee_furacao = function(plr, char, root, dmg)
+	ring(chao(root) + Vector3.new(0, 1.5, 0), 20, LEAF, 0.35)
+	burst(root.Position, 12, Color3.fromRGB(200, 255, 200), 0.3, 0.5)
+	local set = {}
+	for _, e in ipairs(inRadius(root.Position, 9)) do
+		hitOnce(set, e, dmg * 2.5, root.Position, 45)
+	end
+end
+
+P.lee_lotus = function(plr, char, root, dmg)
+	task.wait(0.9) -- o cliente corre até o inimigo
+	local e = nearestEnemy(root.Position, flatLook(root), 9)
+	if not e then
+		burst(root.Position + flatLook(root) * 3, 5, LEAF, 0.3, 0.4)
+		return
+	end
+	hit(e, dmg * 1.5, nil, 0)
+	if e.raio <= 2 then
+		e.root.AssemblyLinearVelocity = Vector3.new(0, 85, 0)
+	end
+	burst(e.root.Position, 6, LEAF, 0.3, 0.3)
+	task.wait(0.65)
+	if e.hum.Health > 0 and e.root.Parent then
+		if e.raio <= 2 then
+			e.root.AssemblyLinearVelocity = Vector3.new(0, -140, 0)
+			task.wait(0.15)
+		end
+		hit(e, dmg * 3, nil, 0)
+		local p = e.root.Position - Vector3.new(0, 2.5, 0)
+		ring(p, 18, Color3.fromRGB(170, 140, 100), 0.4)
+		burst(p, 9, Color3.fromRGB(200, 180, 140), 0.35, 0.35)
+	end
+end
+
+P.lee_portoes = function(plr, char, root, dmg)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.Health = math.max(1, hum.Health - hum.MaxHealth * 0.1)
+	end
+	burst(root.Position, 14, Color3.fromRGB(120, 255, 140), 0.4, 0.3)
+	ring(chao(root), 24, Color3.fromRGB(120, 255, 140), 0.4)
+	buff(plr, char, 0.7, 8, 9, Color3.fromRGB(110, 255, 130))
+end
+
+-- SHIROKIBA ---------------------------------------------------
+P.shiro_presa = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local slash = fx({ size = Vector3.new(9, 0.3, 1.2), color = WHITE, trans = 0.1,
+		cf = CFrame.lookAt(root.Position + look * 4, root.Position + look * 5) * CFrame.Angles(0, 0, math.rad(-20)) })
+	light(slash, WHITE, 12, 3)
+	TweenService:Create(slash, TweenInfo.new(0.2), { CFrame = slash.CFrame * CFrame.new(0, 0, -3), Size = Vector3.new(12, 0.2, 0.6) }):Play()
+	fadeOut(slash, 0.25)
+	local set = {}
+	for _, e in ipairs(inCone(root.Position, look, 10, 60)) do
+		hitOnce(set, e, dmg * 2.6, root.Position, 30)
+	end
+end
+
+P.shiro_passo = function(plr, char, root, dmg)
+	local last = root.Position
+	task.spawn(function()
 		local t0 = os.clock()
-		local lastZap = 0
-		while os.clock() - t0 < 0.45 and root.Parent do
-			local hp = handPos(char, root)
-			spark.CFrame = CFrame.new(hp)
-			if os.clock() - lastZap > 0.04 then
-				lastZap = os.clock()
-				for _ = 1, 2 do
-					local off = Vector3.new(math.random() * 2 - 1, math.random() * 2 - 1, math.random() * 2 - 1).Unit * (4 + math.random() * 4)
-					zap(hp, hp + off, SPARK, 0.25, 1.2, 0.15)
-				end
-			end
+		while os.clock() - t0 < 0.3 and root.Parent do
+			zap(last, root.Position, LIGHTNING, 0.25, 0.6, 0.25)
+			last = root.Position
+			task.wait(0.04)
+		end
+	end)
+	contatoDurante(root, 0.3, 6, function(e)
+		hit(e, dmg * 2.4, root.Position, 35)
+		burst(e.root.Position, 5, LIGHTNING, 0.25, 0.3)
+	end)
+end
+
+P.shiro_trovao = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local from = handPos(char, root)
+	local to = from + look * 42
+	local blade = fx({ size = Vector3.new(0.6, 0.6, 1), color = WHITE, cf = CFrame.lookAt(from, to) })
+	light(blade, LIGHTNING, 16, 4)
+	TweenService:Create(blade, TweenInfo.new(0.15), { Size = Vector3.new(0.8, 0.8, 42), CFrame = CFrame.lookAt(from, to) * CFrame.new(0, 0, -21) }):Play()
+	for _ = 1, 4 do
+		zap(from, to, LIGHTNING, 0.25, 1.5, 0.3)
+		task.wait(0.05)
+	end
+	local set = {}
+	for _, e in ipairs(inLine(root.Position, look, 42, 6)) do
+		hitOnce(set, e, dmg * 6.5, root.Position, 40)
+		burst(e.root.Position, 6, LIGHTNING, 0.3, 0.3)
+	end
+	task.delay(0.3, function() fadeOut(blade, 0.3) end)
+end
+
+-- ENMA --------------------------------------------------------
+local function bastao(comprimento, espessura)
+	local s = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(comprimento, espessura, espessura), color = Color3.fromRGB(170, 40, 30), mat = Enum.Material.SmoothPlastic })
+	local ponta1 = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(espessura * 0.6, espessura * 1.15, espessura * 1.15), color = GOLD, mat = Enum.Material.Metal })
+	local ponta2 = ponta1:Clone()
+	ponta2.Parent = workspace
+	return s, ponta1, ponta2
+end
+
+P.enma_bastao = function(plr, char, root, dmg)
+	local s, a, b = bastao(9, 0.5)
+	local t0 = os.clock()
+	while os.clock() - t0 < 0.3 and root.Parent do
+		local k = (os.clock() - t0) / 0.3
+		local ang = math.rad(-80 + k * 160)
+		local cf = root.CFrame * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -4.5) * CFrame.Angles(0, math.rad(90), 0)
+		s.CFrame = cf
+		a.CFrame = cf * CFrame.new(4.5, 0, 0)
+		b.CFrame = cf * CFrame.new(-4.5, 0, 0)
+		task.wait()
+	end
+	local set = {}
+	for _, e in ipairs(inCone(root.Position, flatLook(root), 10, 90)) do
+		hitOnce(set, e, dmg * 2.6, root.Position, 40)
+	end
+	for _, p in ipairs({ s, a, b }) do fadeOut(p, 0.2) end
+end
+
+P.enma_cinzas = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local center = root.Position + look * 12
+	local balls = {}
+	for _ = 1, 9 do
+		local off = Vector3.new(math.random() * 10 - 5, math.random() * 3, math.random() * 10 - 5)
+		local b = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2, color = ASH, mat = Enum.Material.SmoothPlastic, trans = 0.35, cf = CFrame.new(root.Position + look * 2) })
+		TweenService:Create(b, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Size = Vector3.one * (5 + math.random() * 3), CFrame = CFrame.new(center + off) }):Play()
+		table.insert(balls, b)
+	end
+	task.wait(0.4)
+	for _ = 1, 6 do
+		for _, e in ipairs(inRadius(center, 9)) do
+			hit(e, dmg * 0.5, nil, 0)
+		end
+		burst(center + Vector3.new(math.random() * 6 - 3, 1, math.random() * 6 - 3), 3, FIRE, 0.25, 0.3)
+		task.wait(0.5)
+	end
+	for _, b in ipairs(balls) do fadeOut(b, 0.6) end
+end
+
+P.enma_gigante = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local base = chao(root) + look * 2
+	local s, a, b = bastao(38, 3)
+	local pivo = CFrame.lookAt(base, base + look)
+	local t0 = os.clock()
+	while true do
+		local k = math.min((os.clock() - t0) / 0.55, 1)
+		k = k * k
+		-- começa em pé e cai para a frente
+		local up = pivo * CFrame.Angles(math.rad(90) * (1 - k), 0, 0)
+		local stick = up * CFrame.new(0, 0, -19) * CFrame.Angles(0, math.rad(90), 0)
+		s.CFrame = stick
+		a.CFrame = stick * CFrame.new(19, 0, 0)
+		b.CFrame = stick * CFrame.new(-19, 0, 0)
+		if k >= 1 then break end
+		task.wait()
+	end
+	local impact = base + look * 20
+	ring(impact, 40, Color3.fromRGB(170, 140, 100), 0.5)
+	burst(impact, 18, Color3.fromRGB(200, 180, 140), 0.45, 0.35)
+	local set = {}
+	for _, e in ipairs(inLine(root.Position, look, 40, 10)) do
+		hitOnce(set, e, dmg * 7, impact, 60)
+	end
+	task.wait(0.4)
+	for _, p in ipairs({ s, a, b }) do fadeOut(p, 0.4) end
+end
+
+-- INU ---------------------------------------------------------
+P.inu_presa = function(plr, char, root, dmg)
+	local drill = fx({ shape = Enum.PartType.Ball, size = Vector3.new(5, 5, 7), color = Color3.fromRGB(150, 140, 130), trans = 0.45 })
+	local t0 = os.clock()
+	task.spawn(function()
+		while os.clock() - t0 < 0.5 and root.Parent do
+			drill.CFrame = root.CFrame * CFrame.Angles(0, 0, os.clock() * 25)
 			task.wait()
 		end
-		spark:Destroy()
-		local trail = fx({ size = Vector3.new(0.6, 0.6, 22), color = SPARK, cf = CFrame.lookAt((startPos + endPos) / 2, endPos) })
-		fadeOut(trail, 0.3)
-		burst(endPos, 10, SPARK, 0.3)
-		zap(startPos, endPos, Color3.fromRGB(255, 255, 255), 0.9, 2, 0.35)
-		for _ = 1, 8 do
-			local f1, f2 = math.random(), math.random()
-			local base1, base2 = startPos + look * (22 * f1), startPos + look * (22 * f2)
-			local o = Vector3.new(math.random(-5, 5), math.random(-2, 4), math.random(-5, 5))
-			zap(base1 + o, base2 - o, SPARK, 0.35, 2.5, 0.3)
-		end
-		local a, b = Vector2.new(startPos.X, startPos.Z), Vector2.new(endPos.X, endPos.Z)
-		for _, e in ipairs(getEnemies()) do
-			local p = Vector2.new(e.root.Position.X, e.root.Position.Z)
-			local ab = b - a
-			local t = ab.Magnitude > 0.01 and math.clamp((p - a):Dot(ab) / ab:Dot(ab), 0, 1) or 1
-			local d = (p - (a + ab * t)).Magnitude
-			if d <= 5 + e.raio and math.abs(e.root.Position.Y - endPos.Y) < 12 then
-				hit(e, dmg * 3.5, startPos, 45)
-				for _ = 1, 3 do
-					zap(e.root.Position + Vector3.new(0, 6, 0), e.root.Position + Vector3.new(math.random(-3, 3), -1, math.random(-3, 3)), SPARK, 0.4, 1.5, 0.3)
-				end
+		fadeOut(drill, 0.2)
+	end)
+	local vezes = {}
+	local t1 = os.clock()
+	while os.clock() - t1 < 0.5 and root.Parent do
+		for _, e in ipairs(inRadius(root.Position, 7)) do
+			local n = vezes[e.model] or 0
+			if n < 2 and (n == 0 or os.clock() - t1 > 0.25) then
+				vezes[e.model] = n + 1
+				hit(e, dmg * 1.6, root.Position, 35)
 			end
 		end
-		return true
-	end,
+		task.wait()
+	end
+end
 
-	-- E: Water Dragon — dragão de água que sai do chão e avança
-	function(plr, char, root, dmg)
-		local look = flatLook(root)
-		local base = root.Position
-		local hitSet = {}
-		dragon({
-			p0 = base + look * 3 - Vector3.new(0, 3, 0),
-			p1 = base + look * 20 + Vector3.new(0, 6, 0),
-			p2 = base + look * 70,
-			count = 24, headSize = 4.2, duration = 1.2, trans = 0.15,
-			colorA = WATER, colorB = Color3.fromRGB(200, 235, 255),
-			onStep = function(head)
-				for _, e in ipairs(inRadius(head, 9)) do
-					if not hitSet[e.model] then
-						hitSet[e.model] = true
-						hit(e, dmg * 3, head, 55)
-					end
-				end
-			end,
-			onArrive = function(pos)
-				burst(pos, 16, WATER, 0.5, 0.2)
-			end,
-		})
-		return true
-	end,
+P.inu_mordida = function(plr, char, root, dmg)
+	local e = nearestEnemy(root.Position, flatLook(root), 32)
+	local original = cao(plr)
+	local salto
+	if original then
+		salto = original:Clone()
+		salto.Name = "CaoSalto"
+		salto.Parent = workspace
+	else
+		salto = Instance.new("Model")
+		local b = fx({ shape = Enum.PartType.Ball, size = Vector3.new(1.4, 1.2, 2.2), color = Color3.fromRGB(236, 232, 222), mat = Enum.Material.SmoothPlastic })
+		b.Parent = salto
+		salto.PrimaryPart = b
+		salto.Parent = workspace
+	end
+	local from = root.Position + root.CFrame.RightVector * 2
+	local alvo = e and e.root.Position or (root.Position + flatLook(root) * 14)
+	local t0 = os.clock()
+	while true do
+		local k = math.min((os.clock() - t0) / 0.35, 1)
+		local pos = from:Lerp(alvo, k) + Vector3.new(0, math.sin(k * math.pi) * 5, 0)
+		salto:PivotTo(CFrame.lookAt(pos, alvo + Vector3.new(0, 0.01, 0)))
+		if k >= 1 then break end
+		task.wait()
+	end
+	if e then
+		hit(e, dmg * 3, from, 25)
+		burst(alvo, 5, Color3.fromRGB(200, 40, 40), 0.25, 0.35)
+	else
+		burst(alvo, 4, Color3.fromRGB(236, 232, 222), 0.25, 0.4)
+	end
+	task.wait(0.25)
+	salto:Destroy()
+end
 
-	-- R: Vanish — o inimigo some num portal e volta depois de 5 segundos com menos vida
-	function(plr, char, root, dmg)
-		local target = nearestEnemy(root.Position, flatLook(root), 45)
-		if not target then
-			feedback(plr, { msg = "No target nearby." })
-			return false
+P.inu_fera = function(plr, char, root, dmg)
+	burst(root.Position, 10, Color3.fromRGB(190, 120, 80), 0.35, 0.35)
+	buff(plr, char, 0.3, 5, 10, Color3.fromRGB(200, 120, 70))
+end
+
+---------------------------------------------------------------
+-- Estado dos poderes e chakra
+---------------------------------------------------------------
+
+local function maxChakra(plr)
+	return math.max(plr:GetAttribute("ChakraMax") or 100, 1)
+end
+
+local function enviarEstado(plr)
+	local data = PlayerData.Get(plr)
+	if not data then return end
+	local clan = ClanPowers.Sincronizar(data)
+	local ok, motivo = {}, {}
+	for slot = 1, 3 do
+		local o, m = ClanPowers.Liberado(data, slot)
+		ok[slot] = o
+		motivo[slot] = m or ""
+	end
+	plr:SetAttribute("PoderesEstado", HttpService:JSONEncode({ Cla = clan or "", Ok = ok, Motivo = motivo }))
+end
+
+local atualizarEv = Instance.new("BindableEvent")
+atualizarEv.Name = "AtualizarPoderes"
+atualizarEv.Parent = ServerStorage
+atualizarEv.Event:Connect(enviarEstado)
+
+local function prepararJogador(plr)
+	plr:SetAttribute("BuffDano", 0)
+	plr:SetAttribute("BuffVelocidade", 0)
+	for _ = 1, 60 do
+		if PlayerData.Get(plr) then break end
+		task.wait(0.25)
+	end
+	if not plr.Parent then return end
+	plr:SetAttribute("Chakra", maxChakra(plr))
+	enviarEstado(plr)
+	plr:GetAttributeChangedSignal("Cla"):Connect(function() enviarEstado(plr) end)
+	plr:GetAttributeChangedSignal("Rank"):Connect(function() enviarEstado(plr) end)
+	local ls = plr:WaitForChild("leaderstats", 10)
+	local lv = ls and ls:WaitForChild("Level", 10)
+	if lv then
+		lv.Changed:Connect(function() enviarEstado(plr) end)
+	end
+	plr.CharacterAdded:Connect(function()
+		plr:SetAttribute("BuffDano", 0)
+		plr:SetAttribute("BuffVelocidade", 0)
+		plr:SetAttribute("Chakra", maxChakra(plr))
+	end)
+end
+Players.PlayerAdded:Connect(prepararJogador)
+for _, plr in ipairs(Players:GetPlayers()) do
+	task.spawn(prepararJogador, plr)
+end
+
+-- chakra volta sozinho
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for _, plr in ipairs(Players:GetPlayers()) do
+			local mx = maxChakra(plr)
+			local c = plr:GetAttribute("Chakra")
+			if c and c < mx then
+				plr:SetAttribute("Chakra", math.min(mx, c + mx * ClanPowers.CHAKRA_REGEN * 0.5))
+			elseif c and c > mx then
+				plr:SetAttribute("Chakra", mx)
+			end
 		end
-		task.spawn(function()
-			local e = target
-			local orig = e.root.CFrame
-			local center = orig.Position
-			local size = 9 + e.raio * 3
-			local function scaleTo(v)
-				pcall(function()
-					e.model:ScaleTo(v)
-				end)
-			end
-			-- a esfera abre no meio do inimigo e ele é sugado para dentro dela
-			e.root.Anchored = true
-			vortex(center, size, 0.9, false, function(k)
-				if e.model.Parent then
-					scaleTo(math.max(1 - k * 0.95, 0.05))
-					e.model:PivotTo(CFrame.new(center) * CFrame.Angles(0, k * 14, 0))
-				end
-			end)
-			if e.hum.Health <= 0 or not e.model.Parent then
-				scaleTo(1)
-				e.root.Anchored = false
-				return
-			end
-			e.model:SetAttribute("Sumido", true)
-			e.model:PivotTo(orig + Vector3.new(0, 3000, 0))
-			task.wait(5)
-			if not e.model.Parent then
-				return
-			end
-			-- a esfera reabre no mesmo lugar e o inimigo sai dela
-			e.model:PivotTo(CFrame.new(center))
-			vortex(center, size, 0.6, true, function(k)
-				scaleTo(0.05 + 0.95 * k)
-			end)
-			scaleTo(1)
-			e.model:PivotTo(orig)
-			e.root.Anchored = false
-			e.root.AssemblyLinearVelocity = Vector3.zero
-			e.model:SetAttribute("Sumido", nil)
-			local extra = (e.raio <= 2) and e.hum.MaxHealth * 0.3 or 0
-			hit(e, dmg * 6 + extra, nil, 0)
-		end)
-		return true
-	end,
-}
+	end
+end)
 
 ---------------------------------------------------------------
 -- Entrada
@@ -754,35 +984,46 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		return
 	end
 	local data = PlayerData.Get(plr)
-	-- sem personagem equipado, usa o kit provisório do clã
-	local id = data and (data.Equipped or (data.Cla and data.Cla.Id and ClanKit[data.Cla.Id]))
-	local c = id and CharacterData.GetCharacter(id)
-	if not c or not c.Abilities or not ABILITIES[id] then
-		feedback(plr, { msg = "Equip a character first (Collection)." })
+	if not data then return end
+	local clan = ClanPowers.Sincronizar(data)
+	local c = clan and ClanPowers.Clans[clan]
+	if not c then
+		feedback(plr, { msg = "Spin the roulette to get a clan first.", slot = slot, cooldown = 0 })
+		return
+	end
+	local info = c.Powers[slot]
+	local ok, motivo = ClanPowers.Liberado(data, slot)
+	if not ok then
+		feedback(plr, { msg = info.Name .. " is locked. " .. (motivo or ""), slot = slot, cooldown = 0 })
 		return
 	end
 	local char = plr.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not hum or not root or hum.Health <= 0 then
+	if not hum or not root or hum.Health <= 0 or not P[info.Id] then
 		return
 	end
 	cooldowns[plr] = cooldowns[plr] or {}
-	local key = id .. slot
 	local now = os.clock()
-	if (cooldowns[plr][key] or 0) > now then
+	if (cooldowns[plr][info.Id] or 0) > now + 0.15 then
 		return
 	end
-	local info = c.Abilities[slot]
-	cooldowns[plr][key] = now + info.Cooldown
+	local chakra = plr:GetAttribute("Chakra") or 0
+	if chakra < info.Chakra then
+		feedback(plr, { msg = "Not enough chakra.", slot = slot, cooldown = 0 })
+		return
+	end
+	plr:SetAttribute("Chakra", chakra - info.Chakra)
+	cooldowns[plr][info.Id] = now + info.Cooldown
 	feedback(plr, { slot = slot, cooldown = info.Cooldown })
-	local dmg = PlayerData.GetCombatStats(plr).PowerDamage
+	local dmg = PlayerData.GetCombatStats(plr).PowerDamage * (1 + (plr:GetAttribute("BuffDano") or 0))
 	task.spawn(function()
-		local ok, res = pcall(ABILITIES[id][slot], plr, char, root, dmg)
-		if not ok then
+		local okRun, res = pcall(P[info.Id], plr, char, root, dmg)
+		if not okRun then
 			warn("[AbilityServer] Erro em " .. info.Name .. ": " .. tostring(res))
 		elseif res == false then
-			cooldowns[plr][key] = 0
+			cooldowns[plr][info.Id] = 0
+			plr:SetAttribute("Chakra", (plr:GetAttribute("Chakra") or 0) + info.Chakra)
 			feedback(plr, { slot = slot, cooldown = 0 })
 		end
 	end)

@@ -12,6 +12,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
+local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 
 local action = Instance.new("RemoteFunction")
@@ -36,6 +37,8 @@ local function dados(player)
 	local m = data.Missoes
 	m.Historia = tonumber(m.Historia) or 0
 	if type(m.Cool) ~= "table" then m.Cool = {} end
+	if type(m.Feitas) ~= "table" then m.Feitas = {} end -- missões únicas já feitas
+	ClanPowers.Sincronizar(data) -- trocou de clã: missões do clã antigo somem
 	if type(m.Ativa) ~= "table" or not MissionData.Get(m.Ativa.Id) then m.Ativa = nil end
 	if type(data.Rank) ~= "string" then data.Rank = "Estudante" end
 	return data, m
@@ -43,7 +46,13 @@ end
 
 local function disponivel(data, m, missao)
 	if m.Ativa and m.Ativa.Id == missao.Id then return false end
+	if missao.Cla and not (data.Cla and data.Cla.Id == missao.Cla) then return false end
+	if missao.Unica and m.Feitas[missao.Id] then return false end
+	if missao.Requer and not m.Feitas[missao.Requer] then return false end
 	if missao.Nivel and data.Level < missao.Nivel then return false, "Requires level " .. missao.Nivel end
+	if missao.RankMin and MissionData.RankIndex(data.Rank) < MissionData.RankIndex(missao.RankMin) then
+		return false, "Requires rank " .. MissionData.RankName(missao.RankMin)
+	end
 	if missao.Historia then
 		return m.Historia == missao.Historia - 1
 	end
@@ -102,6 +111,8 @@ local function concluir(player)
 	m.Ativa = nil
 	if missao.Historia then
 		m.Historia = math.max(m.Historia, missao.Historia)
+	elseif missao.Unica then
+		m.Feitas[missao.Id] = true
 	else
 		m.Cool[missao.Id] = os.time() + MissionData.COOLDOWN
 	end
@@ -111,6 +122,15 @@ local function concluir(player)
 	if r.Pontos then
 		data.Atributos.Pontos += r.Pontos
 		PlayerData.Refresh(player)
+	end
+	if r.Poder and missao.Cla then
+		local c = ClanPowers.Clans[missao.Cla]
+		local poder = c and c.Powers[r.Poder]
+		if poder then
+			aviso(player, ("NEW POWER: %s  [%s]"):format(poder.Name, ClanPowers.KEYS[r.Poder]), true)
+		end
+		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
+		if atualizar then atualizar:Fire(player) end
 	end
 	if missao.Promove then
 		data.Rank = missao.Promove
@@ -607,7 +627,17 @@ if game:GetService("RunService"):IsStudio() then
 		elseif acao == "nivel" then
 			data.Level = valor
 			PlayerData.Refresh(player)
+		elseif acao == "cla" then
+			data.Cla.Id = valor
+			player:SetAttribute("Cla", valor)
+		elseif acao == "rank" then
+			data.Rank = valor
+			player:SetAttribute("Rank", valor)
+		elseif acao == "feita" then
+			m.Feitas[valor] = true
 		end
+		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
+		if atualizar then atualizar:Fire(player) end
 		return {
 			Historia = m.Historia, Ativa = m.Ativa and (m.Ativa.Id .. " " .. m.Ativa.P) or "-",
 			Rank = data.Rank, Level = data.Level, XP = data.XP, Coins = data.Coins,

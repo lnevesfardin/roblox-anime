@@ -114,7 +114,8 @@ local function context(plr)
 	if not hum or not root or hum.Health <= 0 then
 		return nil
 	end
-	return hum, root, PlayerData.GetCombatStats(plr).Damage
+	-- BuffDano: poderes de clã como Sharingan e Abertura dos Portões
+	return hum, root, PlayerData.GetCombatStats(plr).Damage * (1 + (plr:GetAttribute("BuffDano") or 0))
 end
 
 local function onCombo(plr, st, hum, root, dmg)

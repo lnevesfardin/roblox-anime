@@ -153,9 +153,9 @@ local function aplicar(player)
 	if not data then return end
 	local cla = data.Cla.Id
 	player:SetAttribute("Cla", cla or "")
+	-- Fase 4: os poderes vêm do caminho do clã (ClanPowers); o kit provisório saiu
 	if not data.Equipped then
-		-- os botões de poder do cliente leem este atributo: kit provisório do clã
-		player:SetAttribute("Equipped", cla and ClanData.Kit[cla] or nil)
+		player:SetAttribute("Equipped", nil)
 	end
 	player:SetAttribute("BonusVelocidade", cla == "Shirokiba" and 2 or 0)
 	player:SetAttribute("BonusChakra", cla == "Uzu" and 0.3 or 0)

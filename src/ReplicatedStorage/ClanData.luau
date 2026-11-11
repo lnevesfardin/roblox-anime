@@ -27,7 +27,7 @@ ClanData.Clans = {
 	Byakugan = { Name = "Byakugan", Rarity = "Epic", Weight = 7, Symbol = "👁", Color = Color3.fromRGB(200, 190, 240), Trait = "Sees enemies from afar and through walls" },
 	Lee = { Name = "Lee", Rarity = "Rare", Weight = 15, Symbol = "🥋", Color = Color3.fromRGB(70, 180, 110), Trait = "Fighting styles cost 20% less energy" },
 	Shirokiba = { Name = "Shirokiba", Rarity = "Rare", Weight = 15, Symbol = "⚡", Color = Color3.fromRGB(225, 230, 240), Trait = "White hair and faster running" },
-	Enma = { Name = "Enma", Rarity = "Common", Weight = 30, Symbol = "🐒", Color = Color3.fromRGB(200, 150, 80), Trait = "Clan path starts early (staff at level 3)" },
+	Enma = { Name = "Enma", Rarity = "Common", Weight = 30, Symbol = "🐒", Color = Color3.fromRGB(200, 150, 80), Trait = "Clan path starts early (2nd power at level 3)" },
 	Inu = { Name = "Inu", Rarity = "Common", Weight = 30, Symbol = "🐕", Color = Color3.fromRGB(190, 120, 80), Trait = "A dog companion follows you" },
 }
 

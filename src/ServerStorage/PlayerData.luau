@@ -69,7 +69,7 @@ end
 local function withDefaults(loaded)
 	local data = defaultData()
 	if type(loaded) ~= "table" then
-		return data
+		loaded = {}
 	end
 	for key, value in pairs(loaded) do
 		data[key] = value
@@ -97,7 +97,7 @@ end
 
 local function loadData(player)
 	if not store then
-		return defaultData(), false
+		return withDefaults(nil), false
 	end
 	for attempt = 1, MAX_TRIES do
 		local ok, result = pcall(function()
@@ -110,7 +110,7 @@ local function loadData(player)
 		task.wait(1)
 	end
 	-- Se não conseguiu ler, NÃO salva depois, para não apagar o progresso real.
-	return defaultData(), false
+	return withDefaults(nil), false
 end
 
 -- Atualiza os números que aparecem no canto da tela

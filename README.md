@@ -12,27 +12,33 @@ RPG de anime para Roblox: o jogador é ele mesmo, ganha personagens em caixas (C
 - **Mapa Snake's Den**: Lab Guinea Pigs → Sound Ninjas → Kab Clones → Red Cloud Team → boss **White Snake**, que tem golpe venenoso, mordidas e invoca cobras.
 - **Corrida**: Shift no PC, botão "Run" no celular, L3 no controle.
 - **Lobby**: vila japonesa com reta de saída, floresta e 5 destinos (Snake's Den, Sand Village, Hideout, Ninja World War, Valley of the End).
+- **HUD**: barra de nível/moedas/gemas e menu com Caixas (animação de giro, clarão e brilho da raridade, com som), Coleção (personagens, cópias, converter repetidos em moedas, itens), Battle Pass (50 níveis), Loja e Configurações (música, efeitos, sensibilidade, campo de visão, gráficos leves; salvas por jogador).
+- **Gemas do Rikudou**: moeda premium (só Robux ou Battle Pass). Compram a Caixa Rikudou e personagens fortes.
+- **Itens**: boosts 2x XP / 2x moedas e acessórios (bandana, cachecol, aura, rastro) feitos por código.
 
 ## Estrutura
 
 ```
 src/
   ReplicatedStorage/
-    CharacterData.luau      raridades, personagens, caixas, fórmulas de XP e status
+    CharacterData.luau      raridades, personagens, caixas, chances reais, fórmulas de XP e status
+    EconomyData.luau        gemas, pacotes Robux, loja, Battle Pass, itens e moedas por repetido
+    IconeGema.luau          desenha o ícone das gemas por código (até enviar o PNG de assets/)
     MapData.luau            ondas, inimigos, boss e recompensas de cada mapa
   ServerStorage/
     PlayerData.luau         dados do jogador + DataStore
   ServerScriptService/
     ProgressionServer       liga o PlayerData
-    CrateServer             abre caixas (RemoteFunction OpenCrate)
-    EquipServer             coleção e equipar (GetCollection / EquipCharacter)
+    CrateServer             abre caixas com moedas, gemas ou caixa grátis (RemoteFunction OpenCrate)
+    BattlePassServer        Battle Pass (GetBattlePass / ClaimBattlePass)
+    ShopServer              compras com Robux (ProcessReceipt) e com gemas (BuyWithGems)
+    EquipServer             coleção, equipar, converter repetidos, inventário, boosts e acessórios
     CombatServer            ataque do jogador (RemoteEvent Attack)
     AbilityServer           os 9 poderes dos personagens (RemoteEvent UseAbility)
     WaveServer              partida: contagem, ondas, boss, recompensa
     NascerNaVila            faz o jogador nascer na praça da vila
   StarterPlayer/StarterPlayerScripts/
-    PainelCaixa             painel de nível/moedas + botão de caixa
-    PainelColecao           janela de coleção
+    HUD                     todas as telas (substitui PainelCaixa e PainelColecao)
     CombatClient            ataque + HUD das ondas e barra do boss
     AbilityClient           teclas Q/E/R, HUD de recarga, investida do Tatashi
     Corrida                 correr

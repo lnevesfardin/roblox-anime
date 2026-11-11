@@ -51,8 +51,17 @@ local RAR = {
 }
 local RARNOME = { Comum = "Common", Raro = "Rare", Epico = "Epic", Lendario = "Legendary", Mistico = "Mythic" }
 
+-- toda peça de tela ganha LayoutOrder na ordem em que foi criada,
+-- e as listas ordenam por LayoutOrder (assim renomear algo não muda a ordem)
+local ordem = 0
 local function new(class, props, children)
 	local o = Instance.new(class)
+	if o:IsA("GuiObject") then
+		ordem += 1
+		o.LayoutOrder = ordem
+	elseif o:IsA("UIGridStyleLayout") then
+		o.SortOrder = Enum.SortOrder.LayoutOrder
+	end
 	for k, v in pairs(props or {}) do
 		if k ~= "Parent" then
 			o[k] = v
@@ -295,7 +304,7 @@ end)
 local function novaTela(nome, titulo, icone, cor)
 	local f = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, Parent = conteudo })
 	telas[nome] = { frame = f, titulo = titulo }
-	local b = new("TextButton", { Size = UDim2.fromOffset(80, 78), BackgroundColor3 = COR.painel, Text = "", AutoButtonColor = false, Parent = menu })
+	local b = new("TextButton", { Name = "Menu_" .. nome, Size = UDim2.fromOffset(80, 78), BackgroundColor3 = Color3.new(1, 1, 1), Text = "", AutoButtonColor = false, Parent = menu })
 	corner(b, 16)
 	local borda = stroke(b, COR.linha, 3)
 	grad(b, cor:Lerp(Color3.new(1, 1, 1), 0.15), cor:Lerp(Color3.new(0, 0, 0), 0.35), 90)
@@ -453,7 +462,9 @@ local function animarAbertura(crateId, r, deNovo)
 	local corA = crateId == "Rikudou" and Color3.fromRGB(255, 170, 50) or Color3.fromRGB(230, 120, 40)
 	local corB = crateId == "Rikudou" and Color3.fromRGB(120, 50, 200) or Color3.fromRGB(150, 60, 20)
 
-	local fundo = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(8, 6, 16), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, Parent = gui, ZIndex = 100 })
+	-- tela própria por cima de tudo, cobrindo também a faixa do topo
+	local telaAbertura = new("ScreenGui", { Name = "HUD_Abertura", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 20, Parent = gui.Parent })
+	local fundo = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(8, 6, 16), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, Parent = telaAbertura, ZIndex = 100 })
 	local palco = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1 / escala.Scale, 1 / escala.Scale), BackgroundTransparency = 1, Parent = fundo })
 	new("UIScale", { Scale = escala.Scale, Parent = palco })
 	tween(fundo, 0.3, { BackgroundTransparency = 0.15 })
@@ -563,7 +574,7 @@ local function animarAbertura(crateId, r, deNovo)
 	local outra = botao(palco, "OPEN AGAIN", COR.laranja, UDim2.fromOffset(170, 50), UDim2.new(0.5, 10, 0.45, 210))
 	local function fechar()
 		girando = false
-		fundo:Destroy()
+		telaAbertura:Destroy()
 		animando = false
 	end
 	ok.Activated:Connect(fechar)
@@ -825,7 +836,7 @@ local function iconeRecompensa(parent, rw)
 		local f = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = it and it.Type == "Boost" and COR.verde or (it and it.Color) or COR.roxo, Parent = area })
 		corner(f, 14)
 		stroke(f, Color3.new(1, 1, 1), 3)
-		label(f, it and it.Type == "Boost" and "2x" or "✦", 28, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+		label(f, it and it.Type == "Boost" and "2x" or "✨", 28, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
 	else
 		iconeMoeda(area, UDim2.fromScale(0.85, 0.85), UDim2.fromScale(0.075, 0.075))
 	end

@@ -69,8 +69,6 @@ local function nuvens(lado) -- lado = 0 (esquerda) ou 1 (direita)
 		st.Parent = c
 	end
 end
-nuvens(0)
-nuvens(1)
 
 -- emblema: losango com três faixas (roxo, dourado e vermelho), borda brilhante e as letras SL em pincelada
 local brilho = Instance.new("Frame")

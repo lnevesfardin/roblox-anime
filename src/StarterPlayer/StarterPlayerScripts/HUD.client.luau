@@ -166,7 +166,7 @@ local raiz = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim
 local escala = new("UIScale", { Parent = raiz })
 local function ajustarEscala()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1)
+	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) * 0.78 -- HUD compacto: tudo 22% menor
 	escala.Scale = sc
 	raiz.Size = UDim2.fromScale(1 / sc, 1 / sc)
 end

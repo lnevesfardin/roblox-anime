@@ -63,7 +63,7 @@ local badgeStroke = stroke(badge, COR.linha, 2)
 local badgeEscala = new("UIScale", { Parent = badge })
 local function posicionarBadge()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1)
+	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) * 0.78 -- HUD compacto: tudo 22% menor
 	badgeEscala.Scale = sc
 	badge.Position = UDim2.fromOffset(16 * sc, game:GetService("GuiService"):GetGuiInset().Y + 62 * sc)
 end

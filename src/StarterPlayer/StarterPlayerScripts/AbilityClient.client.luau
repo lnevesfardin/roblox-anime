@@ -33,7 +33,10 @@ gui.Parent = player:WaitForChild("PlayerGui")
 
 local barra = Instance.new("Frame")
 barra.Size = UDim2.fromOffset(318, 66)
-barra.Position = UDim2.new(0.5, -159, 1, -84)
+-- compacta: 75% do tamanho, presa pela base
+barra.AnchorPoint = Vector2.new(0, 1)
+barra.Position = UDim2.new(0.5, -119, 1, -12)
+Instance.new("UIScale", barra).Scale = 0.75
 barra.BackgroundTransparency = 1
 barra.Visible = false
 barra.Parent = gui

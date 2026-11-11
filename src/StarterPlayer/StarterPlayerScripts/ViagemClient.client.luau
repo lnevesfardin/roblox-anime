@@ -39,7 +39,8 @@ local function botao(parent, texto, cor, size, pos)
 end
 
 -- canto inferior esquerdo
-local abrir = botao(gui, "🌀 TRAVEL  [T]", Color3.fromRGB(20, 20, 23), UDim2.fromOffset(132, 36), UDim2.new(0, 12, 1, -48))
+local abrir = botao(gui, "🌀 TRAVEL [T]", Color3.fromRGB(20, 20, 23), UDim2.fromOffset(104, 28), UDim2.new(0, 10, 1, -38))
+abrir.TextSize = 12
 local borda = Instance.new("UIStroke")
 borda.Color = Color3.fromRGB(58, 58, 64)
 borda.Thickness = 2
@@ -48,24 +49,25 @@ borda.Parent = abrir
 
 local lista = Instance.new("Frame")
 lista.AnchorPoint = Vector2.new(0, 1)
-lista.Position = UDim2.new(0, 12, 1, -56) -- abre para cima do botão
-lista.Size = UDim2.fromOffset(190, #TravelData.Destinos * 40 + 34)
+lista.Position = UDim2.new(0, 10, 1, -44) -- abre para cima do botão
+lista.Size = UDim2.fromOffset(150, #TravelData.Destinos * 30 + 28)
 lista.BackgroundColor3 = Color3.fromRGB(20, 20, 23)
 lista.Visible = false
 lista.Parent = gui
 canto(lista, 12)
 local aviso = Instance.new("TextLabel")
 aviso.BackgroundTransparency = 1
-aviso.Position = UDim2.new(0, 8, 1, -28)
-aviso.Size = UDim2.new(1, -16, 0, 22)
+aviso.Position = UDim2.new(0, 6, 1, -24)
+aviso.Size = UDim2.new(1, -12, 0, 20)
 aviso.Font = Enum.Font.GothamBold
-aviso.TextSize = 12
+aviso.TextSize = 10
 aviso.TextColor3 = Color3.fromRGB(140, 140, 150)
 aviso.Text = "A clone throws you there"
 aviso.Parent = lista
 
 for i, d in ipairs(TravelData.Destinos) do
-	local b = botao(lista, d.Name, Color3.fromRGB(30, 30, 34), UDim2.new(1, -16, 0, 34), UDim2.fromOffset(8, 8 + (i - 1) * 40))
+	local b = botao(lista, d.Name, Color3.fromRGB(30, 30, 34), UDim2.new(1, -12, 0, 26), UDim2.fromOffset(6, 6 + (i - 1) * 30))
+	b.TextSize = 12
 	b.MouseButton1Click:Connect(function()
 		local r = travel:InvokeServer(d.Id)
 		if r and r.ok then

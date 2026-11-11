@@ -314,7 +314,10 @@ end)
 -- barra de recarga dos golpes extras
 local barra = Instance.new("Frame")
 barra.Size = UDim2.fromOffset(168, 66)
-barra.Position = UDim2.new(0.5, -159 - 178, 1, -84)
+-- compacta: 75% do tamanho, à esquerda da barra de poderes
+barra.AnchorPoint = Vector2.new(0, 1)
+barra.Position = UDim2.new(0.5, -119 - 8 - 126, 1, -12)
+Instance.new("UIScale", barra).Scale = 0.75
 barra.BackgroundTransparency = 1
 barra.Parent = gui
 

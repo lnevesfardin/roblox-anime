@@ -106,20 +106,23 @@ travel.OnServerInvoke = function(player, id)
 		end
 		root.Anchored = true
 		local base = root.CFrame
-		local IMPULSO = 0.9
+		local IMPULSO = 0.7
 		local ti = 0
 		while ti < IMPULSO and root.Parent do
 			ti += RunService.Heartbeat:Wait()
 			local k = math.min(ti / IMPULSO, 1)
 			-- o jogador é puxado para trás e para baixo, como numa catapulta
-			root.CFrame = base * CFrame.new(0, -0.8 * k, 1.6 * k) * CFrame.Angles(math.rad(18 * k), 0, 0)
+			root.CFrame = base * CFrame.new(0, -1.2 * k, 2.4 * k) * CFrame.Angles(math.rad(26 * k), 0, 0)
 		end
+		-- estouro de força na saída: onda de poeira no chão
+		fumaca(base.Position - Vector3.new(0, 2.5, 0))
+		fumaca(base.Position + base.LookVector * 2 - Vector3.new(0, 2, 0))
 		if not root.Parent then limpar() voando[player] = nil return end
 
 		local p0 = root.Position
 		local dist = (fim - p0).Magnitude
-		local T = math.clamp(dist / 80, 2.2, 5.5) -- voo mais lento e pesado
-		local H = math.clamp(dist * 0.22, 25, 120)
+		local T = math.clamp(dist / 110, 1.6, 4.2) -- arremesso forte: rápido e alto
+		local H = math.clamp(dist * 0.32, 35, 170)
 		local plano = Vector3.new(fim.X - p0.X, 0, fim.Z - p0.Z)
 		local olhar = plano.Magnitude > 1 and plano.Unit or root.CFrame.LookVector
 		root.Anchored = true
@@ -127,7 +130,7 @@ travel.OnServerInvoke = function(player, id)
 		while t < T and root.Parent and hum.Health > 0 do
 			t += RunService.Heartbeat:Wait()
 			local x = math.min(t / T, 1)
-			local a = 1 - (1 - x) ^ 1.7 -- sai com força e vai perdendo velocidade
+			local a = 1 - (1 - x) ^ 2.2 -- sai disparado e vai perdendo velocidade
 			local pos = p0:Lerp(fim, a) + Vector3.new(0, 4 * H * a * (1 - a), 0)
 			-- inclina o corpo: sobe de frente, desce apontando para o chão
 			local inclina = math.rad(-60 + 120 * a)

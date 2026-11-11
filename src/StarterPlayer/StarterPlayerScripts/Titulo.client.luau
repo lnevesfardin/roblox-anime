@@ -50,29 +50,96 @@ local LARANJA = Color3.fromRGB(255, 140, 40)
 -- Vazio = usa o logo desenhado por código (losango SL + SHINOBI LEGENDS).
 local IMAGEM_ENTRADA = ""
 
--- emblema: losango escuro com borda laranja e as letras SL
-local losango = Instance.new("Frame")
+local VERMELHO = Color3.fromRGB(225, 40, 45)
+
+-- nuvens vermelhas nos cantos de baixo da tela (bolas pretas com contorno vermelho)
+local function nuvens(lado) -- lado = 0 (esquerda) ou 1 (direita)
+	local sinal = lado == 0 and 1 or -1
+	for _, b in ipairs({ { 40, 30, 150 }, { 150, 10, 120 }, { 235, -10, 90 }, { 90, 110, 100 }, { 185, 80, 70 }, { 20, 150, 80 } }) do
+		local c = Instance.new("Frame")
+		c.AnchorPoint = Vector2.new(0.5, 0.5)
+		c.Position = UDim2.new(lado, sinal * b[1], 1, -b[2])
+		c.Size = UDim2.fromOffset(b[3], b[3])
+		c.BackgroundColor3 = Color3.fromRGB(12, 8, 10)
+		c.Parent = raiz
+		Instance.new("UICorner", c).CornerRadius = UDim.new(1, 0)
+		local st = Instance.new("UIStroke")
+		st.Color = VERMELHO
+		st.Thickness = 5
+		st.Parent = c
+	end
+end
+nuvens(0)
+nuvens(1)
+
+-- emblema: losango com três faixas (roxo, dourado e vermelho), borda brilhante e as letras SL em pincelada
+local brilho = Instance.new("Frame")
+brilho.AnchorPoint = Vector2.new(0.5, 0.5)
+brilho.Position = UDim2.new(0.5, 0, 0, 160)
+brilho.Size = UDim2.fromOffset(228, 228)
+brilho.Rotation = 45
+brilho.BackgroundColor3 = Color3.new(1, 1, 1)
+brilho.Parent = centro
+Instance.new("UICorner", brilho).CornerRadius = UDim.new(0, 12)
+local gb = Instance.new("UIGradient")
+gb.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 90, 255)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 230, 120)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 70, 50)) })
+gb.Rotation = -45
+gb.Parent = brilho
+
+local losango = Instance.new("CanvasGroup")
 losango.AnchorPoint = Vector2.new(0.5, 0.5)
-losango.Position = UDim2.new(0.5, 0, 0, 96)
-losango.Size = UDim2.fromOffset(120, 120)
+losango.Position = UDim2.new(0.5, 0, 0, 160)
+losango.Size = UDim2.fromOffset(208, 208)
 losango.Rotation = 45
-losango.BackgroundColor3 = Color3.fromRGB(20, 20, 23)
+losango.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 losango.Parent = centro
-Instance.new("UICorner", losango).CornerRadius = UDim.new(0, 16)
-local bl = Instance.new("UIStroke")
-bl.Color = LARANJA
-bl.Thickness = 5
-bl.Parent = losango
-local sl = Instance.new("TextLabel")
-sl.AnchorPoint = Vector2.new(0.5, 0.5)
-sl.Position = UDim2.new(0.5, 0, 0, 96)
-sl.Size = UDim2.fromOffset(140, 90)
-sl.BackgroundTransparency = 1
-sl.Text = "SL"
-sl.Font = Enum.Font.GothamBlack
-sl.TextSize = 64
-sl.TextColor3 = Color3.new(1, 1, 1)
-sl.Parent = centro
+Instance.new("UICorner", losango).CornerRadius = UDim.new(0, 8)
+local faixas = Instance.new("Frame")
+faixas.AnchorPoint = Vector2.new(0.5, 0.5)
+faixas.Position = UDim2.fromScale(0.5, 0.5)
+faixas.Size = UDim2.fromOffset(310, 310)
+faixas.Rotation = -45
+faixas.BackgroundTransparency = 1
+faixas.Parent = losango
+for i, par in ipairs({
+	{ Color3.fromRGB(150, 80, 255), Color3.fromRGB(40, 12, 90) },
+	{ Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 110, 20) },
+	{ Color3.fromRGB(235, 45, 55), Color3.fromRGB(80, 10, 20) },
+}) do
+	local fx = Instance.new("Frame")
+	fx.Position = UDim2.new((i - 1) / 3, 3, 0, 0)
+	fx.Size = UDim2.new(1 / 3, -6, 1, 0)
+	fx.BorderSizePixel = 0
+	fx.BackgroundColor3 = Color3.new(1, 1, 1)
+	fx.Parent = faixas
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(par[1], par[2])
+	g.Rotation = 90
+	g.Parent = fx
+end
+
+local function letras(cor, dx, dy, contorno)
+	local l = Instance.new("TextLabel")
+	l.AnchorPoint = Vector2.new(0.5, 0.5)
+	l.Position = UDim2.new(0.5, dx, 0, 172 + dy)
+	l.Size = UDim2.fromOffset(360, 190)
+	l.BackgroundTransparency = 1
+	l.Text = "SL"
+	l.Font = Enum.Font.GothamBlack
+	l.TextSize = 170
+	l.TextColor3 = cor
+	l.Rotation = -9
+	l.Parent = centro
+	if contorno then
+		local st = Instance.new("UIStroke")
+		st.Color = Color3.fromRGB(10, 8, 10)
+		st.Thickness = 9
+		st.Parent = l
+	end
+	return l
+end
+local slSombra = letras(VERMELHO, 9, 9, true)
+local sl = letras(Color3.fromRGB(245, 245, 245), 0, 0, true)
 
 local function texto(t, tam, cor, y, alt)
 	local l = Instance.new("TextLabel")
@@ -90,8 +157,7 @@ local function texto(t, tam, cor, y, alt)
 	s.Parent = l
 	return l
 end
-local nome1 = texto("SHINOBI", 78, Color3.new(1, 1, 1), 186, 80)
-local nome2 = texto("LEGENDS", 78, LARANJA, 258, 80)
+local nome1 = texto("SHINOBI LEGENDS", 46, Color3.new(1, 1, 1), 306, 50)
 if IMAGEM_ENTRADA ~= "" then
 	-- a arte já traz o logo: cobre a tela inteira e esconde o logo de código
 	local arte = Instance.new("ImageLabel")
@@ -103,7 +169,7 @@ if IMAGEM_ENTRADA ~= "" then
 	arte.Parent = raiz
 	raiz.BackgroundTransparency = 0
 	grad.Enabled = false
-	losango.Visible, sl.Visible, nome1.Visible, nome2.Visible = false, false, false, false
+	brilho.Visible, losango.Visible, sl.Visible, slSombra.Visible, nome1.Visible = false, false, false, false, false
 end
 
 local function botao(t, cor, y)

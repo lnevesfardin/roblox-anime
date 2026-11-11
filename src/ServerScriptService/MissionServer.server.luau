@@ -277,6 +277,38 @@ local function prepararNpc(modelo)
 	p.Triggered:Connect(function(player)
 		conversar(player, modelo.Name, modelo)
 	end)
+	-- nome e função em cima da cabeça (todos os jogadores veem)
+	local head = modelo:FindFirstChild("Head") or root
+	if not head:FindFirstChild("NomeNPC") then
+		local b = Instance.new("BillboardGui")
+		b.Name = "NomeNPC"
+		b.Size = UDim2.fromOffset(170, 40)
+		b.StudsOffset = Vector3.new(0, 2.3, 0)
+		b.MaxDistance = 80
+		b.LightInfluence = 0
+		b.Parent = head
+		local n = Instance.new("TextLabel")
+		n.Size = UDim2.new(1, 0, 0, 22)
+		n.BackgroundTransparency = 1
+		n.Text = info.Name
+		n.TextSize = 16
+		n.Font = Enum.Font.GothamBlack
+		n.TextColor3 = Color3.new(1, 1, 1)
+		n.TextStrokeTransparency = 0.3
+		n.Parent = b
+		local t = Instance.new("TextLabel")
+		t.Position = UDim2.fromOffset(0, 22)
+		t.Size = UDim2.new(1, 0, 0, 14)
+		t.BackgroundTransparency = 1
+		t.Text = info.Titulo
+		t.TextSize = 12
+		t.Font = Enum.Font.GothamBold
+		t.TextColor3 = Color3.fromRGB(255, 205, 120)
+		t.TextStrokeTransparency = 0.4
+		t.Parent = b
+	end
+	local hum = modelo:FindFirstChildOfClass("Humanoid")
+	if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
 end
 for _, mdl in ipairs(CollectionService:GetTagged("NPC")) do prepararNpc(mdl) end
 CollectionService:GetInstanceAddedSignal("NPC"):Connect(prepararNpc)

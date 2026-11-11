@@ -4,7 +4,7 @@
 
 local TravelData = {}
 
-TravelData.COOLDOWN = 6 -- segundos entre um lançamento e outro
+TravelData.COOLDOWN = 60 -- segundos entre um lançamento e outro
 
 TravelData.Destinos = {
 	{ Id = "Praca", Name = "Village Square", Pos = Vector3.new(63, 3, -12) }, -- meio da praça de pedra

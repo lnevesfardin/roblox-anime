@@ -83,7 +83,7 @@ end
 -- Marcador do objetivo no mundo
 ---------------------------------------------------------------
 local ancora = new("Part", { Name = "MarcadorMissao", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1, Size = Vector3.one, Parent = workspace })
-local marca = new("BillboardGui", { Size = UDim2.fromOffset(120, 46), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 100000, StudsOffset = Vector3.new(0, 7, 0), Enabled = false, Parent = ancora })
+local marca = new("BillboardGui", { Name = "MarcaMissao", Size = UDim2.fromOffset(120, 46), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 100000, StudsOffset = Vector3.new(0, 7, 0), Enabled = false, Parent = ancora })
 local mIcone = label(marca, "◆", 22, COR.ouro, { Size = UDim2.new(1, 0, 0, 24), Font = Enum.Font.GothamBlack })
 new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 2, Parent = mIcone })
 local mDist = label(marca, "", 12, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 18), Font = Enum.Font.GothamBlack })
@@ -116,12 +116,12 @@ local function placaNpc(m)
 	local head = m:FindFirstChild("Head") or m:FindFirstChild("HumanoidRootPart")
 	if not head then return end
 	local info = MissionData.NPCs[m.Name] or MissionData.NPCs.StarterCharacter
-	local b = new("BillboardGui", { Adornee = head, Size = UDim2.fromOffset(160, 56), StudsOffset = Vector3.new(0, 2.6, 0), MaxDistance = 70, LightInfluence = 0, Parent = gui })
-	local ex = label(b, "!", 26, COR.ouro, { Size = UDim2.new(1, 0, 0, 26), Font = Enum.Font.GothamBlack, Visible = false })
+	-- só o "!" fica aqui (o nome em cima da cabeça é criado pelo servidor).
+	-- BillboardGui precisa ficar direto no PlayerGui: dentro de uma ScreenGui ele não aparece.
+	local b = new("BillboardGui", { Name = "AvisoNPC", Adornee = head, Size = UDim2.fromOffset(60, 30), StudsOffset = Vector3.new(0, 4.4, 0), MaxDistance = 90, LightInfluence = 0, Enabled = ligado(), Parent = player.PlayerGui })
+	player:GetAttributeChangedSignal("Jogando"):Connect(function() b.Enabled = ligado() end)
+	local ex = label(b, "!", 28, COR.ouro, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack, Visible = false })
 	new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 2, Parent = ex })
-	local n = label(b, info.Name, 13, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 16), Font = Enum.Font.GothamBlack })
-	new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Parent = n })
-	label(b, info.Titulo, 10, Color3.fromRGB(210, 210, 215), { Position = UDim2.fromOffset(0, 42), Size = UDim2.new(1, 0, 0, 12) })
 	placas[m] = { gui = b, ex = ex }
 end
 for _, m in ipairs(CollectionService:GetTagged("NPC")) do placaNpc(m) end

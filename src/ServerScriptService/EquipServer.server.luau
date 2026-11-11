@@ -154,6 +154,160 @@ local function buildCosmetic(char, itemId)
 	end
 end
 
+---------------------------------------------------------------
+-- Aparência do personagem equipado: copia roupa, cabeça (rosto), cabelo, máscara,
+-- acessórios e cores de um modelo em ServerStorage.Aparencias (nome = Id do personagem).
+-- O esqueleto do jogador continua o mesmo, então corrida e golpes por código funcionam.
+---------------------------------------------------------------
+local Aparencias = ServerStorage:FindFirstChild("Aparencias")
+local guardados = {} -- [player] = Folder com as roupas/acessórios originais do jogador
+
+local CORPO = {
+	Head = true, Torso = true, HumanoidRootPart = true, ["Left Arm"] = true, ["Right Arm"] = true, ["Left Leg"] = true, ["Right Leg"] = true,
+	UpperTorso = true, LowerTorso = true, LeftUpperArm = true, LeftLowerArm = true, LeftHand = true, RightUpperArm = true, RightLowerArm = true,
+	RightHand = true, LeftUpperLeg = true, LeftLowerLeg = true, LeftFoot = true, RightUpperLeg = true, RightLowerLeg = true, RightFoot = true,
+}
+
+local function grupoCorpo(nome)
+	if nome == "Head" then return "Cabeca" end
+	if nome == "Torso" or nome == "UpperTorso" or nome == "LowerTorso" then return "Tronco" end
+	if nome:find("Arm") or nome:find("Hand") then return "Bracos" end
+	if nome:find("Leg") or nome:find("Foot") then return "Pernas" end
+	return nil
+end
+
+local function restaurarAparencia(player, char)
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:GetAttribute("Aparencia") then
+			d:Destroy()
+		end
+	end
+	local pasta = guardados[player]
+	if pasta then
+		local head = char:FindFirstChild("Head")
+		for _, c in ipairs(pasta:GetChildren()) do
+			c.Parent = (c:GetAttribute("VoltaPara") == "Head" and head) or char
+		end
+		pasta:Destroy()
+		guardados[player] = nil
+	end
+	for _, p in ipairs(char:GetChildren()) do
+		if p:IsA("BasePart") then
+			local cor = p:GetAttribute("CorOriginal")
+			if cor then
+				p.Color = cor
+				p:SetAttribute("CorOriginal", nil)
+			end
+			local tr = p:GetAttribute("TranspOriginal")
+			if tr then
+				p.Transparency = tr
+				p:SetAttribute("TranspOriginal", nil)
+			end
+		end
+	end
+end
+
+local function aplicarAparencia(player, char, characterId)
+	restaurarAparencia(player, char)
+	local modelo = Aparencias and Aparencias:FindFirstChild(characterId)
+	local head = char:FindFirstChild("Head")
+	local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not (modelo and head and torso and hum) then return end
+	local mHead = modelo:FindFirstChild("Head")
+	local mTorso = modelo:FindFirstChild("UpperTorso") or modelo:FindFirstChild("Torso")
+	if not (mHead and mTorso) then return end
+
+	-- guarda o que o jogador está vestindo para devolver depois
+	local pasta = Instance.new("Folder")
+	pasta.Name = "RoupaOriginal_" .. player.UserId
+	pasta.Parent = ServerStorage
+	guardados[player] = pasta
+	for _, c in ipairs(char:GetChildren()) do
+		if c:IsA("Accessory") or c:IsA("Shirt") or c:IsA("Pants") or c:IsA("ShirtGraphic") then
+			c.Parent = pasta
+		end
+	end
+	for _, d in ipairs(head:GetChildren()) do
+		if d:IsA("Decal") then
+			d:SetAttribute("VoltaPara", "Head")
+			d.Parent = pasta
+		end
+	end
+
+	-- roupas
+	for _, c in ipairs(modelo:GetChildren()) do
+		if c:IsA("Shirt") or c:IsA("Pants") then
+			local k = c:Clone()
+			k:SetAttribute("Aparencia", true)
+			k.Parent = char
+		end
+	end
+
+	-- cores de pele
+	local cores = {}
+	for _, p in ipairs(modelo:GetChildren()) do
+		if p:IsA("BasePart") then
+			local g = grupoCorpo(p.Name)
+			if g and not cores[g] then cores[g] = p.Color end
+		end
+	end
+	for _, p in ipairs(char:GetChildren()) do
+		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+			local g = grupoCorpo(p.Name)
+			if g and cores[g] then
+				p:SetAttribute("CorOriginal", p.Color)
+				p.Color = cores[g]
+			end
+		end
+	end
+
+	-- cabeça do personagem (com o rosto) por cima da cabeça do jogador: funciona com qualquer tipo de cabeça
+	local cabeca = mHead:Clone()
+	for _, d in ipairs(cabeca:GetChildren()) do
+		if not (d:IsA("DataModelMesh") or d:IsA("Decal")) then
+			d:Destroy()
+		end
+	end
+	cabeca.Name = "CabecaPersonagem"
+	cabeca:SetAttribute("Aparencia", true)
+	weldTo(cabeca, head, CFrame.new())
+	cabeca.Parent = char
+	head:SetAttribute("TranspOriginal", head.Transparency)
+	head.Transparency = 1
+
+	-- acessórios do modelo (cabelo etc.)
+	for _, a in ipairs(modelo:GetChildren()) do
+		if a:IsA("Accessory") then
+			local k = a:Clone()
+			for _, d in ipairs(k:GetDescendants()) do
+				if d:IsA("LuaSourceContainer") then d:Destroy() end
+			end
+			k:SetAttribute("Aparencia", true)
+			hum:AddAccessory(k)
+		end
+	end
+
+	-- peças soltas (cabelo, máscara) presas na cabeça ou no tronco, na mesma posição do modelo
+	for _, p in ipairs(modelo:GetDescendants()) do
+		if p:IsA("BasePart") and not CORPO[p.Name] and not p:FindFirstAncestorOfClass("Accessory") then
+			local base, mBase = head, mHead
+			if (p.Position - mTorso.Position).Magnitude < (p.Position - mHead.Position).Magnitude then
+				base, mBase = torso, mTorso
+			end
+			local k = p:Clone()
+			for _, d in ipairs(k:GetChildren()) do
+				if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("LuaSourceContainer") or d:IsA("BasePart") then
+					d:Destroy()
+				end
+			end
+			k:SetAttribute("Aparencia", true)
+			weldTo(k, base, mBase.CFrame:ToObjectSpace(p.CFrame))
+			k.Parent = char
+		end
+	end
+end
+
 local function applyCosmetics(player)
 	local char = player.Character
 	local data = PlayerData.Get(player)
@@ -193,6 +347,11 @@ local function applyLook(player)
 	clearLook(char)
 	applyCosmetics(player)
 	local c = data.Equipped and CharacterData.GetCharacter(data.Equipped)
+	if c then
+		pcall(aplicarAparencia, player, char, c.Id)
+	else
+		restaurarAparencia(player, char)
+	end
 	if not c then
 		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
 		return
@@ -235,6 +394,11 @@ end
 
 local function setupPlayer(player)
 	player.CharacterAdded:Connect(function()
+		-- personagem novo já vem com a roupa original: descarta o que estava guardado
+		if guardados[player] then
+			guardados[player]:Destroy()
+			guardados[player] = nil
+		end
 		applyLook(player)
 	end)
 	player:GetAttributeChangedSignal("Equipped"):Connect(function()
@@ -367,3 +531,10 @@ equipCosmetic.OnServerInvoke = function(player, itemId, slot)
 	task.spawn(applyCosmetics, player)
 	return { ok = true, cosmetics = table.clone(data.Cosmetics) }
 end
+
+Players.PlayerRemoving:Connect(function(player)
+	if guardados[player] then
+		guardados[player]:Destroy()
+		guardados[player] = nil
+	end
+end)

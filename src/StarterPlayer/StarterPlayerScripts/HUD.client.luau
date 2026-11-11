@@ -481,31 +481,106 @@ local function confirmar(texto, simTexto, callback)
 end
 
 ---------------------------------------------------------------
--- Desenho da caixa (usado nos cards e na animação)
+-- Pergaminho de invocação (no lugar do baú), todo desenhado por código.
+-- abertura: 0 = enrolado (rolos juntos, com fita), 1 = todo aberto.
 ---------------------------------------------------------------
-local function desenharCaixa(parent, corA, corB, size, pos)
-	local c = new("Frame", { Size = size, Position = pos or UDim2.new(), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, Parent = parent })
-	local brilho = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.55), Size = UDim2.fromScale(1.35, 1.35), BackgroundColor3 = corA, BackgroundTransparency = 0.75, Parent = c, Name = "Brilho" })
-	corner(brilho, 999)
-	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }), Parent = brilho }).Rotation = 0
-	local corpo = new("Frame", { Position = UDim2.fromScale(0.08, 0.36), Size = UDim2.fromScale(0.84, 0.6), BackgroundColor3 = corA, Parent = c, Name = "Corpo" })
-	corner(corpo, 10)
-	grad(corpo, corA, corB, 90)
-	stroke(corpo, corB:Lerp(Color3.new(0, 0, 0), 0.5), 3)
-	local tampa = new("Frame", { Position = UDim2.fromScale(0.02, 0.2), Size = UDim2.fromScale(0.96, 0.22), BackgroundColor3 = corA, Parent = c, Name = "Tampa" })
-	corner(tampa, 10)
-	grad(tampa, corA:Lerp(Color3.new(1, 1, 1), 0.25), corA, 90)
-	stroke(tampa, corB:Lerp(Color3.new(0, 0, 0), 0.5), 3)
-	for _, f in ipairs({ corpo, tampa }) do
-		local fita = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromScale(0.16, 1), BackgroundColor3 = COR.ouro, BorderSizePixel = 0, Parent = f })
-		grad(fita, Color3.fromRGB(255, 235, 140), Color3.fromRGB(220, 150, 30), 0)
+local PAPEL = Color3.fromRGB(242, 228, 190)
+local PAPEL_ESC = Color3.fromRGB(200, 176, 128)
+local TINTA = Color3.fromRGB(70, 42, 28)
+local MADEIRA = Color3.fromRGB(105, 60, 32)
+local FAIXA_BASICA = Color3.fromRGB(180, 40, 35)
+local FAIXA_RIKUDOU = Color3.fromRGB(120, 50, 200)
+
+local function rolo(parent, h, corFaixa)
+	local rw = math.max(8, h * 0.14)
+	local r = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(rw, h), BackgroundTransparency = 1, Parent = parent })
+	for _, y in ipairs({ 0, 1 }) do -- pontas de madeira
+		local ponta = new("Frame", { AnchorPoint = Vector2.new(0.5, y), Position = UDim2.fromScale(0.5, y), Size = UDim2.fromOffset(rw * 0.5, h * 0.08), BackgroundColor3 = MADEIRA, Parent = r })
+		corner(ponta, 4)
+		new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, MADEIRA:Lerp(Color3.new(0, 0, 0), 0.4)), ColorSequenceKeypoint.new(0.45, MADEIRA:Lerp(Color3.new(1, 1, 1), 0.25)), ColorSequenceKeypoint.new(1, MADEIRA:Lerp(Color3.new(0, 0, 0), 0.5)) }), Parent = ponta })
 	end
+	local corpo = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0, rw * 0.88, 1, -h * 0.14), BackgroundColor3 = PAPEL, Parent = r })
+	corner(corpo, math.floor(rw * 0.25))
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, PAPEL_ESC:Lerp(Color3.new(0, 0, 0), 0.25)), ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 250, 232)), ColorSequenceKeypoint.new(1, PAPEL_ESC:Lerp(Color3.new(0, 0, 0), 0.35)) }), Parent = corpo })
+	for _, y in ipairs({ 0.13, 0.87 }) do -- faixas coloridas com fio dourado
+		local f = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, y), Size = UDim2.fromOffset(rw, math.max(3, h * 0.05)), BackgroundColor3 = corFaixa, Parent = r })
+		corner(f, 3)
+		new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, corFaixa:Lerp(Color3.new(0, 0, 0), 0.45)), ColorSequenceKeypoint.new(0.45, corFaixa:Lerp(Color3.new(1, 1, 1), 0.3)), ColorSequenceKeypoint.new(1, corFaixa:Lerp(Color3.new(0, 0, 0), 0.5)) }), Parent = f })
+		new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 0, 0, math.max(1, h * 0.008)), BackgroundColor3 = COR.ouro, BorderSizePixel = 0, Parent = f })
+	end
+	return r, rw
+end
+
+local function desenharPergaminho(parent, W, H, corFaixa, pos, abertura)
+	local root = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = pos or UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(W, H), BackgroundTransparency = 1, Parent = parent })
+	-- brilho atrás (3 círculos suaves)
+	local brilhos = {}
+	for i, f in ipairs({ 1.5, 1.15, 0.8 }) do
+		local b = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(H * f, H * f), BackgroundColor3 = corFaixa, BackgroundTransparency = 0.88 + i * 0.01, Parent = root })
+		corner(b, 999)
+		table.insert(brilhos, b)
+	end
+	local rwRef = math.max(8, H * 0.14)
+	local largura = W - rwRef
+	local hp = H * 0.74
+	local papel = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(0, hp), BackgroundColor3 = PAPEL, BorderSizePixel = 0, ClipsDescendants = true, Parent = root })
+	new("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(255, 250, 234), PAPEL_ESC), Rotation = 90, Parent = papel })
+	local miolo = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(largura, hp), BackgroundTransparency = 1, Parent = papel })
+	for _, y in ipairs({ 0, 1 }) do -- bordas vermelhas
+		new("Frame", { AnchorPoint = Vector2.new(0, y), Position = UDim2.new(0, 0, y, y == 0 and hp * 0.05 or -hp * 0.05), Size = UDim2.new(1, 0, 0, math.max(1, hp * 0.015)), BackgroundColor3 = Color3.fromRGB(170, 40, 35), BorderSizePixel = 0, Parent = miolo })
+	end
+	-- selo de invocação no centro
+	local tam = hp * 0.66
+	local selo = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(tam, tam), BackgroundTransparency = 1, Parent = miolo })
+	local aneis = {}
+	for i, f in ipairs({ 1, 0.74, 0.4 }) do
+		local a = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(f, f), BackgroundTransparency = 1, Parent = selo })
+		corner(a, 999)
+		table.insert(aneis, new("UIStroke", { Color = TINTA, Thickness = math.max(1, (i == 1 and 3 or 2) * H / 250), Parent = a }))
+	end
+	local giro = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = selo })
+	local marcas = {}
+	for i = 0, 11 do
+		local ang = math.rad(i * 30)
+		local m = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, math.sin(ang) * tam * 0.435, 0.5, -math.cos(ang) * tam * 0.435), Size = UDim2.fromOffset(math.max(1, tam * 0.03), tam * 0.1), Rotation = i * 30, BackgroundColor3 = TINTA, BorderSizePixel = 0, Parent = giro })
+		table.insert(marcas, m)
+	end
+	local centro = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.14, 0.14), BackgroundColor3 = TINTA, Parent = selo })
+	corner(centro, 999)
+	-- colunas de escrita (invocação) dos dois lados
+	if H >= 80 then
+		local escrita = { "召\n喚\n之\n術", "封\n印\n解\n放", "忍\n之\n巻\n物", "天\n命\n力\n与" }
+		for i, t in ipairs(escrita) do
+			local x = ({ 0.09, 0.21, 0.79, 0.91 })[i]
+			label(miolo, t, 14, TINTA, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(x, 0.5), Size = UDim2.new(0, hp * 0.16, 0.74, 0), TextScaled = true, Font = Enum.Font.GothamBold })
+		end
+	end
+	local esq, rw = rolo(root, H, corFaixa)
+	local dir = rolo(root, H, corFaixa)
+	-- fita que prende o pergaminho enrolado
+	local fita = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(rw * 2.6, math.max(3, H * 0.06)), BackgroundColor3 = Color3.fromRGB(200, 35, 35), Parent = root })
+	corner(fita, 3)
 	for _, sx in ipairs({ -1, 1 }) do
-		local laco = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, sx * 14, 0.22, 0), Size = UDim2.fromScale(0.2, 0.16), Rotation = sx * 25, BackgroundColor3 = COR.ouro, Parent = c })
-		corner(laco, 999)
-		stroke(laco, Color3.fromRGB(170, 110, 20), 2)
+		new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, sx * rw * 0.25, 0.5, 0), Size = UDim2.fromOffset(math.max(2, H * 0.03), H * 0.28), Rotation = sx * 18, BackgroundColor3 = Color3.fromRGB(200, 35, 35), BorderSizePixel = 0, Parent = fita })
 	end
-	return c
+	local obj = { root = root, papel = papel, esq = esq, dir = dir, fita = fita, selo = selo, aneis = aneis, marcas = marcas, centro = centro, giro = giro, brilhos = brilhos }
+	function obj.abrir(t, dur, estilo)
+		local w = largura * t
+		local off = math.max(rw / 2, w / 2)
+		local alvoPapel = { Size = UDim2.fromOffset(w, hp) }
+		local alvoE = { Position = UDim2.new(0.5, -off, 0.5, 0) }
+		local alvoD = { Position = UDim2.new(0.5, off, 0.5, 0) }
+		if dur then
+			tween(papel, dur, alvoPapel, estilo)
+			tween(esq, dur, alvoE, estilo)
+			tween(dir, dur, alvoD, estilo)
+		else
+			papel.Size, esq.Position, dir.Position = alvoPapel.Size, alvoE.Position, alvoD.Position
+		end
+	end
+	obj.abrir(abertura or 0)
+	fita.Visible = (abertura or 0) <= 0
+	return obj
 end
 
 ---------------------------------------------------------------
@@ -523,7 +598,7 @@ local function cardCaixa(crateId, x, corA, corB, desc)
 	stroke(card, corA, 3)
 	label(card, crate.Name, 24, corA:Lerp(Color3.new(1, 1, 1), 0.3), { Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 10), Font = Enum.Font.GothamBlack })
 	label(card, desc, 13, COR.fraco, { Size = UDim2.new(1, -30, 0, 34), Position = UDim2.fromOffset(15, 42) })
-	local arte = desenharCaixa(card, corA, corB, UDim2.fromOffset(150, 140), UDim2.new(0.5, 0, 0, 160))
+	local arte = desenharPergaminho(card, 250, 118, crateId == "Rikudou" and FAIXA_RIKUDOU or FAIXA_BASICA, UDim2.new(0.5, 0, 0, 160), 0.6).root
 	-- flutuar
 	task.spawn(function()
 		local t = 0
@@ -572,97 +647,114 @@ local function atualizarGratis()
 	marcar("caixas", caixasGratis)
 end
 
--- animação da abertura
+-- animação da abertura: o pergaminho balança enrolado, a fita arrebenta, ele se desenrola
+-- e o selo acende na cor da raridade antes de revelar o personagem
 local function animarAbertura(crateId, r, deNovo)
 	animando = true
 	local cor = RAR[r.rarity] or Color3.new(1, 1, 1)
 	local idx = CharacterData.GetRarityIndex(r.rarity) or 1
-	local corA = crateId == "Rikudou" and Color3.fromRGB(255, 170, 50) or Color3.fromRGB(230, 120, 40)
-	local corB = crateId == "Rikudou" and Color3.fromRGB(120, 50, 200) or Color3.fromRGB(150, 60, 20)
+	local corFaixa = crateId == "Rikudou" and FAIXA_RIKUDOU or FAIXA_BASICA
 
 	-- tela própria por cima de tudo, cobrindo também a faixa do topo
 	local telaAbertura = new("ScreenGui", { Name = "HUD_Abertura", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 20, Parent = gui.Parent })
-	local fundo = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(8, 6, 16), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, Parent = telaAbertura, ZIndex = 100 })
+	local fundo = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(10, 10, 16), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, Parent = telaAbertura })
 	local palco = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1 / escala.Scale, 1 / escala.Scale), BackgroundTransparency = 1, Parent = fundo })
 	new("UIScale", { Scale = escala.Scale, Parent = palco })
-	tween(fundo, 0.3, { BackgroundTransparency = 0.15 })
+	tween(fundo, 0.3, { BackgroundTransparency = 0.45 })
+	local acabou = false
+	local function fechar()
+		if acabou then return end
+		acabou = true
+		telaAbertura:Destroy()
+		animando = false
+	end
 
-	-- raios girando atrás (aparecem fracos e ganham a cor da raridade no fim)
-	local raios = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(700, 700), BackgroundTransparency = 1, Parent = palco })
+	-- raios girando atrás (aparecem quando o selo acende)
+	local raios = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(760, 760), BackgroundTransparency = 1, Parent = palco })
 	local listaRaios = {}
 	for i = 0, 11 do
-		local rr = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(46, 700), Rotation = i * 15, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = raios })
-		new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.2), NumberSequenceKeypoint.new(1, 1) }), Rotation = 90, Parent = rr })
+		local rr = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(40, 760), Rotation = i * 15, BackgroundColor3 = cor, BackgroundTransparency = 1, BorderSizePixel = 0, Parent = raios })
+		new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.25), NumberSequenceKeypoint.new(1, 1) }), Rotation = 90, Parent = rr })
 		table.insert(listaRaios, rr)
 	end
-	local girando = true
 	task.spawn(function()
-		while girando and raios.Parent do
-			raios.Rotation += RunService.RenderStepped:Wait() * (idx >= 4 and 70 or 35)
+		while not acabou do
+			raios.Rotation += RunService.RenderStepped:Wait() * (idx >= 4 and 60 or 30)
 		end
 	end)
 
-	local caixa = desenharCaixa(palco, corA, corB, UDim2.fromOffset(230, 215), UDim2.fromScale(0.5, 0.45))
-	local escCaixa = new("UIScale", { Scale = 0.3, Parent = caixa })
-	tween(escCaixa, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
-	task.wait(0.4)
+	local perg = desenharPergaminho(palco, 580, 250, corFaixa, UDim2.fromScale(0.5, 0.45), 0)
+	local escPerg = new("UIScale", { Scale = 0.2, Parent = perg.root })
+	tween(escPerg, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+	task.wait(0.45)
 
-	-- tremer e girar, cada vez mais rápido (com o som acelerando)
-	local passos = 14
-	for i = 1, passos do
-		local forca = 4 + i * 1.2
-		local dur = math.max(0.045, 0.14 - i * 0.007)
-		som("Giro", 0.9 + i * 0.05)
-		tween(caixa, dur, { Rotation = (i % 2 == 0) and forca or -forca })
-		if i > passos * 0.55 then
-			-- dica da raridade: o brilho atrás da caixa vai mudando para a cor do resultado
-			caixa.Brilho.BackgroundColor3 = caixa.Brilho.BackgroundColor3:Lerp(cor, 0.35)
-			caixa.Brilho.BackgroundTransparency = math.max(0.25, caixa.Brilho.BackgroundTransparency - 0.06)
-			for _, rr in ipairs(listaRaios) do
-				rr.BackgroundColor3 = cor
-				rr.BackgroundTransparency = math.max(0.55, rr.BackgroundTransparency - 0.08)
+	-- balança enrolado, cada vez mais forte; o brilho vai pegando a cor da raridade
+	for i = 1, 10 do
+		local forca = 3 + i * 0.9
+		local dur = math.max(0.05, 0.13 - i * 0.007)
+		som("Giro", 0.9 + i * 0.06)
+		tween(perg.root, dur, { Rotation = (i % 2 == 0) and forca or -forca })
+		if i > 4 then
+			for k, b in ipairs(perg.brilhos) do
+				b.BackgroundColor3 = b.BackgroundColor3:Lerp(cor, 0.3)
+				b.BackgroundTransparency = math.max(0.55 + k * 0.08, b.BackgroundTransparency - 0.05)
 			end
 		end
 		task.wait(dur)
 	end
-	tween(escCaixa, 0.15, { Scale = 1.25 })
-	task.wait(0.15)
+	tween(perg.root, 0.12, { Rotation = 0 })
 
-	-- clarão
-	local clarao = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0, Parent = fundo, ZIndex = 120 })
-	caixa:Destroy()
-	tween(clarao, 0.6, { BackgroundTransparency = 1 })
-	task.delay(0.6, function() clarao:Destroy() end)
+	-- a fita arrebenta e voa
+	som("Giro", 1.7)
+	tween(perg.fita, 0.45, { Position = UDim2.new(0.5, 40, 0.5, -170), Rotation = 50, BackgroundTransparency = 1 })
+	for _, d in ipairs(perg.fita:GetChildren()) do
+		if d:IsA("Frame") then tween(d, 0.45, { BackgroundTransparency = 1 }) end
+	end
+	task.wait(0.2)
+
+	-- desenrola de verdade: os rolos se afastam e o papel aparece do meio para fora
+	perg.abrir(1, 0.8, Enum.EasingStyle.Quart)
+	task.wait(0.7)
+
+	-- o selo acende na cor da raridade e começa a girar
 	som(idx >= 3 and "RevelarRaro" or "Revelar")
+	for _, st in ipairs(perg.aneis) do
+		tween(st, 0.35, { Color = cor, Thickness = st.Thickness + 2 })
+	end
+	for _, m in ipairs(perg.marcas) do tween(m, 0.35, { BackgroundColor3 = cor }) end
+	tween(perg.centro, 0.35, { BackgroundColor3 = cor })
+	task.spawn(function()
+		while not acabou do
+			perg.giro.Rotation += RunService.RenderStepped:Wait() * 90
+		end
+	end)
 	for _, rr in ipairs(listaRaios) do
-		tween(rr, 0.4, { BackgroundTransparency = idx >= 4 and 0.15 or 0.4 })
+		tween(rr, 0.4, { BackgroundTransparency = idx >= 4 and 0.2 or 0.45 })
 	end
-
-	-- partículas voando para fora
-	for i = 1, (idx >= 4 and 40 or 22) do
-		local p = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(10, 10), Rotation = math.random(0, 90), BackgroundColor3 = (i % 3 == 0) and Color3.new(1, 1, 1) or cor, Parent = palco })
+	-- partículas saindo do selo
+	for i = 1, (idx >= 4 and 36 or 20) do
+		local p = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(9, 9), Rotation = math.random(0, 90), BackgroundColor3 = (i % 3 == 0) and Color3.new(1, 1, 1) or cor, Parent = palco })
 		local ang = math.random() * math.pi * 2
-		local dist = math.random(180, 420)
+		local dist = math.random(170, 400)
 		tween(p, math.random(60, 110) / 100, { Position = UDim2.new(0.5, math.cos(ang) * dist, 0.45, math.sin(ang) * dist), BackgroundTransparency = 1, Rotation = p.Rotation + 360 }, Enum.EasingStyle.Quart)
-		task.delay(1.2, function() p:Destroy() end)
+		task.delay(1.2, function() if p.Parent then p:Destroy() end end)
 	end
-
-	-- tremida de tela nos lendários e místicos
-	if idx >= 4 then
+	if idx >= 4 then -- lendário e místico: a tela treme
 		task.spawn(function()
-			for i = 1, 12 do
-				palco.Position = UDim2.new(0.5, math.random(-10, 10), 0.5, math.random(-8, 8))
+			for _ = 1, 12 do
+				palco.Position = UDim2.new(0.5, math.random(-9, 9), 0.5, math.random(-7, 7))
 				task.wait(0.03)
 			end
 			palco.Position = UDim2.fromScale(0.5, 0.5)
 		end)
 	end
+	task.wait(0.45)
 
-	-- card do personagem
-	local card = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(300, 360), BackgroundColor3 = COR.card, Parent = palco })
-	corner(card, 20)
-	local borda = stroke(card, cor, 5)
-	grad(card, cor:Lerp(COR.card, 0.55), COR.fundo, 90)
+	-- o personagem surge do selo, na frente do pergaminho
+	local card = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(290, 340), BackgroundColor3 = COR.card, Parent = palco })
+	corner(card, 10)
+	local borda = stroke(card, cor, 4)
+	grad(card, cor:Lerp(COR.card, 0.6), COR.fundo, 90)
 	local escCard = new("UIScale", { Scale = 0, Parent = card })
 	tween(escCard, 0.45, { Scale = 1 }, Enum.EasingStyle.Back)
 	task.spawn(function()
@@ -673,28 +765,23 @@ local function animarAbertura(crateId, r, deNovo)
 			task.wait(0.6)
 		end
 	end)
-	label(card, (RARNOME[r.rarity] or r.rarity):upper(), 28, cor, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 14), Font = Enum.Font.GothamBlack })
-	local retrato = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(140, 140), BackgroundColor3 = cor, Parent = card })
+	label(card, (RARNOME[r.rarity] or r.rarity):upper(), 26, cor, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 12), Font = Enum.Font.GothamBlack })
+	local retrato = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 58), Size = UDim2.fromOffset(130, 130), BackgroundColor3 = cor, Parent = card })
 	corner(retrato, 999)
 	grad(retrato, cor:Lerp(Color3.new(1, 1, 1), 0.35), cor:Lerp(Color3.new(0, 0, 0), 0.4), 120)
 	stroke(retrato, Color3.new(1, 1, 1), 4)
-	label(retrato, r.name:sub(1, 1), 76, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
-	label(card, r.name, 30, COR.texto, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 214), Font = Enum.Font.GothamBlack })
-	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 260), Size = UDim2.fromOffset(170, 34), BackgroundColor3 = r.isNew and COR.verde or COR.azul, Parent = card })
-	corner(tag, 17)
-	label(tag, r.isNew and "NEW!" or ("COPY  x" .. tostring(r.copies)), 18, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+	label(retrato, r.name:sub(1, 1), 70, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+	label(card, r.name, 28, COR.texto, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 196), Font = Enum.Font.GothamBlack })
+	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 240), Size = UDim2.fromOffset(160, 32), BackgroundColor3 = r.isNew and COR.verde or COR.azul, Parent = card })
+	corner(tag, 6)
+	label(tag, r.isNew and "NEW!" or ("COPY  x" .. tostring(r.copies)), 17, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
 	if not r.isNew then
-		label(card, ("Duplicates can be converted in Collection (+%d coins each)"):format(EconomyData.DupeCoins[r.rarity] or 0), 12, COR.fraco, { Size = UDim2.new(1, -30, 0, 34), Position = UDim2.fromOffset(15, 300) })
+		label(card, ("Duplicates can be converted in Collection (+%d coins each)"):format(EconomyData.DupeCoins[r.rarity] or 0), 12, COR.fraco, { Size = UDim2.new(1, -30, 0, 34), Position = UDim2.fromOffset(15, 282) })
 	end
 
-	task.wait(0.6)
-	local ok = botao(palco, "OK", COR.verde, UDim2.fromOffset(160, 50), UDim2.new(0.5, -170, 0.45, 210))
-	local outra = botao(palco, "OPEN AGAIN", COR.laranja, UDim2.fromOffset(170, 50), UDim2.new(0.5, 10, 0.45, 210))
-	local function fechar()
-		girando = false
-		telaAbertura:Destroy()
-		animando = false
-	end
+	task.wait(0.5)
+	local ok = botao(palco, "OK", COR.verde, UDim2.fromOffset(160, 48), UDim2.new(0.5, -170, 0.45, 200))
+	local outra = botao(palco, "OPEN AGAIN", COR.laranja, UDim2.fromOffset(170, 48), UDim2.new(0.5, 10, 0.45, 200))
 	ok.Activated:Connect(fechar)
 	outra.Activated:Connect(function()
 		fechar()
@@ -948,7 +1035,7 @@ local function iconeRecompensa(parent, rw)
 	elseif rw.Gems then
 		iconeGema(area, UDim2.fromScale(1.2, 1.2), UDim2.fromScale(-0.1, -0.1))
 	elseif rw.Crates then
-		desenharCaixa(area, Color3.fromRGB(230, 120, 40), Color3.fromRGB(150, 60, 20), UDim2.fromScale(0.95, 0.9), UDim2.fromScale(0.5, 0.5))
+		desenharPergaminho(area, 70, 42, FAIXA_BASICA, UDim2.fromScale(0.5, 0.5), 0.5)
 	elseif rw.Item then
 		local it = EconomyData.Items[rw.Item]
 		local f = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = it and it.Type == "Boost" and COR.verde or (it and it.Color) or COR.roxo, Parent = area })

@@ -26,27 +26,28 @@ WorldData.Zonas = {
 }
 
 -- Nivel = {min, max}: cada inimigo nasce com um nível sorteado; vida, dano e recompensa crescem 6% por nível acima do mínimo.
+-- Alcance = distância em que o inimigo nota o jogador (pequeno para puxar 1 ou 2 por vez, não o acampamento inteiro).
 WorldData.Inimigos = {
-	["Bandit Thug"] = { Nivel = { 10, 14 }, Vida = 120, Dano = 7, Velocidade = 13, XP = 22, Moedas = 12, Alcance = 40,
+	["Bandit Thug"] = { Nivel = { 10, 14 }, Vida = 100, Dano = 5, Velocidade = 13, XP = 22, Moedas = 12, Alcance = 22,
 		Cor = Color3.fromRGB(110, 80, 60) },
-	["Rogue Ninja"] = { Nivel = { 16, 22 }, Vida = 220, Dano = 11, Velocidade = 16, XP = 40, Moedas = 22, Alcance = 45,
+	["Rogue Ninja"] = { Nivel = { 16, 22 }, Vida = 180, Dano = 8, Velocidade = 15, XP = 40, Moedas = 22, Alcance = 25,
 		Cor = Color3.fromRGB(60, 65, 80) },
-	["Rogue Chunin"] = { Nivel = { 24, 30 }, Vida = 380, Dano = 16, Velocidade = 17, XP = 70, Moedas = 38, Alcance = 50,
+	["Rogue Chunin"] = { Nivel = { 24, 30 }, Vida = 300, Dano = 12, Velocidade = 16, XP = 70, Moedas = 38, Alcance = 28,
 		Cor = Color3.fromRGB(70, 95, 70) },
 }
 
 -- Chefe da zona: volta Respawn segundos depois de derrotado.
 WorldData.ChefeZona = {
-	Name = "Bandit King", Nivel = 30, Vida = 2500, Dano = 20, Velocidade = 14, Escala = 1.5,
-	Pos = Vector3.new(935, 0, -290), Respawn = 300, Alcance = 55,
+	Name = "Bandit King", Nivel = 30, Vida = 1500, Dano = 12, Velocidade = 14, Escala = 1.5,
+	Pos = Vector3.new(935, 0, -290), Respawn = 300, Alcance = 35,
 	XP = 300, Moedas = 250, Cor = Color3.fromRGB(150, 60, 40),
 }
 
 -- Evento do chefe do mundo: aparece a cada 20 a 30 minutos, com aviso para todo o servidor.
 -- A vida cresce com o número de jogadores. Cada um ganha pela parte do dano que causou.
 WorldData.ChefeMundo = {
-	Name = "Rogue Warlord", Nivel = 40, VidaBase = 4000, VidaPorJogador = 2000, Dano = 26, Velocidade = 15, Escala = 2,
-	Pos = Vector3.new(880, 0, -500), Alcance = 70,
+	Name = "Rogue Warlord", Nivel = 40, VidaBase = 1500, VidaPorJogador = 1500, Dano = 18, Velocidade = 15, Escala = 2,
+	Pos = Vector3.new(880, 0, -500), Alcance = 60,
 	IntervaloMin = 20 * 60, IntervaloMax = 30 * 60,
 	Aviso = 60, -- segundos de aviso antes de aparecer
 	Duracao = 10 * 60, -- some se não for derrotado nesse tempo

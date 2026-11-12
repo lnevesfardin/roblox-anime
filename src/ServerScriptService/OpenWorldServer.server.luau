@@ -198,9 +198,18 @@ local function criarInimigo(opts)
 			if alvo and not longe then
 				local r = alvo.Parent:FindFirstChild("HumanoidRootPart")
 				if r then
-					hum:MoveTo(r.Position)
+					-- para um pouco antes do jogador (senão sobe na cabeça dele) e olha para ele
 					local alcanceGolpe = 5 * (opts.escala or 1)
-					if dist < alcanceGolpe and os.clock() - ultimoGolpe > 1.3 then
+					local dir = (r.Position - root.Position) * Vector3.new(1, 0, 1)
+					if dir.Magnitude > alcanceGolpe * 0.6 then
+						hum:MoveTo(r.Position - dir.Unit * (alcanceGolpe * 0.6))
+					else
+						hum:Move(Vector3.zero)
+						if dir.Magnitude > 0.1 then
+							root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
+						end
+					end
+					if dist < alcanceGolpe and os.clock() - ultimoGolpe > 1.6 then
 						ultimoGolpe = os.clock()
 						alvo:TakeDamage(dano)
 					end

@@ -10,6 +10,15 @@ local Debris = game:GetService("Debris")
 local MapData = require(ReplicatedStorage:WaitForChild("MapData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 
+-- skins dos inimigos (modelos em ServerStorage.Aparencias); se falhar, vale o visual por codigo
+local okSkin, SkinInimigo = pcall(function()
+	return require(ServerStorage:WaitForChild("SkinInimigo", 10))
+end)
+if not okSkin then
+	warn("[WaveServer] SkinInimigo indisponivel: " .. tostring(SkinInimigo))
+	SkinInimigo = nil
+end
+
 local statusEvent = Instance.new("RemoteEvent")
 statusEvent.Name = "RunStatus"
 statusEvent.Parent = ReplicatedStorage
@@ -246,7 +255,7 @@ local function peca(model, base, tamanho, offset, cor, material, forma)
 	return p
 end
 
-local function aplicarLook(model, look)
+local function aplicarLook(model, look, soCores)
 	local cfg = LOOKS[look]
 	if not cfg then
 		return
@@ -274,6 +283,9 @@ local function aplicarLook(model, look)
 		bc.RightArmColor3 = cfg.Bracos
 		bc.LeftLegColor3 = cfg.Pernas
 		bc.RightLegColor3 = cfg.Pernas
+	end
+	if soCores then
+		return
 	end
 	local head = model:FindFirstChild("Head")
 	local torso = model:FindFirstChild("UpperTorso")
@@ -330,7 +342,7 @@ local function aplicarLook(model, look)
 	end
 end
 
-local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor, look)
+local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor, look, skin, skinIdx)
 	local tpl = getTemplate()
 	if not tpl then
 		return nil
@@ -355,7 +367,25 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 		bc.RightLegColor3 = color
 	end
 
-	if look then
+	local comSkin = false
+	if skin and SkinInimigo then
+		local ok, aplicou, temCorpo = pcall(function()
+			local doador = SkinInimigo.Achar(skin, skinIdx)
+			if not doador then
+				return false, false
+			end
+			return SkinInimigo.Aplicar(model, doador)
+		end)
+		if ok and aplicou then
+			comSkin = true
+			if not temCorpo and look then
+				aplicarLook(model, look, true) -- skin so de cabeca: o corpo ganha as cores do visual
+			end
+		else
+			warn("[WaveServer] skin '" .. tostring(skin) .. "' nao aplicada: " .. tostring(ok and "modelo nao encontrado" or aplicou))
+		end
+	end
+	if look and not comSkin then
 		aplicarLook(model, look)
 	end
 
@@ -377,7 +407,7 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 	model:SetAttribute("Raio", (scale - 1) * 3)
 	CollectionService:AddTag(model, "Inimigo")
 	model.Parent = workspace
-	if isBoss and not noDecor then
+	if isBoss and not noDecor and not comSkin then
 		decorateBoss(model, scale)
 	end
 
@@ -737,9 +767,10 @@ local function runMap(mapId)
 
 		for _, t in ipairs(w.Enemies) do
 			local qtd = t.Count + (n - 1) * (t.Extra or 1)
-			for _ = 1, qtd do
+			for i = 1, qtd do
 				spawnEnemy(t.Name, t.Color, t.Scale or 1, t.Health * hpScale, t.Damage,
-					randomSpawnPos(centro, spawnPart, floorY, arena:GetAttribute("RaioSpawn") or 40), false, t.Speed, nil, t.Look)
+					randomSpawnPos(centro, spawnPart, floorY, arena:GetAttribute("RaioSpawn") or 40), false, t.Speed, nil, t.Look,
+					t.Skin, t.SkinIdx or i)
 			end
 		end
 
@@ -761,7 +792,7 @@ local function runMap(mapId)
 		broadcast({ text = ("Wave %d/%d: BOSS %s!"):format(total, total, cfg.BossName) })
 		task.wait(3)
 		local boss = spawnEnemy(cfg.BossName, cfg.BossColor, cfg.BossScale or 2.5, cfg.BossHealth * hpScale, cfg.BossDamage,
-			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss)
+			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss, nil, cfg.BossSkin)
 		if boss then
 			boss.nextSlam = os.clock() + cfg.BossSlamEvery
 			boss.nextBite = os.clock() + 5

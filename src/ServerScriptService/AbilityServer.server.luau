@@ -1,5 +1,5 @@
 -- Script: ServerScriptService > AbilityServer
--- Poderes do clã (Q, E, R) — Fase 4. O cliente só avisa qual posição usou;
+-- Poderes do clã (Q, E, R), Kekkei Genkai (V, posição 4) e jutsus de natureza (G e H, posições 5 e 6). O cliente só avisa qual posição usou;
 -- o servidor confere o clã, se o poder está liberado, a recarga e o chakra, e calcula o dano.
 -- Nomes, recargas, custos e requisitos ficam em ReplicatedStorage > ClanPowers.
 -- Estado para o cliente: atributos do jogador "PoderesEstado" (JSON), "Chakra" e "ChakraMax".
@@ -17,6 +17,7 @@ local HttpService = game:GetService("HttpService")
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
 local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
+local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
 
 local useEvent = Instance.new("RemoteEvent")
 useEvent.Name = "UseAbility"
@@ -1096,6 +1097,187 @@ P.kg_poeira = function(plr, char, root, dmg)
 	Debris:AddItem(cubo, 0.3)
 end
 
+-- NATUREZAS DE CHAKRA (teclas G e H) ---------------------------
+-- Aprendidos por missao com o mestre de cada natureza (NatureData / MissionData N1_ e N2_).
+local FIRE = Color3.fromRGB(255, 120, 40)
+local WIND = Color3.fromRGB(190, 245, 215)
+local STONE = Color3.fromRGB(125, 105, 85)
+local WATER = Color3.fromRGB(70, 150, 255)
+
+P.nat_fogo1 = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	for k = -1, 1 do
+		local dir = CFrame.Angles(0, math.rad(k * 10), 0) * look
+		local bola = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 1.8, color = FIRE })
+		light(bola, FIRE, 10, 3)
+		projectile({ start = handPos(char, root) + dir * 2, dir = dir, speed = 70, range = 45, radius = 2.5, parts = { bola },
+			onEnd = function(pos)
+				burst(pos, 8, FIRE, 0.35, 0.2)
+				local set = {}
+				for _, e in ipairs(inRadius(pos, 5)) do
+					hitOnce(set, e, dmg * 1.3, pos, 15)
+					queimarPoder(e, dmg * 0.25, 3, FIRE)
+				end
+			end })
+		task.wait(0.08)
+	end
+end
+
+P.nat_fogo2 = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local origem = root.Position
+	for i = 1, 11 do
+		local pos = origem + look * (i * 3.2)
+		local chama = fx({ shape = Enum.PartType.Ball, size = Vector3.one * (2 + i * 0.45), color = i % 2 == 0 and FIRE or Color3.fromRGB(255, 200, 80), trans = 0.15, cf = CFrame.new(pos) })
+		if i % 3 == 0 then light(chama, FIRE, 14, 3) end
+		fadeOut(chama, 0.55)
+		task.wait(0.02)
+	end
+	local set = {}
+	for _, e in ipairs(inLine(origem, look, 36, 9)) do
+		hitOnce(set, e, dmg * 3.2, origem, 20)
+		queimarPoder(e, dmg * 0.4, 4, FIRE)
+	end
+end
+
+P.nat_vento1 = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	for i = 1, 4 do
+		ring(root.Position + look * (i * 4), 6 + i * 2, WIND, 0.35)
+		local aro = fx({ size = Vector3.new(5 + i * 1.5, 5 + i * 1.5, 0.3), color = WIND, trans = 0.55, cf = CFrame.lookAt(root.Position + look * (i * 4), root.Position + look * 40) })
+		fadeOut(aro, 0.3)
+	end
+	local set = {}
+	for _, e in ipairs(inCone(root.Position, look, 18, 50)) do
+		hitOnce(set, e, dmg * 2, root.Position, 60)
+	end
+end
+
+P.nat_vento2 = function(plr, char, root, dmg)
+	local centro = root.Position
+	local laminas = {}
+	for i = 1, 6 do
+		laminas[i] = fx({ size = Vector3.new(0.25, 2.2, 7), color = WIND, trans = 0.25, cf = CFrame.new(centro) })
+	end
+	local t0 = os.clock()
+	while os.clock() - t0 < 0.7 do
+		local k = (os.clock() - t0) / 0.7
+		for i, l in ipairs(laminas) do
+			local ang = k * math.pi * 4 + i * math.pi / 3
+			l.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -(4 + k * 9))
+		end
+		task.wait()
+	end
+	for _, l in ipairs(laminas) do fadeOut(l, 0.2) end
+	ring(chao(root), 30, WIND, 0.4)
+	local set = {}
+	for _, e in ipairs(inRadius(root.Position, 15)) do
+		hitOnce(set, e, dmg * 3.4, root.Position, 30)
+	end
+end
+
+P.nat_raio1 = function(plr, char, root, dmg)
+	local e = nearestEnemy(root.Position, flatLook(root), 45)
+	if not e then return false end
+	local alvo = e.root.Position
+	zap(alvo + Vector3.new(0, 45, 0), alvo, LIGHTNING, 0.9, 2.5, 0.3)
+	zap(handPos(char, root), alvo, WHITE, 0.4, 1.2, 0.2)
+	burst(alvo, 9, LIGHTNING, 0.3, 0.2)
+	hit(e, dmg * 2.6, nil, 0)
+	prender(e, 1.2)
+end
+
+P.nat_raio2 = function(plr, char, root, dmg)
+	local atual = nearestEnemy(root.Position, flatLook(root), 40)
+	if not atual then return false end
+	local set = {}
+	local de = handPos(char, root)
+	for _ = 1, 5 do
+		zap(de, atual.root.Position, LIGHTNING, 0.6, 1.6, 0.3)
+		burst(atual.root.Position, 6, WHITE, 0.25, 0.3)
+		hitOnce(set, atual, dmg * 2.2, nil, 0)
+		prender(atual, 0.8)
+		de = atual.root.Position
+		local prox, dist = nil, 26
+		for _, e in ipairs(inRadius(de, 26)) do
+			local d = flat(e.root.Position, de)
+			if not set[e.model] and d < dist then prox, dist = e, d end
+		end
+		if not prox then break end
+		atual = prox
+		task.wait(0.09)
+	end
+end
+
+P.nat_terra1 = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local base = chao(root)
+	for i = 1, 5 do
+		local pos = base + look * (3 + i * 4)
+		local pilar = fx({ size = Vector3.new(3, 0.3, 3), color = STONE, mat = Enum.Material.Slate, cf = CFrame.new(pos) * CFrame.Angles(0, math.rad(i * 25), 0) })
+		TweenService:Create(pilar, TweenInfo.new(0.14, Enum.EasingStyle.Back), { Size = Vector3.new(3, 8, 3), CFrame = pilar.CFrame * CFrame.new(0, 4, 0) }):Play()
+		task.delay(1.4, function() fadeOut(pilar, 0.4) end)
+		task.wait(0.05)
+	end
+	local set = {}
+	for _, e in ipairs(inLine(root.Position, look, 25, 7)) do
+		hitOnce(set, e, dmg * 2.4, e.root.Position - Vector3.new(0, 6, 0), 45)
+	end
+end
+
+P.nat_terra2 = function(plr, char, root, dmg)
+	local base = chao(root)
+	ring(base, 34, STONE, 0.5)
+	for i = 1, 10 do
+		local ang = i / 10 * math.pi * 2
+		local dir = Vector3.new(math.cos(ang), 0, math.sin(ang))
+		local racha = fx({ size = Vector3.new(1.4, 0.4, 14), color = Color3.fromRGB(60, 45, 35), mat = Enum.Material.Slate, cf = CFrame.lookAt(base + dir * 8, base + dir * 30) })
+		local pedra = fx({ size = Vector3.new(2.2, 2.2, 2.2), color = STONE, mat = Enum.Material.Slate, cf = CFrame.new(base + dir * (6 + (i % 3) * 3)) * CFrame.Angles(i, i * 2, 0) })
+		TweenService:Create(pedra, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = pedra.CFrame + Vector3.new(0, 4, 0) }):Play()
+		task.delay(0.9, function() fadeOut(racha, 0.5) fadeOut(pedra, 0.4) end)
+	end
+	local set = {}
+	for _, e in ipairs(inRadius(root.Position, 16)) do
+		hitOnce(set, e, dmg * 3, nil, 0)
+		prender(e, 2)
+	end
+end
+
+P.nat_agua1 = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local bola = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2.6, color = WATER, mat = Enum.Material.Glass, trans = 0.2 })
+	light(bola, WATER, 10, 2)
+	projectile({ start = handPos(char, root) + look * 2, dir = look, speed = 95, range = 55, radius = 3, parts = { bola },
+		onEnd = function(pos)
+			burst(pos, 11, WATER, 0.35, 0.3)
+			ring(pos - Vector3.new(0, 2, 0), 14, WATER, 0.4)
+			local set = {}
+			for _, e in ipairs(inRadius(pos, 6)) do
+				hitOnce(set, e, dmg * 2.4, pos, 25)
+			end
+		end })
+end
+
+P.nat_agua2 = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local origem = root.Position
+	local onda = fx({ size = Vector3.new(15, 7, 3), color = WATER, mat = Enum.Material.Glass, trans = 0.3, cf = CFrame.lookAt(origem + look * 3, origem + look * 40) })
+	local crista = fx({ size = Vector3.new(15, 1.2, 4), color = Color3.fromRGB(225, 240, 255), trans = 0.2, cf = onda.CFrame * CFrame.new(0, 3.8, 0) })
+	local set = {}
+	local t0 = os.clock()
+	while os.clock() - t0 < 0.75 do
+		local d = 3 + (os.clock() - t0) / 0.75 * 36
+		onda.CFrame = CFrame.lookAt(origem + look * d, origem + look * 80)
+		crista.CFrame = onda.CFrame * CFrame.new(0, 3.8, 0)
+		for _, e in ipairs(inRadius(origem + look * d, 8)) do
+			hitOnce(set, e, dmg * 3.2, origem + look * (d - 6), 50)
+		end
+		task.wait()
+	end
+	fadeOut(onda, 0.3)
+	fadeOut(crista, 0.3)
+end
+
 ---------------------------------------------------------------
 -- Estado dos poderes e chakra
 ---------------------------------------------------------------
@@ -1182,13 +1364,24 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		return
 	end
 	slot = math.floor(slot)
-	if slot < 1 or slot > 4 then
+	if slot < 1 or slot > 6 then
 		return
 	end
 	local data = PlayerData.Get(plr)
 	if not data then return end
 	local info
-	if slot == 4 then
+	local afinidade = false
+	if slot >= 5 then
+		-- teclas G e H: jutsu de natureza equipado
+		local n = NatureData.Garantir(data)
+		local id = n.Equip[slot - 4]
+		info = id and NatureData.Jutsu(id)
+		if not info then
+			feedback(plr, { msg = "No nature jutsu equipped. Learn one from a nature master.", slot = slot, cooldown = 0 })
+			return
+		end
+		afinidade = n.Afinidade == info.Natureza
+	elseif slot == 4 then
 		-- tecla V: poder da Kekkei Genkai
 		local k = KekkeiData.DoSave(data)
 		if not k then return end
@@ -1223,21 +1416,23 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		return
 	end
 	local chakra = plr:GetAttribute("Chakra") or 0
-	if chakra < info.Chakra then
+	local custo = afinidade and math.floor(info.Chakra * NatureData.AFIN_CHAKRA + 0.5) or info.Chakra
+	if chakra < custo then
 		feedback(plr, { msg = "Not enough chakra.", slot = slot, cooldown = 0 })
 		return
 	end
-	plr:SetAttribute("Chakra", chakra - info.Chakra)
+	plr:SetAttribute("Chakra", chakra - custo)
 	cooldowns[plr][info.Id] = now + info.Cooldown
 	feedback(plr, { slot = slot, cooldown = info.Cooldown })
 	local dmg = PlayerData.GetCombatStats(plr).PowerDamage * (1 + (plr:GetAttribute("BuffDano") or 0))
+	if afinidade then dmg *= NatureData.AFIN_DANO end
 	task.spawn(function()
 		local okRun, res = pcall(P[info.Id], plr, char, root, dmg)
 		if not okRun then
 			warn("[AbilityServer] Erro em " .. info.Name .. ": " .. tostring(res))
 		elseif res == false then
 			cooldowns[plr][info.Id] = 0
-			plr:SetAttribute("Chakra", (plr:GetAttribute("Chakra") or 0) + info.Chakra)
+			plr:SetAttribute("Chakra", (plr:GetAttribute("Chakra") or 0) + custo)
 			feedback(plr, { slot = slot, cooldown = 0 })
 		end
 	end)

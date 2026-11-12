@@ -1,6 +1,7 @@
 -- ModuleScript: ReplicatedStorage > ClanPowers
 -- Caminho de poderes de cada clã (Fase 4). Cada clã tem 3 poderes: Q, E e R.
--- Poderes nunca são comprados: 1º ao entrar no clã, 2º e 3º por nível + rank + missão do clã.
+-- Poderes nunca são comprados: o jogador nasce só com os socos. O 1º vem na missão "Your First Jutsu"
+-- do caminho (história, passo HIST_PRIMEIRO); 2º e 3º por nível + rank + missão do clã.
 -- As missões do clã ficam em MissionData (ids C2_<Clã> e C3_<Clã>, dadas pela Lady Tsuna).
 -- Ao trocar de clã, o caminho do clã antigo se perde.
 
@@ -9,8 +10,11 @@ local ClanPowers = {}
 ClanPowers.KEYS = { "Q", "E", "R" }
 
 -- Requisitos de cada posição. Missao = precisa concluir a missão do clã daquela posição.
+-- passo da história (MissionData) que ensina o 1º jutsu do clã
+ClanPowers.HIST_PRIMEIRO = 6
+
 ClanPowers.REQ = {
-	{ Level = 1 },
+	{ Level = 1, Historia = true },
 	{ Level = 15, Rank = "Genin", Missao = true },
 	{ Level = 35, Rank = "Chunin", Missao = true },
 }
@@ -145,6 +149,10 @@ function ClanPowers.Liberado(data, slot)
 	end
 	local nivel, rank, missao = ClanPowers.Requisito(clan, slot)
 	local falta = {}
+	if ClanPowers.REQ[slot].Historia and (data.Rank or "Estudante") == "Estudante"
+		and (tonumber(data.Missoes.Historia) or 0) < ClanPowers.HIST_PRIMEIRO then
+		return false, "Learn it in the mission 'Your First Jutsu' (Sensei Kaito)"
+	end
 	if (data.Level or 1) < nivel then table.insert(falta, "Level " .. nivel) end
 	if rank and (RANKS[data.Rank] or 1) < RANKS[rank] then table.insert(falta, NOMES[rank] .. " rank") end
 	if missao and not data.Missoes.Feitas[("C%d_%s"):format(slot, clan)] then table.insert(falta, "clan mission (Lady Tsuna)") end

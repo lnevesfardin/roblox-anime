@@ -1,5 +1,7 @@
 -- Treino da Academia (Sensei Kaito): minigame de tempo nos alvos de madeira.
 -- Acerte 10 socos quando o marcador estiver na faixa verde. A faixa diminui e o marcador acelera; 3 erros = falhou.
+-- Modo "teclas" (Coach Gaien, estações que não são alvo de madeira): 4 séries de exercícios; em cada uma
+-- aparece uma sequência de teclas W A S D para apertar na ordem antes do tempo acabar. 3 erros = falhou.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -51,6 +53,17 @@ local feedback = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position 
 	BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamBlack, TextSize = 30, TextColor3 = Color3.new(1, 1, 1), Parent = painel })
 local bHit = new("TextButton", { Position = UDim2.new(1, -170, 1, -66), Size = UDim2.fromOffset(150, 52), BackgroundColor3 = Color3.fromRGB(230, 120, 40),
 	Text = "HIT!", Font = Enum.Font.GothamBlack, TextSize = 26, TextColor3 = Color3.new(1, 1, 1), Parent = painel }, { canto(10) })
+
+-- modo "teclas": fileira de teclas, barra de tempo e botões na tela (celular)
+local TECLAS = { "W", "A", "S", "D" }
+local SERIES = { "PUSH-UPS!", "KICKS!", "SPRINT!", "FINAL SET!" }
+local fileira = new("Frame", { Position = UDim2.fromOffset(20, 56), Size = UDim2.new(1, -40, 0, 40), BackgroundTransparency = 1, Visible = false, Parent = painel },
+	{ new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6) }) })
+local tempoFundo = new("Frame", { Position = UDim2.fromOffset(20, 100), Size = UDim2.new(1, -40, 0, 6), BackgroundColor3 = Color3.fromRGB(70, 55, 45), Visible = false, Parent = painel }, { canto(3) })
+local tempoBarra = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(255, 200, 80), Parent = tempoFundo }, { canto(3) })
+local botoesTecla = new("Frame", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -10), Size = UDim2.fromOffset(196, 44), BackgroundTransparency = 1, Visible = false, Parent = painel },
+	{ new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6) }) })
+local caixas = {}
 
 local ativo = false
 local estado
@@ -108,7 +121,28 @@ local function bater(perfeito)
 	end
 end
 
+local teclaApertada
+local function novaSerie()
+	local n = 4 + estado.acertos -- 4, 5, 6 e 7 teclas
+	estado.seq, estado.idx = {}, 1
+	estado.limite = 1.6 + n * 0.75
+	estado.resta = estado.limite
+	for _, c in ipairs(caixas) do c:Destroy() end
+	caixas = {}
+	for i = 1, n do
+		local t = TECLAS[math.random(1, #TECLAS)]
+		estado.seq[i] = t
+		caixas[i] = new("TextLabel", { Size = UDim2.fromOffset(40, 40), BackgroundColor3 = Color3.fromRGB(70, 55, 45), Text = t, Font = Enum.Font.GothamBlack,
+			TextSize = 22, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = i, Parent = fileira }, { canto(8), new("UIStroke", { Color = Color3.fromRGB(170, 120, 70), Thickness = 2 }) })
+	end
+	caixas[1].BackgroundColor3 = Color3.fromRGB(230, 120, 40)
+	titulo.Text = estado.cabecalho .. "  ·  " .. SERIES[math.min(estado.acertos + 1, #SERIES)]
+	placar.Text = ("SETS  %d / %d"):format(estado.acertos, estado.total)
+	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
+end
+
 local function novaRodada()
+	if estado.modo == "teclas" then return novaSerie() end
 	local k = estado.acertos
 	local t = math.clamp(k / (estado.total - 1), 0, 1)
 	estado.largura = lerp(0.22, 0.065, t)
@@ -129,6 +163,7 @@ local function terminar(resultado)
 	if not ativo then return end
 	ativo = false
 	ContextActionService:UnbindAction("TreinoHit")
+	ContextActionService:UnbindAction("TreinoTeclas")
 	controles(true)
 	minigame:FireServer(resultado, estado.acertos)
 	feedback.Text = resultado == "ok" and "COMPLETE!" or "FAILED"
@@ -145,8 +180,61 @@ local function mostrar(texto, cor)
 	TweenService:Create(feedback, TweenInfo.new(0.6), { TextTransparency = 1 }):Play()
 end
 
+local function errou()
+	estado.vidas -= 1
+	mostrar("MISS!", Color3.fromRGB(240, 80, 80))
+	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
+	if estado.vidas <= 0 then terminar("falhou") return true end
+	return false
+end
+
+-- pulinho do personagem a cada tecla certa (só visual)
+local function pulinho()
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+	local orig = hum.HipHeight
+	TweenService:Create(hum, TweenInfo.new(0.08), { HipHeight = orig + 0.5 }):Play()
+	task.delay(0.09, function() TweenService:Create(hum, TweenInfo.new(0.1), { HipHeight = estado and estado.hip or orig }):Play() end)
+end
+
+teclaApertada = function(t)
+	if not ativo or estado.modo ~= "teclas" then return end
+	local caixa = caixas[estado.idx]
+	if estado.seq[estado.idx] == t then
+		som()
+		pulinho()
+		caixa.BackgroundColor3 = Color3.fromRGB(70, 200, 90)
+		estado.idx += 1
+		if estado.idx > #estado.seq then
+			estado.acertos += 1
+			local rapido = estado.resta > estado.limite * 0.5
+			mostrar(rapido and "PERFECT!" or "GOOD!", rapido and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(110, 230, 120))
+			if estado.acertos >= estado.total then
+				placar.Text = ("SETS  %d / %d"):format(estado.acertos, estado.total)
+				terminar("ok")
+				return
+			end
+			novaSerie()
+		else
+			caixas[estado.idx].BackgroundColor3 = Color3.fromRGB(230, 120, 40)
+		end
+	else
+		caixa.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+		task.delay(0.2, function()
+			if caixa.Parent and caixas[estado.idx] == caixa then caixa.BackgroundColor3 = Color3.fromRGB(230, 120, 40) end
+		end)
+		errou()
+	end
+end
+for i, t in ipairs(TECLAS) do
+	local b = new("TextButton", { Size = UDim2.fromOffset(44, 44), BackgroundColor3 = Color3.fromRGB(230, 120, 40), Text = t, Font = Enum.Font.GothamBlack,
+		TextSize = 22, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = i, Parent = botoesTecla }, { canto(8) })
+	b.MouseButton1Click:Connect(function() teclaApertada(t) end)
+end
+
 local function golpe()
-	if not ativo or os.clock() < estado.travaAte then return end
+	if not ativo or estado.modo == "teclas" or os.clock() < estado.travaAte then return end
 	estado.travaAte = os.clock() + 0.25
 	local d = math.abs(estado.pos - estado.centro)
 	if d <= estado.largura / 2 then
@@ -176,6 +264,15 @@ bSair.MouseButton1Click:Connect(function() terminar("falhou") end)
 
 RunService.RenderStepped:Connect(function(dt)
 	if not ativo then return end
+	if estado.modo == "teclas" then
+		estado.resta -= dt
+		tempoBarra.Size = UDim2.fromScale(math.clamp(estado.resta / estado.limite, 0, 1), 1)
+		if estado.resta <= 0 then
+			-- o tempo acabou: perde uma vida e vem outra sequência
+			if not errou() then novaSerie() end
+		end
+		return
+	end
 	estado.tempo += dt
 	local v = estado.vel
 	-- na segunda metade o marcador muda de ritmo para não dar para decorar o tempo
@@ -190,9 +287,18 @@ end)
 
 minigame.OnClientEvent:Connect(function(info)
 	if info.acao ~= "comecar" or ativo then return end
-	estado = { total = info.acertos or 10, acertos = 0, vidas = VIDAS, pos = 0, dir = 1, tempo = 0, travaAte = 0, alvo = info.alvo }
-	titulo.Text = (info.titulo or "SENSEI KAITO'S TRAINING") .. "  ·  " .. string.upper(info.nome or "")
-	dica.Text = (info.dica or "Punch when the marker is inside the green zone!") .. "  [SPACE / CLICK HIT]"
+	local teclas = info.modo == "teclas"
+	local hum0 = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	estado = { total = info.acertos or 10, acertos = 0, vidas = VIDAS, pos = 0, dir = 1, tempo = 0, travaAte = 0, alvo = info.alvo,
+		modo = teclas and "teclas" or "socos", hip = hum0 and hum0.HipHeight }
+	estado.cabecalho = (info.titulo or (teclas and "COACH GAIEN'S DRILL" or "SENSEI KAITO'S TRAINING")) .. "  ·  " .. string.upper(info.nome or "")
+	titulo.Text = estado.cabecalho
+	dica.Text = teclas and "Press the keys in order before the time runs out!  [W A S D]"
+		or ((info.dica or "Punch when the marker is inside the green zone!") .. "  [SPACE / CLICK HIT]")
+	barra.Visible, bHit.Visible = not teclas, not teclas
+	fileira.Visible, tempoFundo.Visible, botoesTecla.Visible = teclas, teclas, teclas
+	placar.Position = UDim2.fromOffset(20, teclas and 112 or 100)
+	vidasTxt.Position = UDim2.fromOffset(20, teclas and 140 or 130)
 	feedback.Text = ""
 	novaRodada()
 	-- vira o personagem para o alvo
@@ -207,6 +313,12 @@ minigame.OnClientEvent:Connect(function(info)
 		if st == Enum.UserInputState.Begin then golpe() end
 		return Enum.ContextActionResult.Sink
 	end, false, 3000, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+	if teclas then
+		ContextActionService:BindActionAtPriority("TreinoTeclas", function(_, st, input)
+			if st == Enum.UserInputState.Begin then teclaApertada(input.KeyCode.Name) end
+			return Enum.ContextActionResult.Sink
+		end, false, 3000, Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D)
+	end
 	ativo = true
 	gui.Enabled = true
 end)

@@ -1,6 +1,6 @@
 -- Script: ServerScriptService > MissionServer
 -- Fase 3: missões, NPCs que conversam, ranks ninja e o Exame Ninja.
--- MissionAction (RemoteFunction): "estado" | "aceitar", idDaMissao | "desistir"
+-- MissionAction (RemoteFunction): "estado" | "aceitar", idDaMissao | "desistir" | "conversou", { escolhas }
 -- MissionEvent  (RemoteEvent, servidor -> cliente): { tipo = "dialogo" | "concluida" | "aviso" | "estado" ... }
 -- Outros scripts avisam progresso pelo BindableEvent ServerStorage.MissaoProgresso: Fire(player, tipo, quantidade)
 -- A partida do Exame começa pelo BindableEvent ServerStorage.IniciarPartida (WaveServer) e
@@ -13,6 +13,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
 local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
+local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 
 local action = Instance.new("RemoteFunction")
@@ -37,11 +38,17 @@ local function dados(player)
 	local m = data.Missoes
 	m.Historia = tonumber(m.Historia) or 0
 	-- a história mudou de 5 para 7 passos: converte o progresso antigo uma vez
-	if m.V ~= 2 then
+	if (tonumber(m.V) or 0) < 2 then
 		local antigo = { [0] = 0, 1, 5, 5, 6, 7 }
 		m.Historia = antigo[math.clamp(m.Historia, 0, 5)]
 		if type(m.Ativa) == "table" and tostring(m.Ativa.Id):sub(1, 1) == "H" then m.Ativa = nil end
 		m.V = 2
+	end
+	-- a história ganhou o passo 6 (Your First Jutsu): quem já tinha passado dele avança um
+	if (tonumber(m.V) or 0) < 3 then
+		if m.Historia >= 6 then m.Historia += 1 end
+		if type(m.Ativa) == "table" and tostring(m.Ativa.Id):match("^H%d") then m.Ativa = nil end
+		m.V = 3
 	end
 	if type(data.Rank) == "string" and data.Rank ~= "Estudante" then m.Historia = MissionData.TotalHistoria end
 	if type(m.Cool) ~= "table" then m.Cool = {} end
@@ -58,6 +65,9 @@ local function disponivel(data, m, missao)
 	if missao.Cla and not (data.Cla and data.Cla.Id == missao.Cla) then return false end
 	if missao.Unica and m.Feitas[missao.Id] then return false end
 	if missao.Requer and not m.Feitas[missao.Requer] then return false end
+	if missao.Natureza and not NatureData.Tem(data, missao.Natureza) then return false end
+	if missao.NovaNatureza and (NatureData.Contar(data) == 0 or NatureData.Contar(data) >= NatureData.MAX) then return false end
+	if missao.HistoriaMin and m.Historia < missao.HistoriaMin then return false end
 	if missao.Nivel and data.Level < missao.Nivel then return false, "Requires level " .. missao.Nivel end
 	if missao.RankMin and MissionData.RankIndex(data.Rank) < MissionData.RankIndex(missao.RankMin) then
 		return false, "Requires rank " .. MissionData.RankName(missao.RankMin)
@@ -132,6 +142,39 @@ local function concluir(player)
 		data.Atributos.Pontos += r.Pontos
 		PlayerData.Refresh(player)
 	end
+	if r.PrimeiroJutsu then
+		local clan = ClanPowers.Sincronizar(data)
+		local c = clan and ClanPowers.Clans[clan]
+		if c then aviso(player, ("NEW JUTSU: %s  [%s]"):format(c.Powers[1].Name, ClanPowers.KEYS[1]), true) end
+	end
+	if r.Jutsu then
+		local j = NatureData.Jutsu(r.Jutsu)
+		local n = NatureData.Garantir(data)
+		if j then
+			n.Jutsus[j.Id] = true
+			-- já equipa numa tecla livre (G ou H)
+			for i = 1, #NatureData.KEYS do
+				if not n.Equip[i] then n.Equip[i] = j.Id break end
+			end
+			aviso(player, ("NEW JUTSU: %s!  Equip it in NATURES"):format(j.Name), true)
+		end
+	end
+	if r.NovaNatureza then
+		local n = NatureData.Garantir(data)
+		local nova = NatureData.Nova(data, Random.new())
+		if nova then
+			table.insert(n.Lista, nova)
+			aviso(player, ("NEW CHAKRA NATURE: %s!  Its master has something to teach you."):format(NatureData.Tipos[nova].Name), true)
+		end
+	end
+	if r.Jutsu or r.NovaNatureza then
+		local an = ServerStorage:FindFirstChild("AtualizarNatureza")
+		if an then an:Fire(player) end
+	end
+	if r.PrimeiroJutsu or missao.Historia then
+		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
+		if atualizar then atualizar:Fire(player) end
+	end
 	if r.Poder and missao.Cla then
 		local c = ClanPowers.Clans[missao.Cla]
 		local poder = c and c.Powers[r.Poder]
@@ -203,6 +246,9 @@ end)
 -- Ações do cliente
 ---------------------------------------------------------------
 local ultimoNpc = {} -- [player] = nome do NPC da última conversa (ou "Quadro")
+local conversaDe = {} -- [player] = { Id = missão "falar" cuja conversa está aberta, Npc = chave, Modelo = modelo }
+local conversar
+local BONUS_RESPOSTA = 25 -- XP por resposta boa numa conversa
 
 action.OnServerInvoke = function(player, acao, id)
 	local data, m = dados(player)
@@ -230,6 +276,29 @@ action.OnServerInvoke = function(player, acao, id)
 		if missao.Tipo == "exame" then
 			iniciarExame(player, missao)
 		end
+		return { ok = true, estado = estado(player) }
+	elseif acao == "conversou" then
+		-- terminou a conversa com opções: conclui a missão "falar" e dá o bônus das respostas boas
+		local c = conversaDe[player]
+		conversaDe[player] = nil
+		local missao = m.Ativa and MissionData.Get(m.Ativa.Id)
+		if not c or not missao or missao.Id ~= c.Id or missao.Tipo ~= "falar" or not missao.Conversa then
+			return { ok = false, erro = "No conversation." }
+		end
+		local boas = 0
+		if type(id) == "table" then
+			for i, passo in ipairs(missao.Conversa) do
+				local op = passo.Opcoes and passo.Opcoes[tonumber(id[i]) or 0]
+				if op and op.Bom then boas += 1 end
+			end
+		end
+		if boas > 0 then
+			PlayerData.AddXP(player, boas * BONUS_RESPOSTA)
+			aviso(player, ("Good answers!  +%d XP"):format(boas * BONUS_RESPOSTA), true)
+		end
+		progredir(player, "falar", 1)
+		-- o NPC já mostra o que tem a oferecer (o próximo passo do caminho)
+		task.defer(conversar, player, c.Npc, c.Modelo)
 		return { ok = true, estado = estado(player) }
 	elseif acao == "desistir" then
 		m.Ativa = nil
@@ -261,6 +330,7 @@ local function ofertasDe(player, npcKey)
 				table.insert(lista, {
 					Id = missao.Id, Name = missao.Name, Rank = missao.Rank, Desc = missao.Desc,
 					Recompensa = missao.Recompensa, Bloqueio = bloqueio,
+					Conversa = (ok and missao.Tipo ~= "falar") and missao.Conversa or nil,
 					De = giver and giver.Name or "?",
 				})
 			end
@@ -269,14 +339,23 @@ local function ofertasDe(player, npcKey)
 	return lista
 end
 
-local function conversar(player, npcKey, modelo)
+conversar = function(player, npcKey, modelo)
 	local data, m = dados(player)
 	if not data then return end
 	ultimoNpc[player] = npcKey
+	conversaDe[player] = nil
 	-- missão "falar com" este NPC
 	if m.Ativa then
 		local missao = MissionData.Get(m.Ativa.Id)
 		if missao.Tipo == "falar" and (missao.Alvo == npcKey or (modelo and missao.Alvo == modelo.Name)) then
+			if missao.Conversa then
+				-- conversa com opções: a missão só conclui quando o jogador terminar de conversar
+				local quem = MissionData.NPCs[missao.Alvo] or MissionData.NPCs.StarterCharacter
+				conversaDe[player] = { Id = missao.Id, Npc = npcKey, Modelo = modelo }
+				evento:FireClient(player, { tipo = "dialogo", npc = npcKey, nome = quem.Name, titulo = quem.Titulo,
+					fala = "", ofertas = {}, conversa = missao.Conversa, modelo = modelo })
+				return
+			end
 			progredir(player, "falar", 1)
 		end
 	end
@@ -744,4 +823,5 @@ Players.PlayerAdded:Connect(setup)
 for _, p in ipairs(Players:GetPlayers()) do setup(p) end
 Players.PlayerRemoving:Connect(function(player)
 	ultimoNpc[player] = nil
+	conversaDe[player] = nil
 end)

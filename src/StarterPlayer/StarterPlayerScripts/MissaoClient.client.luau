@@ -57,7 +57,7 @@ new("UIStroke", { Color = COR.linha, Thickness = 1.5, Parent = tracker })
 local tRank = label(tracker, "", 11, COR.laranja, { Position = UDim2.fromOffset(10, 5), Size = UDim2.new(1, -40, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 local tNome = label(tracker, "", 14, COR.texto, { Position = UDim2.fromOffset(10, 20), Size = UDim2.new(1, -20, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 local tObj = label(tracker, "", 12, COR.fraco, { Position = UDim2.fromOffset(10, 39), Size = UDim2.new(1, -20, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
-local tDrop = botao(tracker, "✕", COR.card, UDim2.fromOffset(22, 18), UDim2.new(1, -28, 0, 4))
+local tDrop = botao(tracker, "X", COR.card, UDim2.fromOffset(22, 18), UDim2.new(1, -28, 0, 4))
 tDrop.TextSize = 11
 local function posicionarTracker()
 	-- lado direito, abaixo da lista de jogadores do Roblox
@@ -212,7 +212,7 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajustar
 local dNome = label(dialogo, "", 18, COR.laranja, { Position = UDim2.fromOffset(16, 10), Size = UDim2.fromOffset(400, 22), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 local dTitulo = label(dialogo, "", 12, COR.fraco, { Position = UDim2.fromOffset(16, 32), Size = UDim2.fromOffset(400, 14), TextXAlignment = Enum.TextXAlignment.Left })
 local dFala = label(dialogo, "", 14, COR.texto, { Position = UDim2.fromOffset(16, 50), Size = UDim2.new(1, -32, 0, 36), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
-local dFechar = botao(dialogo, "✕", COR.card, UDim2.fromOffset(30, 26), UDim2.new(1, -40, 0, 10))
+local dFechar = botao(dialogo, "X", COR.card, UDim2.fromOffset(30, 26), UDim2.new(1, -40, 0, 10))
 local lista = new("ScrollingFrame", { Position = UDim2.fromOffset(12, 92), Size = UDim2.new(1, -24, 1, -128), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(), Parent = dialogo })
 new("UIListLayout", { Padding = UDim.new(0, 6), Parent = lista })
 local dAviso = label(dialogo, "", 12, COR.vermelho, { Position = UDim2.new(0, 16, 1, -30), Size = UDim2.new(1, -32, 0, 22), TextXAlignment = Enum.TextXAlignment.Left })
@@ -227,17 +227,102 @@ local function recompensaTexto(r)
 	if r.XP then table.insert(t, "+" .. r.XP .. " XP") end
 	if r.Coins then table.insert(t, "+" .. r.Coins .. " coins") end
 	if r.Pontos then table.insert(t, "+" .. r.Pontos .. " stat pts") end
+	if r.PrimeiroJutsu then table.insert(t, "+ clan jutsu") end
+	if r.Jutsu then table.insert(t, "+ new jutsu") end
+	if r.NovaNatureza then table.insert(t, "+ new nature") end
 	return table.concat(t, "   ")
+end
+
+local function limparLista()
+	for _, c in ipairs(lista:GetChildren()) do
+		if c:IsA("GuiObject") then c:Destroy() end
+	end
+end
+
+-- fala do NPC aparecendo letra por letra
+local falaVez = 0
+local function falar(texto, grande)
+	falaVez += 1
+	local minha = falaVez
+	dFala.Size = UDim2.new(1, -32, 0, grande and 66 or 36)
+	lista.Position = UDim2.fromOffset(12, grande and 122 or 92)
+	lista.Size = UDim2.new(1, -24, 1, grande and -158 or -128)
+	dFala.Text = "\"" .. texto .. "\""
+	if not grande then
+		dFala.MaxVisibleGraphemes = -1
+		return
+	end
+	dFala.MaxVisibleGraphemes = 0
+	task.spawn(function()
+		local total = utf8.len(dFala.Text) or #dFala.Text
+		for n = 2, total, 2 do
+			if falaVez ~= minha then return end
+			dFala.MaxVisibleGraphemes = n
+			task.wait(0.012)
+		end
+		if falaVez == minha then dFala.MaxVisibleGraphemes = -1 end
+	end)
+end
+
+-- Conversa com opções de resposta. Cada passo: fala do NPC, o jogador escolhe uma resposta,
+-- o NPC reage, e segue. No fim chama aoFim(escolhas) com o número da opção de cada passo.
+local function tocarConversa(conversa, aoFim)
+	local escolhas = {}
+	local i = 0
+	local function opcao(texto, cor, ordem, clique)
+		local b = new("TextButton", { Size = UDim2.new(1, -6, 0, 38), BackgroundColor3 = cor, Text = texto, TextColor3 = COR.texto, Font = Enum.Font.GothamBold,
+			TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = ordem, AutoButtonColor = true, Parent = lista })
+		corner(b, 8)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8), Parent = b })
+		b.MouseButton1Click:Connect(clique)
+		return b
+	end
+	local function passo()
+		i += 1
+		local p = conversa[i]
+		if not p then
+			aoFim(escolhas)
+			return
+		end
+		limparLista()
+		dAviso.Text = ""
+		falar(p.Fala, true)
+		if p.Opcoes then
+			for k, op in ipairs(p.Opcoes) do
+				opcao(k .. ".  " .. op.T, COR.card, k, function()
+					escolhas[i] = k
+					limparLista()
+					falar(op.R or "...", true)
+					opcao("Continue  >", COR.laranja, 1, passo)
+				end)
+			end
+		else
+			escolhas[i] = 0
+			opcao("Continue  >", COR.laranja, 1, passo)
+		end
+	end
+	passo()
 end
 
 local function abrirDialogo(d)
 	dNome.Text = d.nome
 	dTitulo.Text = d.titulo or ""
-	dFala.Text = "\"" .. (d.fala or "") .. "\""
 	dAviso.Text = ""
-	for _, c in ipairs(lista:GetChildren()) do
-		if c:IsA("Frame") then c:Destroy() end
+	limparLista()
+	if d.conversa then
+		-- missão "falar": a conversa com este NPC é a missão
+		dialogo.Visible = true
+		tocarConversa(d.conversa, function(escolhas)
+			limparLista()
+			local r = action:InvokeServer("conversou", escolhas)
+			if r and r.estado then estado = r.estado end
+			atualizar()
+			if not (r and r.ok) then dialogo.Visible = false end
+			-- se deu certo, o servidor já manda a próxima fala do NPC (com a próxima missão)
+		end)
+		return
 	end
+	falar(d.fala or "", false)
 	if #d.ofertas == 0 then
 		label(new("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, Parent = lista }), "Nothing for you right now.", 13, COR.fraco, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Left })
 	end
@@ -255,7 +340,7 @@ local function abrirDialogo(d)
 			label(f, o.Bloqueio, 11, COR.fraco, { Position = UDim2.new(1, -110, 0, 0), Size = UDim2.new(0, 102, 1, 0), TextXAlignment = Enum.TextXAlignment.Right })
 		else
 			local b = botao(f, o.Id == "__exame" and "START" or "ACCEPT", o.Id == "__exame" and COR.vermelho or COR.verde, UDim2.fromOffset(92, 32), UDim2.new(1, -100, 0, 15))
-			b.MouseButton1Click:Connect(function()
+			local function aceitar()
 				local r = action:InvokeServer("aceitar", o.Id)
 				if r and r.ok then
 					if r.estado then estado = r.estado end
@@ -263,6 +348,18 @@ local function abrirDialogo(d)
 					dialogo.Visible = false
 				else
 					dAviso.Text = (r and r.erro) or "Could not accept."
+				end
+			end
+			b.MouseButton1Click:Connect(function()
+				if o.Conversa and d.npc ~= "Quadro" then
+					-- o NPC conversa com o jogador antes de entregar a missão
+					tocarConversa(o.Conversa, function()
+						limparLista()
+						aceitar()
+						if dialogo.Visible then task.delay(2, function() dialogo.Visible = false end) end
+					end)
+				else
+					aceitar()
 				end
 			end)
 		end

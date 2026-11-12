@@ -4,7 +4,7 @@
 --   falar    = conversar com o NPC Alvo
 --   ir       = chegar ao lugar Alvo (Lugares)
 --   treinar  = treinar N vezes nas estações da Academia
---   derrotar = derrotar N bandidos no acampamento
+--   derrotar = derrotar N bandidos nos esconderijos
 --   coletar  = coletar N ervas na floresta
 --   exame    = vencer a partida do Exame Ninja (vira Genin)
 
@@ -27,8 +27,15 @@ MissionData.Lugares = {
 	Academia = { Name = "Ninja Academy", Pos = Vector3.new(-120, 3, -530), Raio = 20 },
 	Oeste = { Name = "West District", Pos = Vector3.new(-295, 3, -280), Raio = 20 },
 	Praca = { Name = "Village Square", Pos = Vector3.new(63, 3, -12), Raio = 18 },
-	Acampamento = { Name = "Bandit Camp", Pos = Vector3.new(300, 3, 100), Raio = 30 },
+	Acampamento = { Name = "Bandit Hideouts", Pos = Vector3.new(220, 3, 140), Raio = 30 },
 	Floresta = { Name = "Forest", Pos = Vector3.new(63, 3, 330), Raio = 120 },
+}
+
+-- esconderijos dos bandidos dentro da floresta murada (missões "derrotar")
+MissionData.Esconderijos = {
+	{ Name = "HIDDEN CAVE", Tipo = "Caverna", Pos = Vector3.new(-80, 0, 505), Giro = 0 },
+	{ Name = "BANDIT HIDEOUT", Tipo = "Cabana", Pos = Vector3.new(220, 0, 140), Giro = 90 },
+	{ Name = "RUINED SHED", Tipo = "Ruina", Pos = Vector3.new(215, 0, 292), Giro = 180 },
 }
 
 -- NPCs: chave = nome do modelo no workspace (tag "NPC"). Name = nome mostrado no jogo.
@@ -73,7 +80,7 @@ MissionData.Missoes = {
 		Desc = "Collect 5 glowing herbs in the forest.",
 		Tipo = "coletar", Alvo = "Floresta", N = 5, Recompensa = { XP = 450, Coins = 70 } },
 	{ Id = "R_Bandidos", Npc = "Sasuke", Rank = "D", Name = "Bandit Hunt",
-		Desc = "Defeat 6 bandits at the camp.",
+		Desc = "Defeat 6 bandits at the hideouts.",
 		Tipo = "derrotar", Alvo = "Acampamento", N = 6, Recompensa = { XP = 500, Coins = 90 } },
 	{ Id = "R_Treino", Npc = "Might guy", Rank = "D", Name = "Extra Training",
 		Desc = "Train once at the Ninja Academy.",
@@ -82,7 +89,7 @@ MissionData.Missoes = {
 		Desc = "Search for the cat in the West District.",
 		Tipo = "ir", Alvo = "Oeste", N = 1, Recompensa = { XP = 400, Coins = 60 } },
 	{ Id = "R_Elder", Npc = "Tsunade", Rank = "C", Name = "Camp Raid", Nivel = 10,
-		Desc = "Defeat 10 bandits at the camp.",
+		Desc = "Defeat 10 bandits at the hideouts.",
 		Tipo = "derrotar", Alvo = "Acampamento", N = 10, Recompensa = { XP = 1500, Coins = 200, Pontos = 1 } },
 }
 
@@ -97,11 +104,11 @@ do
 		local nivel3, rank3 = ClanPowers.Requisito(clan, 3)
 		table.insert(MissionData.Missoes, { Id = "C2_" .. clan, Npc = "Tsunade", Rank = "C", Cla = clan, Unica = true,
 			Name = "Clan Secret: " .. c.Powers[2].Name, Nivel = nivel2, RankMin = rank2,
-			Desc = "The Elder knows your clan's secret. Defeat 8 bandits at the camp to prove you are ready.",
+			Desc = "The Elder knows your clan's secret. Defeat 8 bandits at the hideouts to prove you are ready.",
 			Tipo = "derrotar", Alvo = "Acampamento", N = 8, Recompensa = { XP = 800, Coins = 150, Poder = 2 } })
 		table.insert(MissionData.Missoes, { Id = "C3_" .. clan, Npc = "Tsunade", Rank = "B", Cla = clan, Unica = true, Requer = "C2_" .. clan,
 			Name = "Clan Trial: " .. c.Powers[3].Name, Nivel = nivel3, RankMin = rank3,
-			Desc = "The final trial of your clan. Defeat 15 bandits at the camp to master your strongest technique.",
+			Desc = "The final trial of your clan. Defeat 15 bandits at the hideouts to master your strongest technique.",
 			Tipo = "derrotar", Alvo = "Acampamento", N = 15, Recompensa = { XP = 2500, Coins = 400, Poder = 3 } })
 	end
 end
@@ -111,7 +118,7 @@ table.insert(MissionData.Missoes, { Id = "E_Boxe", Npc = "Might guy", Rank = "D"
 	Name = "Boxing Lessons", Desc = "Coach Gaien will teach you Boxing. Train 5 times at the Ninja Academy.",
 	Tipo = "treinar", N = 5, Recompensa = { XP = 500, Coins = 100, Estilo = "Boxe" } })
 table.insert(MissionData.Missoes, { Id = "E_Karate", Npc = "Kakashi", Rank = "C", Unica = true, Nivel = 10,
-	Name = "Karate Discipline", Desc = "Sensei Kaito teaches Karate to the disciplined. Defeat 10 bandits at the camp.",
+	Name = "Karate Discipline", Desc = "Sensei Kaito teaches Karate to the disciplined. Defeat 10 bandits at the hideouts.",
 	Tipo = "derrotar", Alvo = "Acampamento", N = 10, Recompensa = { XP = 900, Coins = 150, Estilo = "Karate" } })
 table.insert(MissionData.Missoes, { Id = "E_MuayThai", Npc = "Sasuke", Rank = "C", Unica = true, Nivel = 15, RankMin = "Genin",
 	Name = "Art of Eight Limbs", Desc = "Ryo only trains Genin. Defeat 12 bandits and he will teach you Muay Thai.",

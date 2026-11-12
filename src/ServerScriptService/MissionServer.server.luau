@@ -389,14 +389,18 @@ end)
 -- Acampamento de bandidos (missões "derrotar")
 ---------------------------------------------------------------
 local CAMP = MissionData.Lugares.Acampamento
+local ESCONDERIJOS = MissionData.Esconderijos
 local pastaCamp = Instance.new("Folder")
-pastaCamp.Name = "AcampamentoBandidos"
+pastaCamp.Name = "EsconderijosBandidos"
 pastaCamp.Parent = workspace
-local MAX_BANDIDOS = 6
+local POR_ESCONDERIJO = 3
 local rng = Random.new()
 
-local function montarAcampamento()
-	local base = CFrame.new(CAMP.Pos.X, 0, CAMP.Pos.Z)
+local function montarEsconderijo(e)
+	local pasta = Instance.new("Model")
+	pasta.Name = "Esconderijo_" .. e.Tipo
+	pasta.Parent = pastaCamp
+	local base = CFrame.new(e.Pos.X, 0, e.Pos.Z) * CFrame.Angles(0, math.rad(e.Giro or 0), 0)
 	local function p(nome, size, cf, cor, mat, forma)
 		local x = Instance.new("Part")
 		x.Name = nome
@@ -406,45 +410,75 @@ local function montarAcampamento()
 		x.Color = cor
 		x.Material = mat
 		if forma then x.Shape = forma end
-		x.Parent = pastaCamp
+		x.TopSurface, x.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+		x.Parent = pasta
 		return x
 	end
-	-- fogueira
-	p("Fogueira", Vector3.new(0.6, 4, 4), CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(70, 60, 55), Enum.Material.Slate, Enum.PartType.Cylinder)
-	local fogo = p("Fogo", Vector3.new(1.6, 2.2, 1.6), CFrame.new(0, 1.4, 0), Color3.fromRGB(255, 140, 40), Enum.Material.Neon)
+	local pedra = Color3.fromRGB(95, 90, 85)
+	local madeira = Color3.fromRGB(95, 65, 40)
+	if e.Tipo == "Caverna" then
+		-- morro de pedra com uma boca de caverna virada para +Z
+		p("Rocha", Vector3.new(34, 18, 26), CFrame.new(0, 9, -10), pedra, Enum.Material.Slate)
+		p("Rocha", Vector3.new(12, 22, 14), CFrame.new(-14, 11, 6) * CFrame.Angles(0, math.rad(15), math.rad(6)), pedra, Enum.Material.Slate)
+		p("Rocha", Vector3.new(12, 22, 14), CFrame.new(14, 11, 6) * CFrame.Angles(0, math.rad(-15), math.rad(-6)), pedra, Enum.Material.Slate)
+		p("Teto", Vector3.new(30, 6, 18), CFrame.new(0, 20, 4), pedra, Enum.Material.Slate)
+		p("Musgo", Vector3.new(32, 1, 20), CFrame.new(0, 23.5, 2), Color3.fromRGB(70, 110, 55), Enum.Material.Grass)
+		p("Escuro", Vector3.new(14, 14, 1), CFrame.new(0, 7, -2.5), Color3.fromRGB(15, 12, 10), Enum.Material.SmoothPlastic)
+	elseif e.Tipo == "Cabana" then
+		-- cabana de madeira escondida com rede de camuflagem
+		p("Chao", Vector3.new(22, 1, 18), CFrame.new(0, 0.5, 0), madeira, Enum.Material.WoodPlanks)
+		p("Parede", Vector3.new(22, 10, 1), CFrame.new(0, 6, -8.5), madeira, Enum.Material.WoodPlanks)
+		p("Parede", Vector3.new(1, 10, 18), CFrame.new(-10.5, 6, 0), madeira, Enum.Material.WoodPlanks)
+		p("Parede", Vector3.new(1, 10, 18), CFrame.new(10.5, 6, 0), madeira, Enum.Material.WoodPlanks)
+		p("Telhado", Vector3.new(26, 1, 22), CFrame.new(0, 11.5, 0) * CFrame.Angles(math.rad(8), 0, 0), Color3.fromRGB(60, 45, 30), Enum.Material.Wood)
+		local rede = p("Camuflagem", Vector3.new(30, 0.4, 28), CFrame.new(0, 12.6, 0) * CFrame.Angles(math.rad(8), 0, 0), Color3.fromRGB(55, 85, 45), Enum.Material.Grass)
+		rede.CanCollide = false
+		for _, x in ipairs({ -8, 8 }) do
+			p("Caixote", Vector3.new(3, 3, 3), CFrame.new(x, 2.5, -5), Color3.fromRGB(130, 95, 55), Enum.Material.WoodPlanks)
+		end
+	else
+		-- galpão em ruínas: paredes quebradas de pedra e tábuas
+		p("Base", Vector3.new(26, 1, 22), CFrame.new(0, 0.5, 0), pedra, Enum.Material.Cobblestone)
+		p("Parede", Vector3.new(26, 12, 1.5), CFrame.new(0, 6, -10), pedra, Enum.Material.Brick)
+		p("Parede", Vector3.new(1.5, 8, 14), CFrame.new(-12, 4, -3), pedra, Enum.Material.Brick)
+		p("Parede", Vector3.new(1.5, 5, 10), CFrame.new(12, 2.5, -5), pedra, Enum.Material.Brick)
+		p("Viga", Vector3.new(1, 1, 24), CFrame.new(-5, 12, 0) * CFrame.Angles(math.rad(-12), 0, 0), madeira, Enum.Material.Wood)
+		p("Viga", Vector3.new(1, 1, 24), CFrame.new(5, 11, 0) * CFrame.Angles(math.rad(-20), 0, math.rad(10)), madeira, Enum.Material.Wood)
+		p("Tabuas", Vector3.new(12, 0.6, 10), CFrame.new(-4, 11, -5) * CFrame.Angles(math.rad(10), 0, math.rad(-6)), madeira, Enum.Material.WoodPlanks)
+	end
+	-- fogueira na frente
+	p("Fogueira", Vector3.new(0.6, 4, 4), CFrame.new(0, 0.3, 14) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(70, 60, 55), Enum.Material.Slate, Enum.PartType.Cylinder)
+	local fogo = p("Fogo", Vector3.new(1.4, 2, 1.4), CFrame.new(0, 1.3, 14), Color3.fromRGB(255, 140, 40), Enum.Material.Neon)
 	fogo.CanCollide = false
 	local luz = Instance.new("PointLight")
 	luz.Color = Color3.fromRGB(255, 150, 70)
-	luz.Range = 22
-	luz.Brightness = 1.5
+	luz.Range = 20
+	luz.Brightness = 1.4
 	luz.Parent = fogo
-	-- barracas
-	for i, a in ipairs({ 30, 150, 260 }) do
-		local r = math.rad(a)
-		local cf = CFrame.new(math.cos(r) * 16, 0, math.sin(r) * 16) * CFrame.Angles(0, -r + math.pi / 2, 0)
-		local cor = i == 2 and Color3.fromRGB(120, 90, 60) or Color3.fromRGB(150, 60, 50)
-		p("Barraca", Vector3.new(7, 5, 6), cf * CFrame.new(0, 2.5, 0), cor, Enum.Material.Fabric).Shape = Enum.PartType.Wedge
-	end
-	-- cerca de estacas
-	for i = 0, 15 do
-		local r = i / 16 * math.pi * 2
-		if i % 4 ~= 0 then
-			p("Estaca", Vector3.new(0.8, 4, 0.8), CFrame.new(math.cos(r) * 26, 2, math.sin(r) * 26) * CFrame.Angles(0, 0, math.rad(8)), Color3.fromRGB(100, 70, 45), Enum.Material.Wood)
-		end
-	end
 	-- placa
-	local placa = p("Placa", Vector3.new(6, 2.5, 0.4), CFrame.new(0, 4, 28), Color3.fromRGB(110, 80, 55), Enum.Material.WoodPlanks)
-	local sg = Instance.new("SurfaceGui")
-	sg.Face = Enum.NormalId.Back
-	sg.Parent = placa
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Text = "BANDIT CAMP"
-	t.TextScaled = true
-	t.Font = Enum.Font.GothamBlack
-	t.TextColor3 = Color3.fromRGB(240, 220, 190)
-	t.Parent = sg
+	local placa = p("Placa", Vector3.new(7, 2.5, 0.4), CFrame.new(9, 4, 20), Color3.fromRGB(110, 80, 55), Enum.Material.WoodPlanks)
+	p("Poste", Vector3.new(0.5, 4, 0.5), CFrame.new(9, 2, 20.3), madeira, Enum.Material.Wood)
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = face
+		sg.Parent = placa
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.Text = e.Name
+		t.TextScaled = true
+		t.Font = Enum.Font.GothamBlack
+		t.TextColor3 = Color3.fromRGB(240, 220, 190)
+		t.Parent = sg
+	end
+	-- ponto de onde os bandidos saem (na frente da entrada)
+	e.Saida = (base * CFrame.new(0, 3.5, 9)).Position
+end
+
+local function montarAcampamento()
+	for _, e in ipairs(ESCONDERIJOS) do
+		montarEsconderijo(e)
+	end
 end
 
 local modeloBase
@@ -491,7 +525,7 @@ local function creditar(posicao)
 	end
 end
 
-local function novoBandido()
+local function novoBandido(e)
 	local base = bandidoBase()
 	if not base then return end
 	local m = base:Clone()
@@ -503,8 +537,10 @@ local function novoBandido()
 	hum.WalkSpeed = 12
 	hum.DisplayName = "Bandit"
 	m:SetAttribute("Raio", 0)
+	m:SetAttribute("Esconderijo", e.Name)
+	local casa = e.Saida or e.Pos
 	local ang = rng:NextNumber(0, math.pi * 2)
-	local pos = CAMP.Pos + Vector3.new(math.cos(ang), 0, math.sin(ang)) * rng:NextNumber(4, 18)
+	local pos = casa + Vector3.new(math.cos(ang), 0, math.sin(ang)) * rng:NextNumber(1, 6)
 	m:PivotTo(CFrame.new(pos.X, 3.5, pos.Z))
 	m.Parent = pastaCamp
 	CollectionService:AddTag(m, "Inimigo")
@@ -536,8 +572,8 @@ local function novoBandido()
 					ultimoGolpe = os.clock()
 					alvo:TakeDamage(6)
 				end
-			elseif (root.Position - CAMP.Pos).Magnitude > 22 then
-				hum:MoveTo(CAMP.Pos)
+			elseif (root.Position - casa).Magnitude > 16 then
+				hum:MoveTo(casa)
 			end
 			task.wait(0.3)
 		end
@@ -547,15 +583,21 @@ end
 task.spawn(function()
 	montarAcampamento()
 	while true do
-		local vivos = 0
-		for _, c in ipairs(pastaCamp:GetChildren()) do
-			if c.Name == "Bandit" then
-				local h = c:FindFirstChildOfClass("Humanoid")
-				if h and h.Health > 0 then vivos += 1 end
+		local faltou = false
+		for _, e in ipairs(ESCONDERIJOS) do
+			local vivos = 0
+			for _, c in ipairs(pastaCamp:GetChildren()) do
+				if c.Name == "Bandit" and c:GetAttribute("Esconderijo") == e.Name then
+					local h = c:FindFirstChildOfClass("Humanoid")
+					if h and h.Health > 0 then vivos += 1 end
+				end
+			end
+			if vivos < POR_ESCONDERIJO then
+				novoBandido(e)
+				faltou = true
 			end
 		end
-		if vivos < MAX_BANDIDOS then novoBandido() end
-		task.wait(vivos < MAX_BANDIDOS and 5 or 2)
+		task.wait(faltou and 4 or 2)
 	end
 end)
 

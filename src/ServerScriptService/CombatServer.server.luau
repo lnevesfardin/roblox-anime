@@ -92,6 +92,51 @@ local function burst(pos, diameter, color, time)
 	Debris:AddItem(b, time + 0.1)
 end
 
+-- rastro do golpe: uma meia-lua fina na frente do personagem, mais grossa no meio,
+-- que some rápido (no lugar do quadrado branco de antes). n alterna o lado do golpe.
+local function arco(root, n, kick, cor)
+	local raio = kick and 4.6 or 3.3
+	local altura = kick and -1.3 or 0.7
+	local inclin = math.rad((n % 2 == 0) and 32 or -32)
+	local base = root.CFrame * CFrame.new(0, altura, -0.8) * CFrame.Angles(0, 0, inclin)
+	local segs = 9
+	for i = 0, segs - 1 do
+		local a0 = math.rad(-75 + i * (150 / segs))
+		local a1 = math.rad(-75 + (i + 1) * (150 / segs))
+		local p0 = (base * CFrame.new(math.sin(a0) * raio, 0, -math.cos(a0) * raio)).Position
+		local p1 = (base * CFrame.new(math.sin(a1) * raio, 0, -math.cos(a1) * raio)).Position
+		local w = 0.1 + 0.32 * math.sin(math.pi * (i + 0.5) / segs)
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+		p.Material = Enum.Material.Neon
+		p.Color = cor
+		p.Transparency = 0.3
+		p.Size = Vector3.new(w, w * 0.5, (p1 - p0).Magnitude + 0.05)
+		p.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
+		p.Parent = workspace
+		TweenService:Create(p, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, i * 0.012),
+			{ Transparency = 1, Size = p.Size * Vector3.new(0.4, 0.4, 1) }):Play()
+		Debris:AddItem(p, 0.3)
+	end
+end
+
+-- impacto no inimigo: faísca pequena + anel que abre
+local function impacto(pos, tamanho, cor)
+	burst(pos, tamanho, cor, 0.16)
+	local r = Instance.new("Part")
+	r.Shape = Enum.PartType.Cylinder
+	r.Anchored, r.CanCollide, r.CanQuery, r.CanTouch, r.CastShadow = true, false, false, false, false
+	r.Material = Enum.Material.Neon
+	r.Color = Color3.fromRGB(255, 255, 255)
+	r.Transparency = 0.35
+	r.Size = Vector3.new(0.15, 1, 1)
+	r.CFrame = CFrame.new(pos) * CFrame.Angles(math.random() * 3, math.random() * 3, 0)
+	r.Parent = workspace
+	TweenService:Create(r, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(0.05, tamanho * 1.6, tamanho * 1.6), Transparency = 1 }):Play()
+	Debris:AddItem(r, 0.3)
+end
+
 -- segura o inimigo parado por alguns segundos (Jiu-Jitsu)
 local function prender(e, dur)
 	if e.raio > 2 then
@@ -109,6 +154,42 @@ local function prender(e, dur)
 			hum.WalkSpeed = hum:GetAttribute("VelPreso") or 13
 			hum:SetAttribute("VelPreso", nil)
 		end
+	end)
+end
+
+-- Gelo: deixa o inimigo mais lento por alguns segundos (com um brilho azul)
+local function lento(e, dur)
+	local hum = e.hum
+	if hum:GetAttribute("VelPreso") ~= nil or hum:GetAttribute("Lento") then return end
+	hum:SetAttribute("Lento", true)
+	local antes = hum.WalkSpeed
+	hum.WalkSpeed = antes * 0.55
+	local hl = Instance.new("Highlight")
+	hl.FillColor = Color3.fromRGB(150, 220, 255)
+	hl.FillTransparency = 0.6
+	hl.OutlineTransparency = 1
+	hl.Parent = e.model
+	task.delay(dur, function()
+		if hum.Parent then
+			if hum:GetAttribute("VelPreso") == nil then hum.WalkSpeed = antes end
+			hum:SetAttribute("Lento", nil)
+		end
+		hl:Destroy()
+	end)
+end
+
+-- Lava: queima o inimigo por alguns segundos
+local function queimar(e, porTick, ticks)
+	if e.hum:GetAttribute("Queimando") then return end
+	e.hum:SetAttribute("Queimando", true)
+	task.spawn(function()
+		for _ = 1, ticks do
+			task.wait(0.6)
+			if e.hum.Health <= 0 or not e.root.Parent then break end
+			e.hum:TakeDamage(porTick)
+			burst(e.root.Position + Vector3.new(0, 1, 0), 2.5, Color3.fromRGB(255, 110, 40), 0.25)
+		end
+		if e.hum.Parent then e.hum:SetAttribute("Queimando", nil) end
 	end)
 end
 
@@ -198,7 +279,7 @@ local function hit(e, amount, from, force, up)
 		end
 		e.root.AssemblyLinearVelocity = d.Unit * force + Vector3.new(0, up or force * 0.2, 0)
 	end
-	burst(e.root.Position, 3 + e.raio, Color3.fromRGB(255, 255, 255), 0.18)
+	impacto(e.root.Position, 2.4 + e.raio, Color3.fromRGB(255, 235, 180))
 	local hl = Instance.new("Highlight")
 	hl.FillColor = Color3.new(1, 1, 1)
 	hl.FillTransparency = 0.4
@@ -244,22 +325,21 @@ local function onCombo(plr, st, hum, root, dmg, id, est)
 	local step = est.Combo[st.n]
 	st.nextHit = now + step.wait
 	local acertos = 0
+	local kekkei = plr:GetAttribute("Kekkei")
 	for _, e in ipairs(inFront(root, step.range, CONE)) do
 		hit(e, dmg * step.mult, root.Position, step.force, step.up)
 		if step.prender then prender(e, step.prender) end
+		-- passivos de Kekkei Genkai nos socos
+		if kekkei == "Gelo" then
+			lento(e, 1.5)
+		elseif kekkei == "Lava" then
+			queimar(e, dmg * 0.12, 3)
+		end
 		acertos += 1
 	end
 	ganharMaestria(plr, id, acertos)
-	-- efeito do golpe: arco na cor do estilo; chute é maior e mais baixo
-	local fx = Instance.new("Part")
-	fx.Size = step.kick and Vector3.new(9, 0.4, 7) or Vector3.new(5, 0.3, 5)
-	fx.Material = Enum.Material.Neon
-	fx.Color = st.n == #est.Combo and Color3.fromRGB(255, 220, 140) or est.Color
-	fx.Transparency = 0.35
-	fx.Anchored, fx.CanCollide, fx.CanQuery, fx.CanTouch, fx.CastShadow = true, false, false, false, false
-	fx.CFrame = root.CFrame * CFrame.new(0, step.kick and -1.2 or 0.4, -4.5) * CFrame.Angles(0, 0, math.rad(st.n == 2 and 25 or -25))
-	fx.Parent = workspace
-	Debris:AddItem(fx, 0.15)
+	-- efeito do golpe: rastro em meia-lua na cor do estilo; chute é maior e mais baixo
+	arco(root, st.n, step.kick, st.n == #est.Combo and Color3.fromRGB(255, 220, 140) or est.Color)
 end
 
 -- X: golpe carregado — quanto mais tempo segurou (até ~1,2s), mais forte e longe.

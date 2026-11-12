@@ -18,8 +18,9 @@ local feedbackEvent = ReplicatedStorage:WaitForChild("AbilityFeedback")
 
 local player = Players.LocalPlayer
 local KEYS = ClanPowers.KEYS
-local readyAt = { 0, 0, 0 }
-local total = { 1, 1, 1 }
+local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
+local readyAt = { 0, 0, 0, 0 } -- 4 = tecla V (Kekkei Genkai)
+local total = { 1, 1, 1, 1 }
 local estado = { Cla = "", Ok = { false, false, false }, Motivo = { "", "", "" } }
 
 ---------------------------------------------------------------
@@ -78,7 +79,7 @@ aviso.Text = ""
 aviso.Parent = gui
 
 local slots = {}
-for i = 1, 3 do
+for i = 1, 4 do
 	local f = Instance.new("Frame")
 	f.Size = UDim2.fromOffset(100, 62)
 	f.Position = UDim2.fromOffset((i - 1) * 109, 20)
@@ -99,7 +100,7 @@ for i = 1, 3 do
 	tecla.TextSize = 15
 	tecla.TextColor3 = Color3.new(1, 1, 1)
 	tecla.TextXAlignment = Enum.TextXAlignment.Left
-	tecla.Text = KEYS[i]
+	tecla.Text = KEYS[i] or KekkeiData.TECLA
 	tecla.ZIndex = 3
 	tecla.Parent = f
 
@@ -441,6 +442,17 @@ local function atualizar()
 		titulo.Text = clan:upper() .. " CLAN PATH"
 	end
 	painelBorda.Color = c.Color
+	-- tecla V: só aparece para quem nasceu com Kekkei Genkai; o POWERS vai para a direita dela
+	local kg = KekkeiData.Tipos[estado.K or ""]
+	slots[4].frame.Visible = kg ~= nil
+	botaoPoderes.Position = UDim2.fromOffset(kg and 436 or 327, 20)
+	if kg then
+		local s4 = slots[4]
+		s4.nome.Text = kg.Poder.Name
+		s4.custo.Text = kg.Poder.Chakra .. " CP"
+		s4.stroke.Color = estado.KOk and kg.Color or Color3.fromRGB(70, 70, 85)
+		s4.cadeado.Visible = estado.KOk ~= true
+	end
 	for i = 1, 3 do
 		local p = c.Powers[i]
 		local ok = estado.Ok[i] == true
@@ -473,7 +485,7 @@ local function lerEstado()
 	atualizar()
 end
 player:GetAttributeChangedSignal("PoderesEstado"):Connect(function()
-	readyAt = { 0, 0, 0 }
+	readyAt = { 0, 0, 0, 0 }
 	lerEstado()
 end)
 player:GetAttributeChangedSignal("Jogando"):Connect(atualizar)
@@ -481,7 +493,7 @@ lerEstado()
 
 RunService.RenderStepped:Connect(function()
 	local now = os.clock()
-	for i = 1, 3 do
+	for i = 1, 4 do
 		local left = readyAt[i] - now
 		if left > 0 then
 			slots[i].sombra.Size = UDim2.fromScale(1, math.clamp(left / total[i], 0, 1))
@@ -583,14 +595,25 @@ end
 
 local function usar(slot)
 	local c = claAtual()
-	if not c then
-		mostrarAviso("Spin the roulette to get a clan first.")
-		return
-	end
-	local p = c.Powers[slot]
-	if estado.Ok[slot] ~= true then
-		mostrarAviso(p.Name .. " is locked. " .. (estado.Motivo[slot] or ""))
-		return
+	local p
+	if slot == 4 then
+		local kg = KekkeiData.Tipos[estado.K or ""]
+		if not kg then return end
+		p = kg.Poder
+		if estado.KOk ~= true then
+			mostrarAviso(p.Name .. " is locked. " .. (estado.KMotivo or ""))
+			return
+		end
+	else
+		if not c then
+			mostrarAviso("Spin the roulette to get a clan first.")
+			return
+		end
+		p = c.Powers[slot]
+		if estado.Ok[slot] ~= true then
+			mostrarAviso(p.Name .. " is locked. " .. (estado.Motivo[slot] or ""))
+			return
+		end
 	end
 	if os.clock() < readyAt[slot] then
 		return
@@ -639,6 +662,13 @@ for i = 1, 3 do
 	ContextActionService:SetTitle("Poder" .. i, KEYS[i])
 	ContextActionService:SetPosition("Poder" .. i, POS_TOQUE[i])
 end
+-- tecla V: poder da Kekkei Genkai
+ContextActionService:BindAction("PoderKekkei", function(_, state)
+	if state == Enum.UserInputState.Begin then
+		usar(4)
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.KeyCode[KekkeiData.TECLA])
 
 feedbackEvent.OnClientEvent:Connect(function(p)
 	if p.msg then

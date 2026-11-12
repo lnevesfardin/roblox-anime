@@ -17,20 +17,27 @@ gui.Name = "HudOnda"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
+-- aviso das ondas: no centro, logo abaixo da faixa do HUD de cima (nível, moedas, gemas,
+-- CLAN e STATS), para não ficar por cima dele; em telas estreitas o texto diminui
 local texto = Instance.new("TextLabel")
-texto.Size = UDim2.fromOffset(700, 40)
-texto.Position = UDim2.new(0.5, -350, 0, 14)
+texto.AnchorPoint = Vector2.new(0.5, 0)
+texto.Size = UDim2.new(0.5, 0, 0, 34)
+texto.Position = UDim2.new(0.5, 0, 0, 100)
 texto.BackgroundTransparency = 1
 texto.Font = Enum.Font.GothamBlack
-texto.TextSize = 26
+texto.TextSize = 24
+texto.TextScaled = true
+local textoLimite = Instance.new("UITextSizeConstraint", texto)
+textoLimite.MaxTextSize = 24
 texto.TextColor3 = Color3.new(1, 1, 1)
 texto.TextStrokeTransparency = 0.3
 texto.Text = ""
 texto.Parent = gui
 
 local bossFrame = Instance.new("Frame")
-bossFrame.Size = UDim2.fromOffset(420, 24)
-bossFrame.Position = UDim2.new(0.5, -210, 0, 62)
+bossFrame.AnchorPoint = Vector2.new(0.5, 0)
+bossFrame.Size = UDim2.new(0.34, 0, 0, 22)
+bossFrame.Position = UDim2.new(0.5, 0, 0, 140)
 bossFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 bossFrame.Visible = false
 bossFrame.Parent = gui

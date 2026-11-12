@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
 local EconomyData = require(ReplicatedStorage:WaitForChild("EconomyData"))
 local AttributeData = require(ReplicatedStorage:WaitForChild("AttributeData"))
+local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
 
 -- Se o jogo não estiver publicado (ou a API estiver desligada), o DataStore falha.
 -- Nesse caso o jogo continua funcionando, mas sem salvar o progresso.
@@ -381,10 +382,15 @@ function PlayerData.GetCombatStats(player)
 	end
 	-- vem dos atributos: Vigor dá vida, Força dá dano de golpe, Ninjutsu dá dano de poder
 	local a = data.Atributos
+	-- passivos de Kekkei Genkai: Osso (+20% vida), Calor (+10% soco), Explosão (+10%) e Poeira (+15%) no poder
+	local k = KekkeiData.DoSave(data)
+	local mVida = k == "Osso" and 1.2 or 1
+	local mGolpe = k == "Calor" and 1.1 or 1
+	local mPoder = (k == "Explosao" and 1.1) or (k == "Poeira" and 1.15) or 1
 	return {
-		Health = AttributeData.Health(a.Vigor),
-		Damage = math.floor(10 * AttributeData.MeleeMult(a.Forca) + 0.5),
-		PowerDamage = math.floor(10 * AttributeData.PowerMult(a.Ninjutsu) + 0.5),
+		Health = math.floor(AttributeData.Health(a.Vigor) * mVida + 0.5),
+		Damage = math.floor(10 * AttributeData.MeleeMult(a.Forca) * mGolpe + 0.5),
+		PowerDamage = math.floor(10 * AttributeData.PowerMult(a.Ninjutsu) * mPoder + 0.5),
 	}
 end
 

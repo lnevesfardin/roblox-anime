@@ -16,6 +16,7 @@ local HttpService = game:GetService("HttpService")
 
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
+local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
 
 local useEvent = Instance.new("RemoteEvent")
 useEvent.Name = "UseAbility"
@@ -901,6 +902,196 @@ P.inu_fera = function(plr, char, root, dmg)
 	buff(plr, char, 0.3, 5, 10, Color3.fromRGB(200, 120, 70))
 end
 
+-- KEKKEI GENKAI (tecla V) -------------------------------------
+local ICE = Color3.fromRGB(170, 225, 255)
+local LAVA = Color3.fromRGB(255, 100, 30)
+
+local function queimarPoder(e, porTick, ticks, cor)
+	task.spawn(function()
+		for _ = 1, ticks do
+			task.wait(0.5)
+			if e.hum.Health <= 0 or not e.root.Parent then break end
+			e.hum:TakeDamage(porTick)
+			burst(e.root.Position + Vector3.new(0, 1, 0), 3, cor, 0.25, 0.3)
+		end
+	end)
+end
+
+P.kg_gelo = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	local base = chao(root)
+	for i = 1, 8 do
+		local pos = base + look * (2 + i * 3.2) + Vector3.new(math.random() * 2 - 1, 0, math.random() * 2 - 1)
+		local sp = fx({ size = Vector3.new(1.2, 0.2, 1.2), color = ICE, mat = Enum.Material.Glass, trans = 0.15,
+			cf = CFrame.new(pos) * CFrame.Angles(math.rad(math.random(-20, 20)), math.rad(math.random(0, 90)), math.rad(math.random(-20, 20))) })
+		TweenService:Create(sp, TweenInfo.new(0.12, Enum.EasingStyle.Back), { Size = Vector3.new(1.2, 7, 1.2), CFrame = sp.CFrame * CFrame.new(0, 3.5, 0) }):Play()
+		task.delay(1.8, function() fadeOut(sp, 0.4) end)
+		task.wait(0.025)
+	end
+	local set = {}
+	for _, e in ipairs(inLine(root.Position, look, 30, 7)) do
+		hitOnce(set, e, dmg * 3, nil, 0)
+		prender(e, 1.8)
+		local hl = Instance.new("Highlight")
+		hl.FillColor = ICE
+		hl.FillTransparency = 0.4
+		hl.OutlineTransparency = 1
+		hl.Parent = e.model
+		Debris:AddItem(hl, 1.8)
+	end
+end
+
+P.kg_lava = function(plr, char, root, dmg)
+	local look = flatLook(root)
+	for k = -1, 1 do
+		local dir = CFrame.Angles(0, math.rad(k * 14), 0) * look
+		local glob = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2.4, color = LAVA, mat = Enum.Material.Neon })
+		light(glob, LAVA, 12, 3)
+		projectile({ start = handPos(char, root) + dir * 2, dir = dir, speed = 55, range = 40, radius = 3, parts = { glob },
+			onEnd = function(pos)
+				burst(pos, 10, LAVA, 0.4, 0.2)
+				local poca = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.3, 7, 7), color = LAVA, trans = 0.2,
+					cf = CFrame.new(pos - Vector3.new(0, 2.4, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+				task.delay(2, function() fadeOut(poca, 0.5) end)
+				local set = {}
+				for _, e in ipairs(inRadius(pos, 7)) do
+					hitOnce(set, e, dmg * 1.6, pos, 20)
+					queimarPoder(e, dmg * 0.4, 4, LAVA)
+				end
+			end })
+	end
+end
+
+P.kg_fervura = function(plr, char, root, dmg)
+	local center = root.Position
+	local balls = {}
+	for _ = 1, 10 do
+		local off = Vector3.new(math.random() * 20 - 10, math.random() * 4, math.random() * 20 - 10)
+		local b = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2, color = Color3.fromRGB(245, 245, 235), mat = Enum.Material.SmoothPlastic, trans = 0.5, cf = CFrame.new(center) })
+		TweenService:Create(b, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Size = Vector3.one * (6 + math.random() * 4), CFrame = CFrame.new(center + off) }):Play()
+		table.insert(balls, b)
+	end
+	for _ = 1, 6 do
+		task.wait(0.5)
+		for _, e in ipairs(inRadius(center, 13)) do
+			hit(e, dmg * 0.7, nil, 0)
+		end
+	end
+	for _, b in ipairs(balls) do fadeOut(b, 0.6) end
+end
+
+P.kg_tempestade = function(plr, char, root, dmg)
+	local alvos = inRadius(root.Position, 32)
+	table.sort(alvos, function(a, b) return (a.root.Position - root.Position).Magnitude < (b.root.Position - root.Position).Magnitude end)
+	local from = root.Position + Vector3.new(0, 8, 0)
+	local orbe = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2.5, color = LIGHTNING, cf = CFrame.new(from) })
+	light(orbe, LIGHTNING, 25, 4)
+	task.wait(0.3)
+	if #alvos == 0 then
+		for k = 1, 4 do
+			zap(from, root.Position + Vector3.new(math.cos(k) * 12, -2, math.sin(k) * 12), LIGHTNING, 0.35, 1.5, 0.3)
+		end
+	end
+	for i = 1, math.min(6, #alvos) do
+		local e = alvos[i]
+		for _ = 1, 2 do zap(from, e.root.Position, LIGHTNING, 0.35, 1.5, 0.3) end
+		hit(e, dmg * 3, from, 25)
+		burst(e.root.Position, 6, LIGHTNING, 0.3, 0.3)
+		task.wait(0.06)
+	end
+	fadeOut(orbe, 0.3)
+end
+
+P.kg_explosao = function(plr, char, root, dmg)
+	local alvos = inRadius(root.Position, 26)
+	local pontos = {}
+	for i = 1, 4 do
+		local e = alvos[i]
+		table.insert(pontos, e and e.root.Position or (root.Position + Vector3.new(math.random(-12, 12), 0, math.random(-12, 12))))
+	end
+	for _, alvo in ipairs(pontos) do
+		task.spawn(function()
+			local bomba = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 1.3, color = Color3.fromRGB(245, 240, 225), mat = Enum.Material.SmoothPlastic })
+			local from = handPos(char, root)
+			local t0 = os.clock()
+			while true do
+				local k = math.min((os.clock() - t0) / 0.55, 1)
+				bomba.CFrame = CFrame.new(from:Lerp(alvo, k) + Vector3.new(0, math.sin(k * math.pi) * 6, 0))
+				if k >= 1 then break end
+				task.wait()
+			end
+			bomba:Destroy()
+			burst(alvo, 14, Color3.fromRGB(255, 220, 140), 0.4, 0.15)
+			burst(alvo, 8, Color3.fromRGB(255, 255, 255), 0.25, 0.2)
+			local set = {}
+			for _, e in ipairs(inRadius(alvo, 7)) do
+				hitOnce(set, e, dmg * 2.5, alvo, 45)
+			end
+		end)
+		task.wait(0.08)
+	end
+end
+
+P.kg_osso = function(plr, char, root, dmg)
+	local base = chao(root)
+	for i = 1, 14 do
+		local a = (i / 14) * math.pi * 2
+		local pos = base + Vector3.new(math.cos(a) * 8, 0, math.sin(a) * 8)
+		local sp = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.3, 1, 1), color = Color3.fromRGB(240, 235, 220), mat = Enum.Material.SmoothPlastic,
+			cf = CFrame.lookAt(pos, pos + Vector3.new(math.cos(a), 2.5, math.sin(a))) * CFrame.Angles(0, math.rad(90), 0) })
+		TweenService:Create(sp, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Size = Vector3.new(7, 1, 1), CFrame = sp.CFrame * CFrame.new(3.5, 0, 0) }):Play()
+		task.delay(1.5, function() fadeOut(sp, 0.4) end)
+	end
+	local set = {}
+	for _, e in ipairs(inRadius(root.Position, 11)) do
+		hitOnce(set, e, dmg * 3.5, root.Position, 30)
+		e.root.AssemblyLinearVelocity += Vector3.new(0, 40, 0)
+	end
+end
+
+P.kg_calor = function(plr, char, root, dmg)
+	local orbs = {}
+	for i = 1, 3 do
+		local o = fx({ shape = Enum.PartType.Ball, size = Vector3.one * 2.2, color = Color3.fromRGB(255, 150, 60) })
+		light(o, Color3.fromRGB(255, 150, 60), 12, 3)
+		orbs[i] = o
+	end
+	local t0 = os.clock()
+	local proximo = 0
+	while os.clock() - t0 < 4 and root.Parent do
+		local t = os.clock() - t0
+		for i, o in ipairs(orbs) do
+			local a = t * 5 + i * (math.pi * 2 / 3)
+			o.CFrame = CFrame.new(root.Position + Vector3.new(math.cos(a) * 5, 0.5, math.sin(a) * 5))
+		end
+		if t >= proximo then
+			proximo = t + 0.5
+			for _, e in ipairs(inRadius(root.Position, 7)) do
+				hit(e, dmg * 0.6, root.Position, 8)
+			end
+		end
+		task.wait()
+	end
+	for _, o in ipairs(orbs) do fadeOut(o, 0.3) end
+end
+
+P.kg_poeira = function(plr, char, root, dmg)
+	local center = root.Position + flatLook(root) * 18
+	local cubo = fx({ size = Vector3.one * 0.5, color = Color3.fromRGB(255, 255, 255), trans = 0.55, cf = CFrame.new(center) })
+	light(cubo, Color3.fromRGB(255, 255, 255), 30, 4)
+	local linha = fx({ size = Vector3.new(0.2, 0.2, 18), color = Color3.fromRGB(255, 255, 255), cf = CFrame.lookAt((root.Position + center) / 2, center) })
+	fadeOut(linha, 0.4)
+	TweenService:Create(cubo, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Size = Vector3.one * 16 }):Play()
+	task.wait(0.55)
+	local set = {}
+	for _, e in ipairs(inRadius(center, 9)) do
+		hitOnce(set, e, dmg * 8, nil, 0)
+	end
+	burst(center, 20, Color3.fromRGB(255, 255, 255), 0.35, 0.3)
+	TweenService:Create(cubo, TweenInfo.new(0.25), { Size = Vector3.one * 0.5, Transparency = 1 }):Play()
+	Debris:AddItem(cubo, 0.3)
+end
+
 ---------------------------------------------------------------
 -- Estado dos poderes e chakra
 ---------------------------------------------------------------
@@ -919,7 +1110,11 @@ local function enviarEstado(plr)
 		ok[slot] = o
 		motivo[slot] = m or ""
 	end
-	plr:SetAttribute("PoderesEstado", HttpService:JSONEncode({ Cla = clan or "", Ok = ok, Motivo = motivo }))
+	-- Kekkei Genkai: poder da tecla V (libera no nível KekkeiData.NIVEL_PODER)
+	local k = KekkeiData.DoSave(data)
+	local kOk = k ~= nil and (data.Level or 1) >= KekkeiData.NIVEL_PODER
+	plr:SetAttribute("PoderesEstado", HttpService:JSONEncode({ Cla = clan or "", Ok = ok, Motivo = motivo,
+		K = k or "", KOk = kOk, KMotivo = (k and not kOk) and ("Needs Level " .. KekkeiData.NIVEL_PODER) or "" }))
 end
 
 local atualizarEv = Instance.new("BindableEvent")
@@ -963,7 +1158,9 @@ task.spawn(function()
 			local mx = maxChakra(plr)
 			local c = plr:GetAttribute("Chakra")
 			if c and c < mx then
-				plr:SetAttribute("Chakra", math.min(mx, c + mx * ClanPowers.CHAKRA_REGEN * 0.5))
+				-- Fervura (Kekkei Genkai): chakra volta 50% mais rápido
+				local mult = plr:GetAttribute("Kekkei") == "Fervura" and 1.5 or 1
+				plr:SetAttribute("Chakra", math.min(mx, c + mx * ClanPowers.CHAKRA_REGEN * 0.5 * mult))
 			elseif c and c > mx then
 				plr:SetAttribute("Chakra", mx)
 			end
@@ -980,22 +1177,34 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		return
 	end
 	slot = math.floor(slot)
-	if slot < 1 or slot > 3 then
+	if slot < 1 or slot > 4 then
 		return
 	end
 	local data = PlayerData.Get(plr)
 	if not data then return end
-	local clan = ClanPowers.Sincronizar(data)
-	local c = clan and ClanPowers.Clans[clan]
-	if not c then
-		feedback(plr, { msg = "Spin the roulette to get a clan first.", slot = slot, cooldown = 0 })
-		return
-	end
-	local info = c.Powers[slot]
-	local ok, motivo = ClanPowers.Liberado(data, slot)
-	if not ok then
-		feedback(plr, { msg = info.Name .. " is locked. " .. (motivo or ""), slot = slot, cooldown = 0 })
-		return
+	local info
+	if slot == 4 then
+		-- tecla V: poder da Kekkei Genkai
+		local k = KekkeiData.DoSave(data)
+		if not k then return end
+		info = KekkeiData.Tipos[k].Poder
+		if (data.Level or 1) < KekkeiData.NIVEL_PODER then
+			feedback(plr, { msg = info.Name .. " unlocks at level " .. KekkeiData.NIVEL_PODER .. ".", slot = slot, cooldown = 0 })
+			return
+		end
+	else
+		local clan = ClanPowers.Sincronizar(data)
+		local c = clan and ClanPowers.Clans[clan]
+		if not c then
+			feedback(plr, { msg = "Spin the roulette to get a clan first.", slot = slot, cooldown = 0 })
+			return
+		end
+		info = c.Powers[slot]
+		local ok, motivo = ClanPowers.Liberado(data, slot)
+		if not ok then
+			feedback(plr, { msg = info.Name .. " is locked. " .. (motivo or ""), slot = slot, cooldown = 0 })
+			return
+		end
 	end
 	local char = plr.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")

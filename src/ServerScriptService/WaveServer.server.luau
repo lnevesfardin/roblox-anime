@@ -210,7 +210,108 @@ local function getTemplate()
 	return template
 end
 
-local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor)
+-- Visuais procedurais (sem assets de terceiros): cada Look pinta o corpo e cola pecas no modelo
+local LOOKS = {
+	Cientista = { Pele = Color3.fromRGB(235, 215, 195), Torso = Color3.fromRGB(245, 245, 245), Bracos = Color3.fromRGB(245, 245, 245), Pernas = Color3.fromRGB(70, 80, 95), Cabelo = Color3.fromRGB(60, 90, 60), Oculos = true, Tubo = true, Jaleco = true },
+	Som = { Pele = Color3.fromRGB(225, 195, 170), Torso = Color3.fromRGB(45, 45, 55), Bracos = Color3.fromRGB(120, 35, 45), Pernas = Color3.fromRGB(35, 35, 45), Capuz = Color3.fromRGB(40, 35, 60), Corda = Color3.fromRGB(130, 90, 160) },
+	Clone = { Pele = Color3.fromRGB(230, 205, 185), Torso = Color3.fromRGB(95, 105, 130), Bracos = Color3.fromRGB(75, 85, 110), Pernas = Color3.fromRGB(50, 55, 75), Capuz = Color3.fromRGB(60, 65, 90), Cabelo = Color3.fromRGB(205, 205, 215) },
+	Taka = { Pele = Color3.fromRGB(235, 210, 190), Torso = Color3.fromRGB(25, 25, 30), Bracos = Color3.fromRGB(25, 25, 30), Pernas = Color3.fromRGB(20, 20, 25), Capa = Color3.fromRGB(20, 20, 26), Faixa = Color3.fromRGB(200, 30, 30), Careca = true },
+}
+
+local function peca(model, base, tamanho, offset, cor, material, forma)
+	if not base then
+		return nil
+	end
+	local p = Instance.new("Part")
+	p.Size = tamanho
+	p.Color = cor
+	p.Material = material or Enum.Material.SmoothPlastic
+	if forma then
+		p.Shape = forma
+	end
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CFrame = base.CFrame * offset
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = base
+	w.Part1 = p
+	w.Parent = p
+	p.Parent = model
+	return p
+end
+
+local function aplicarLook(model, look)
+	local cfg = LOOKS[look]
+	if not cfg then
+		return
+	end
+	local function paint(nome, cor)
+		local part = model:FindFirstChild(nome)
+		if part then
+			part.Color = cor
+		end
+	end
+	for _, n in ipairs({ "Head" }) do paint(n, cfg.Pele) end
+	for _, n in ipairs({ "UpperTorso", "LowerTorso" }) do paint(n, cfg.Torso) end
+	for _, n in ipairs({ "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand" }) do
+		paint(n, cfg.Bracos)
+	end
+	for _, n in ipairs({ "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot" }) do paint(n, cfg.Pernas) end
+	if look == "Som" then
+		for _, n in ipairs({ "LeftHand", "RightHand" }) do paint(n, cfg.Pele) end
+	end
+	local bc = model:FindFirstChildOfClass("BodyColors")
+	if bc then
+		bc.HeadColor3 = cfg.Pele
+		bc.TorsoColor3 = cfg.Torso
+		bc.LeftArmColor3 = cfg.Bracos
+		bc.RightArmColor3 = cfg.Bracos
+		bc.LeftLegColor3 = cfg.Pernas
+		bc.RightLegColor3 = cfg.Pernas
+	end
+	local head = model:FindFirstChild("Head")
+	local torso = model:FindFirstChild("UpperTorso")
+	local low = model:FindFirstChild("LowerTorso")
+	local mao = model:FindFirstChild("RightHand")
+	if cfg.Cabelo and head then
+		peca(model, head, Vector3.new(1.3, 0.35, 1.3), CFrame.new(0, 0.5, 0.05), cfg.Cabelo, Enum.Material.SmoothPlastic)
+		peca(model, head, Vector3.new(1.3, 0.8, 0.3), CFrame.new(0, 0.25, 0.5), cfg.Cabelo, Enum.Material.SmoothPlastic)
+	end
+	if cfg.Capuz and head then
+		peca(model, head, Vector3.new(1.45, 0.5, 1.5), CFrame.new(0, 0.5, 0.05), cfg.Capuz, Enum.Material.Fabric)
+		peca(model, head, Vector3.new(1.45, 1.3, 0.35), CFrame.new(0, 0, 0.65), cfg.Capuz, Enum.Material.Fabric)
+		peca(model, head, Vector3.new(0.3, 1.2, 1.3), CFrame.new(-0.7, 0, 0.1), cfg.Capuz, Enum.Material.Fabric)
+		peca(model, head, Vector3.new(0.3, 1.2, 1.3), CFrame.new(0.7, 0, 0.1), cfg.Capuz, Enum.Material.Fabric)
+		if cfg.Cabelo then
+			peca(model, head, Vector3.new(1.1, 0.25, 0.2), CFrame.new(0, 0.4, -0.65), cfg.Cabelo, Enum.Material.SmoothPlastic)
+		end
+	end
+	if cfg.Oculos and head then
+		peca(model, head, Vector3.new(1.15, 0.3, 0.12), CFrame.new(0, 0.1, -0.62), Color3.fromRGB(150, 220, 255), Enum.Material.Glass)
+	end
+	if cfg.Jaleco and torso and low then
+		peca(model, torso, Vector3.new(2.1, 1.2, 1.15), CFrame.new(0, -0.1, 0), cfg.Torso, Enum.Material.Fabric)
+		peca(model, low, Vector3.new(2.1, 1.0, 1.15), CFrame.new(0, -0.3, 0), cfg.Torso, Enum.Material.Fabric)
+		peca(model, torso, Vector3.new(0.35, 1.6, 0.1), CFrame.new(0, 0.1, -0.6), Color3.fromRGB(40, 50, 70), Enum.Material.Fabric)
+	end
+	if cfg.Tubo and mao then
+		peca(model, mao, Vector3.new(0.3, 1.2, 0.3), CFrame.new(0, -0.3, -0.2), Color3.fromRGB(80, 255, 110), Enum.Material.Neon, Enum.PartType.Cylinder)
+	end
+	if cfg.Corda and low then
+		peca(model, low, Vector3.new(2.1, 0.35, 1.15), CFrame.new(0, 0.1, 0), cfg.Corda, Enum.Material.Fabric)
+	end
+	if cfg.Capa and torso and low then
+		peca(model, torso, Vector3.new(2.3, 1.7, 1.2), CFrame.new(0, -0.05, 0.1), cfg.Capa, Enum.Material.Fabric)
+		peca(model, low, Vector3.new(2.3, 1.4, 1.2), CFrame.new(0, -0.5, 0.1), cfg.Capa, Enum.Material.Fabric)
+		peca(model, torso, Vector3.new(2.5, 0.5, 1.3), CFrame.new(0, 0.8, 0.1), cfg.Capa, Enum.Material.Fabric)
+		peca(model, torso, Vector3.new(0.3, 2.6, 0.1), CFrame.new(0, -0.5, -0.65), cfg.Faixa, Enum.Material.SmoothPlastic)
+		peca(model, low, Vector3.new(2.3, 0.2, 1.25), CFrame.new(0, -0.9, 0.1), cfg.Faixa, Enum.Material.SmoothPlastic)
+	end
+end
+
+local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor, look)
 	local tpl = getTemplate()
 	if not tpl then
 		return nil
@@ -233,6 +334,10 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 		bc.RightArmColor3 = color
 		bc.LeftLegColor3 = color
 		bc.RightLegColor3 = color
+	end
+
+	if look then
+		aplicarLook(model, look)
 	end
 
 	local hum = model:FindFirstChildOfClass("Humanoid")
@@ -614,7 +719,7 @@ local function runMap(mapId)
 			local qtd = t.Count + (n - 1) * (t.Extra or 1)
 			for _ = 1, qtd do
 				spawnEnemy(t.Name, t.Color, t.Scale or 1, t.Health * hpScale, t.Damage,
-					randomSpawnPos(centro, spawnPart, floorY, arena:GetAttribute("RaioSpawn") or 40), false, t.Speed)
+					randomSpawnPos(centro, spawnPart, floorY, arena:GetAttribute("RaioSpawn") or 40), false, t.Speed, nil, t.Look)
 			end
 		end
 

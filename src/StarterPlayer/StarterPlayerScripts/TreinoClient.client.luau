@@ -60,12 +60,18 @@ local function som()
 	if s then SoundService:PlayLocalSound(s) end
 end
 
+-- trava o personagem parado durante o minigame (usa o PlayerModule se existir, senão ancora o corpo)
 local function controles(ligar)
-	pcall(function()
-		local pm = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
-		local c = pm:GetControls()
-		if ligar then c:Enable() else c:Disable() end
-	end)
+	local ps = player:FindFirstChild("PlayerScripts")
+	local mod = ps and ps:FindFirstChild("PlayerModule")
+	if mod then
+		pcall(function()
+			local c = require(mod):GetControls()
+			if ligar then c:Enable() else c:Disable() end
+		end)
+	end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if root then root.Anchored = not ligar end
 end
 
 -- o alvo de madeira balança e solta lascas

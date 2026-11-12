@@ -24,6 +24,7 @@ local ANIM_IDLE = "rbxassetid://507766666"
 local ANIM_RUN = "rbxassetid://507767714"
 
 local state = "idle" -- idle | countdown | running | ending
+local difAtual = MapData.Dificuldades[1] -- dificuldade da partida atual (Fácil/Médio/Difícil)
 local participants = {}
 local enemies = {}
 local avisoTexto, avisoAte = "", 0
@@ -215,6 +216,9 @@ local LOOKS = {
 	Cientista = { Pele = Color3.fromRGB(235, 215, 195), Torso = Color3.fromRGB(245, 245, 245), Bracos = Color3.fromRGB(245, 245, 245), Pernas = Color3.fromRGB(70, 80, 95), Cabelo = Color3.fromRGB(60, 90, 60), Oculos = true, Tubo = true, Jaleco = true },
 	Som = { Pele = Color3.fromRGB(225, 195, 170), Torso = Color3.fromRGB(45, 45, 55), Bracos = Color3.fromRGB(120, 35, 45), Pernas = Color3.fromRGB(35, 35, 45), Capuz = Color3.fromRGB(40, 35, 60), Corda = Color3.fromRGB(130, 90, 160) },
 	Clone = { Pele = Color3.fromRGB(230, 205, 185), Torso = Color3.fromRGB(95, 105, 130), Bracos = Color3.fromRGB(75, 85, 110), Pernas = Color3.fromRGB(50, 55, 75), Capuz = Color3.fromRGB(60, 65, 90), Cabelo = Color3.fromRGB(205, 205, 215) },
+	Renegado = { Pele = Color3.fromRGB(225, 195, 165), Torso = Color3.fromRGB(85, 95, 70), Bracos = Color3.fromRGB(40, 40, 45), Pernas = Color3.fromRGB(40, 40, 45), Cabelo = Color3.fromRGB(45, 35, 30), Mascara = Color3.fromRGB(35, 35, 40), Colete = Color3.fromRGB(95, 110, 75) },
+	Nevoa = { Pele = Color3.fromRGB(230, 225, 220), Torso = Color3.fromRGB(150, 165, 185), Bracos = Color3.fromRGB(120, 135, 155), Pernas = Color3.fromRGB(70, 80, 95), Capuz = Color3.fromRGB(190, 200, 215), Mascara = Color3.fromRGB(235, 235, 240) },
+	Marionete = { Pele = Color3.fromRGB(185, 140, 95), Torso = Color3.fromRGB(150, 110, 70), Bracos = Color3.fromRGB(170, 125, 80), Pernas = Color3.fromRGB(140, 100, 65), Juntas = Color3.fromRGB(90, 60, 40), Mascara = Color3.fromRGB(200, 60, 50) },
 	Taka = { Pele = Color3.fromRGB(235, 210, 190), Torso = Color3.fromRGB(25, 25, 30), Bracos = Color3.fromRGB(25, 25, 30), Pernas = Color3.fromRGB(20, 20, 25), Capa = Color3.fromRGB(20, 20, 26), Faixa = Color3.fromRGB(200, 30, 30), Careca = true },
 }
 
@@ -286,6 +290,21 @@ local function aplicarLook(model, look)
 		peca(model, head, Vector3.new(0.3, 1.2, 1.3), CFrame.new(0.7, 0, 0.1), cfg.Capuz, Enum.Material.Fabric)
 		if cfg.Cabelo then
 			peca(model, head, Vector3.new(1.1, 0.25, 0.2), CFrame.new(0, 0.4, -0.65), cfg.Cabelo, Enum.Material.SmoothPlastic)
+		end
+	end
+	if cfg.Mascara and head then
+		-- pano/máscara cobrindo a parte de baixo do rosto
+		peca(model, head, Vector3.new(1.25, 0.5, 1.25), CFrame.new(0, -0.25, 0), cfg.Mascara, Enum.Material.Fabric)
+	end
+	if cfg.Colete and torso then
+		peca(model, torso, Vector3.new(2.15, 1.4, 1.2), CFrame.new(0, 0, 0), cfg.Colete, Enum.Material.Fabric)
+	end
+	if cfg.Juntas then
+		for _, n in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg" }) do
+			local b = model:FindFirstChild(n)
+			if b then
+				peca(model, b, Vector3.new(0.7, 0.7, 0.7), CFrame.new(0, -b.Size.Y / 2, 0), cfg.Juntas, Enum.Material.Wood, Enum.PartType.Ball)
+			end
 		end
 	end
 	if cfg.Oculos and head then
@@ -395,7 +414,7 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 		model = model,
 		hum = hum,
 		root = root,
-		damage = damage,
+		damage = damage * difAtual.Dano,
 		lastHit = 0,
 		isBoss = isBoss,
 		radius = (scale - 1) * 3,
@@ -459,7 +478,7 @@ local function spawnSnake(cfg, position)
 	end)
 
 	local entry = {
-		model = model, hum = hum, root = root, damage = cfg.SnakeDamage, lastHit = 0,
+		model = model, hum = hum, root = root, damage = cfg.SnakeDamage * difAtual.Dano, lastHit = 0,
 		isBoss = false, isSnake = true, radius = -1, interval = 1.0,
 		nextSlam = 0, nextBite = 0, nextSummon = 0,
 	}
@@ -487,6 +506,7 @@ local function mark(position, radius, y, color)
 end
 
 local function damageInRadius(center, radius, damage)
+	damage *= difAtual.Dano
 	for plr in pairs(participants) do
 		local char = plr.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -573,7 +593,7 @@ local function bossSummon(e, cfg, floorY, centro)
 		local z = math.clamp(p.Z, centro.Position.Z - 46, centro.Position.Z + 46)
 		if cfg.Minion then
 			local mn = cfg.Minion
-			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed)
+			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health * difAtual.Vida, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed)
 			if ent then
 				ent.isMinion = true
 			end
@@ -671,7 +691,7 @@ local function runMap(mapId)
 	getTemplate() -- prepara o modelo dos inimigos antes de começar
 
 	for i = MapData.StartCountdown, 1, -1 do
-		broadcast({ text = ("%s starts in %d..."):format(cfg.Name, i) })
+		broadcast({ text = ("%s [%s] starts in %d..."):format(cfg.Name, difAtual.Nome, i) })
 		task.wait(1)
 	end
 
@@ -703,7 +723,7 @@ local function runMap(mapId)
 	end
 
 	local n = participantCount()
-	local hpScale = 1 + 0.6 * (n - 1)
+	local hpScale = (1 + 0.6 * (n - 1)) * difAtual.Vida
 	task.spawn(aiLoop, cfg, floorY, centro)
 	print(("[WaveServer] %s iniciado com %d jogador(es)"):format(cfg.Name, n))
 
@@ -768,13 +788,13 @@ local function runMap(mapId)
 		local survivors = {}
 		for plr in pairs(participants) do
 			-- boosts 2x XP / 2x moedas (itens do Battle Pass) multiplicam a recompensa
-			PlayerData.AddXP(plr, cfg.RewardXP * PlayerData.GetBoostMult(plr, "XP"))
-			PlayerData.AddCoins(plr, cfg.RewardCoins * PlayerData.GetBoostMult(plr, "Coins"))
+			PlayerData.AddXP(plr, math.floor(cfg.RewardXP * difAtual.XP) * PlayerData.GetBoostMult(plr, "XP"))
+			PlayerData.AddCoins(plr, math.floor(cfg.RewardCoins * difAtual.Moedas) * PlayerData.GetBoostMult(plr, "Coins"))
 			table.insert(survivors, plr)
 			partidaVencida:Fire(plr, mapId)
 		end
 		print("[WaveServer] Vitória!")
-		broadcast({ text = ("VICTORY!   +%d XP   +%d coins"):format(cfg.RewardXP, cfg.RewardCoins) })
+		broadcast({ text = ("VICTORY! [%s]   +%d XP   +%d coins"):format(difAtual.Nome, math.floor(cfg.RewardXP * difAtual.XP), math.floor(cfg.RewardCoins * difAtual.Moedas)) })
 		task.wait(6)
 		for _, plr in ipairs(survivors) do
 			if plr.Parent then
@@ -792,7 +812,7 @@ local function runMap(mapId)
 	cleanup()
 end
 
-local function onPortal(player, mapId)
+local function onPortal(player, mapId, difId)
 	if not PlayerData.Get(player) then
 		return
 	end
@@ -811,6 +831,7 @@ local function onPortal(player, mapId)
 		return
 	end
 	state = "countdown"
+	difAtual = MapData.GetDificuldade(difId)
 	participants = { [player] = true }
 	player:SetAttribute("InRun", true)
 	task.spawn(runMap, mapId)
@@ -821,16 +842,53 @@ iniciarPartida.Name = "IniciarPartida"
 iniciarPartida.Parent = ServerStorage
 iniciarPartida.Event:Connect(onPortal)
 
-for _, pad in ipairs(CollectionService:GetTagged("Portal")) do
-	local prompt = pad:FindFirstChildOfClass("ProximityPrompt")
-	local mapId = pad:GetAttribute("MapId")
-	if prompt and mapId then
-		prompt.Triggered:Connect(function(player)
-			onPortal(player, mapId)
-		end)
+-- portais: o jogador escolhe a dificuldade antes de começar (quem entra durante a contagem usa a já escolhida)
+local escolher = Instance.new("RemoteEvent")
+escolher.Name = "EscolherDificuldade"
+escolher.Parent = ReplicatedStorage
+local portalPerto = {} -- [player] = mapId do último portal usado
+
+escolher.OnServerEvent:Connect(function(player, mapId, difId)
+	if type(mapId) ~= "string" or portalPerto[player] ~= mapId or not MapData.Maps[mapId] then return end
+	if type(difId) ~= "string" then return end
+	portalPerto[player] = nil
+	onPortal(player, mapId, difId)
+end)
+
+local function usarPortal(player, mapId)
+	if state == "idle" then
+		local cfg = MapData.Maps[mapId]
+		local opcoes = {}
+		for _, d in ipairs(MapData.Dificuldades) do
+			table.insert(opcoes, { id = d.Id, nome = d.Nome, cor = d.Cor, vida = d.Vida,
+				xp = math.floor(cfg.RewardXP * d.XP), moedas = math.floor(cfg.RewardCoins * d.Moedas) })
+		end
+		portalPerto[player] = mapId
+		escolher:FireClient(player, { mapId = mapId, nome = cfg.Name, opcoes = opcoes })
+	else
+		onPortal(player, mapId)
+		if state == "countdown" and participants[player] then
+			statusEvent:FireClient(player, { text = ("Joined! Difficulty: %s"):format(difAtual.Nome) })
+		end
 	end
 end
 
+local function ligarPortal(pad)
+	local prompt = pad:FindFirstChildOfClass("ProximityPrompt")
+	local mapId = pad:GetAttribute("MapId")
+	if prompt and mapId and not pad:GetAttribute("PortalLigado") then
+		pad:SetAttribute("PortalLigado", true)
+		prompt.Triggered:Connect(function(player)
+			usarPortal(player, mapId)
+		end)
+	end
+end
+for _, pad in ipairs(CollectionService:GetTagged("Portal")) do
+	ligarPortal(pad)
+end
+CollectionService:GetInstanceAddedSignal("Portal"):Connect(ligarPortal)
+
 Players.PlayerRemoving:Connect(function(player)
 	participants[player] = nil
+	portalPerto[player] = nil
 end)

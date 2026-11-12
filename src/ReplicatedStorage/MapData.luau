@@ -7,6 +7,19 @@ local MapData = {}
 MapData.StartCountdown = 8      -- segundos de contagem antes de começar
 MapData.PauseBetweenWaves = 4   -- segundos de descanso entre ondas
 
+-- Dificuldades das ondas: multiplicam a vida e o dano dos inimigos e as recompensas
+MapData.Dificuldades = {
+	{ Id = "Facil", Nome = "EASY", Vida = 1, Dano = 1, XP = 1, Moedas = 1, Cor = Color3.fromRGB(80, 190, 100) },
+	{ Id = "Medio", Nome = "MEDIUM", Vida = 1.6, Dano = 1.35, XP = 1.6, Moedas = 2, Cor = Color3.fromRGB(240, 170, 50) },
+	{ Id = "Dificil", Nome = "HARD", Vida = 2.4, Dano = 1.8, XP = 2.5, Moedas = 3.5, Cor = Color3.fromRGB(220, 60, 60) },
+}
+function MapData.GetDificuldade(id)
+	for _, d in ipairs(MapData.Dificuldades) do
+		if d.Id == id then return d end
+	end
+	return MapData.Dificuldades[1]
+end
+
 MapData.Maps = {
 	Ninja = {
 		Name = "Snake's Den",
@@ -91,6 +104,51 @@ MapData.Maps = {
 
 		RewardXP = 400,
 		RewardCoins = 300,
+	},
+
+	-- Portal perto do prédio do Hokage: ninjas renegados atacando a vila (luta na arena Mapa_Ninja)
+	Hokage = {
+		Name = "Rogue Ninja Raid",
+		Arena = "Ninja",
+
+		Waves = {
+			{ Name = "Rogue Genin", Enemies = {
+				{ Look = "Renegado", Name = "Rogue Genin", Color = Color3.fromRGB(110, 120, 95), Health = 45, Damage = 5, Speed = 13, Count = 5, Extra = 2 },
+			} },
+			{ Name = "Mist Assassins", Enemies = {
+				{ Look = "Nevoa", Name = "Mist Assassin", Color = Color3.fromRGB(150, 165, 185), Health = 50, Damage = 6, Speed = 18, Count = 5, Extra = 2 },
+			} },
+			{ Name = "Puppet Squad", Enemies = {
+				{ Look = "Marionete", Name = "Battle Puppet", Color = Color3.fromRGB(160, 120, 80), Health = 65, Damage = 7, Speed = 14, Count = 6, Extra = 2 },
+			} },
+			{ Name = "Rogue Jonin", Enemies = {
+				{ Look = "Renegado", Name = "Rogue Jonin: Blade", Health = 100, Color = Color3.fromRGB(90, 100, 80), Damage = 9, Speed = 17, Count = 1 },
+				{ Look = "Nevoa", Name = "Rogue Jonin: Mist", Health = 80, Color = Color3.fromRGB(150, 165, 185), Damage = 8, Speed = 19, Scale = 0.95, Count = 1 },
+				{ Look = "Marionete", Name = "Rogue Jonin: Puppeteer", Health = 180, Color = Color3.fromRGB(160, 120, 80), Damage = 10, Speed = 10, Scale = 1.4, Count = 1 },
+				{ Look = "Renegado", Name = "Rogue Jonin: Hunter", Health = 85, Color = Color3.fromRGB(90, 100, 80), Damage = 8, Speed = 16, Count = 1 },
+			} },
+		},
+
+		-- Onda 5: o boss
+		BossName = "Rogue Commander",
+		BossColor = Color3.fromRGB(70, 75, 60),
+		BossHealth = 1250,
+		BossDamage = 21,
+		PlainBoss = true,
+		BossScale = 2.3,
+		BossSlamEvery = 8,
+		BossBiteEvery = 12,
+		BossSummonEvery = 14,
+		SlamLabel = "Earth Shockwave!",
+		SlamColor = Color3.fromRGB(190, 150, 90),
+		SlamPool = false,
+		BiteLabel = "Watch out: shuriken storm!",
+		BiteColor = Color3.fromRGB(200, 220, 255),
+		SummonLabel = " calls rogue shadows!",
+		Minion = { Name = "Rogue Shadow", Color = Color3.fromRGB(40, 45, 40), Health = 30, Damage = 6, Speed = 20 },
+
+		RewardXP = 320,
+		RewardCoins = 250,
 	},
 }
 

@@ -263,10 +263,14 @@ for _, plr in ipairs(Players:GetPlayers()) do task.spawn(prepararJogador, plr) e
 -- Golpes
 ---------------------------------------------------------------
 
+-- quem bateu por último (o chefe do mundo divide a recompensa pelo dano)
+local atacanteAtual = nil
+
 local function hit(e, amount, from, force, up)
 	if e.hum.Health <= 0 then
 		return
 	end
+	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.hum:TakeDamage(amount)
 	if force and force > 0 and not e.root.Anchored then
 		if e.raio > 2 then
@@ -462,6 +466,7 @@ local function onC(plr, st, hum, root, dmg, id, est)
 end
 
 attackEvent.OnServerEvent:Connect(function(plr, kind, extra)
+	atacanteAtual = plr.UserId
 	local hum, root, dmg = context(plr)
 	if not hum then
 		return

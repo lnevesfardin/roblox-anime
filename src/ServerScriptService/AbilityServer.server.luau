@@ -127,10 +127,14 @@ local function nearestEnemy(origin, look, maxDist)
 	return best
 end
 
+-- quem bateu por último (o chefe do mundo divide a recompensa pelo dano)
+local atacanteAtual = nil
+
 local function hit(e, amount, from, force)
 	if e.hum.Health <= 0 then
 		return
 	end
+	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.hum:TakeDamage(amount)
 	if from and force and force > 0 and not e.root.Anchored then
 		if e.raio > 2 then
@@ -1173,6 +1177,7 @@ end)
 ---------------------------------------------------------------
 
 useEvent.OnServerEvent:Connect(function(plr, slot)
+	atacanteAtual = plr.UserId
 	if typeof(slot) ~= "number" then
 		return
 	end

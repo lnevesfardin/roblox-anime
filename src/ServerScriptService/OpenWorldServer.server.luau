@@ -458,6 +458,87 @@ if game:GetService("RunService"):IsStudio() then
 end
 
 ---------------------------------------------------------------
+-- Pergaminhos escondidos (pontos de atributo, uma vez por jogador)
+---------------------------------------------------------------
+local pastaPerg = Instance.new("Folder")
+pastaPerg.Name = "PergaminhosMundo"
+pastaPerg.Parent = workspace
+
+local function lidos(player)
+	local data = PlayerData.Get(player)
+	if not data then return nil end
+	if type(data.Pergaminhos) ~= "table" then data.Pergaminhos = {} end
+	return data.Pergaminhos, data
+end
+
+local function marcarLidos(player)
+	local l = lidos(player)
+	if not l then return false end
+	local ids = {}
+	for id in pairs(l) do table.insert(ids, id) end
+	player:SetAttribute("PergaminhosLidos", table.concat(ids, ","))
+	return true
+end
+
+for _, info in ipairs(WorldData.Pergaminhos) do
+	local rolo = Instance.new("Part")
+	rolo.Name = "Pergaminho_" .. info.Id
+	rolo.Shape = Enum.PartType.Cylinder
+	rolo.Size = Vector3.new(2.4, 0.8, 0.8)
+	rolo.CFrame = CFrame.new(info.Pos) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
+	rolo.Anchored, rolo.CanCollide = true, false
+	rolo.Color = Color3.fromRGB(235, 220, 170)
+	rolo.Material = Enum.Material.Fabric
+	rolo:SetAttribute("Id", info.Id)
+	local faixa = Instance.new("Part")
+	faixa.Name = "Faixa"
+	faixa.Shape = Enum.PartType.Cylinder
+	faixa.Size = Vector3.new(0.5, 0.86, 0.86)
+	faixa.CFrame = rolo.CFrame
+	faixa.Anchored, faixa.CanCollide = true, false
+	faixa.Color = Color3.fromRGB(170, 40, 40)
+	faixa.Parent = rolo
+	local luz = Instance.new("PointLight")
+	luz.Color = Color3.fromRGB(255, 220, 130)
+	luz.Range, luz.Brightness = 8, 1.5
+	luz.Parent = rolo
+	local pr = Instance.new("ProximityPrompt")
+	pr.ActionText = "Read"
+	pr.ObjectText = "Hidden Scroll"
+	pr.HoldDuration = 0.6
+	pr.MaxActivationDistance = 8
+	pr.RequiresLineOfSight = false
+	pr.Parent = rolo
+	pr.Triggered:Connect(function(player)
+		local l, data = lidos(player)
+		if not l then return end
+		if l[info.Id] then
+			avisoPara(player, "You already read this scroll.", false)
+			return
+		end
+		l[info.Id] = true
+		data.Atributos.Pontos += WorldData.PontosPorPergaminho
+		PlayerData.Refresh(player)
+		marcarLidos(player)
+		local n = 0
+		for _ in pairs(l) do n += 1 end
+		avisoPara(player, string.format("Hidden scroll found! +%d attribute points  (%d/%d)", WorldData.PontosPorPergaminho, n, #WorldData.Pergaminhos), true)
+	end)
+	rolo.Parent = pastaPerg
+end
+
+local function prepararPergaminhos(player)
+	task.spawn(function()
+		for _ = 1, 60 do
+			if not player.Parent or marcarLidos(player) then return end
+			task.wait(0.5)
+		end
+	end)
+end
+Players.PlayerAdded:Connect(prepararPergaminhos)
+for _, p in ipairs(Players:GetPlayers()) do prepararPergaminhos(p) end
+
+---------------------------------------------------------------
 -- Entrada da zona: só com o nível mínimo
 ---------------------------------------------------------------
 local ultimoAviso = {}

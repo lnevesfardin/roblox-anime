@@ -191,7 +191,8 @@ end)
 minigame.OnClientEvent:Connect(function(info)
 	if info.acao ~= "comecar" or ativo then return end
 	estado = { total = info.acertos or 10, acertos = 0, vidas = VIDAS, pos = 0, dir = 1, tempo = 0, travaAte = 0, alvo = info.alvo }
-	titulo.Text = "SENSEI KAITO'S TRAINING  ·  " .. string.upper(info.nome or "")
+	titulo.Text = (info.titulo or "SENSEI KAITO'S TRAINING") .. "  ·  " .. string.upper(info.nome or "")
+	dica.Text = (info.dica or "Punch when the marker is inside the green zone!") .. "  [SPACE / CLICK HIT]"
 	feedback.Text = ""
 	novaRodada()
 	-- vira o personagem para o alvo

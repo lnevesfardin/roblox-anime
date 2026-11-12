@@ -82,6 +82,30 @@ task.spawn(function()
 end)
 
 ---------------------------------------------------------------
+-- Pergaminhos já lidos somem só para este jogador
+---------------------------------------------------------------
+local function atualizarPergaminhos()
+	local pasta = workspace:FindFirstChild("PergaminhosMundo")
+	if not pasta then return end
+	local lidos = {}
+	for id in string.gmatch(player:GetAttribute("PergaminhosLidos") or "", "[^,]+") do lidos[id] = true end
+	for _, rolo in ipairs(pasta:GetChildren()) do
+		local some = lidos[rolo:GetAttribute("Id")] == true
+		for _, d in ipairs(rolo:GetDescendants()) do
+			if d:IsA("BasePart") then d.Transparency = some and 1 or 0
+			elseif d:IsA("ProximityPrompt") or d:IsA("PointLight") then d.Enabled = not some end
+		end
+		rolo.Transparency = some and 1 or 0
+	end
+end
+player:GetAttributeChangedSignal("PergaminhosLidos"):Connect(atualizarPergaminhos)
+task.spawn(function()
+	workspace:WaitForChild("PergaminhosMundo", 30)
+	task.wait(1)
+	atualizarPergaminhos()
+end)
+
+---------------------------------------------------------------
 -- Avisos do servidor
 ---------------------------------------------------------------
 local faixa = Instance.new("Frame")

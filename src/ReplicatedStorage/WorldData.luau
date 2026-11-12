@@ -59,6 +59,19 @@ WorldData.ChefeMundo = {
 	Cor = Color3.fromRGB(60, 30, 70),
 }
 
+-- Pergaminhos escondidos: cada um dá pontos de atributo, uma vez por jogador.
+WorldData.PontosPorPergaminho = 2
+WorldData.Pergaminhos = {
+	{ Id = "F1", Pos = Vector3.new(957, 1.2, -290) }, -- atrás da barraca do Bandit King
+	{ Id = "F2", Pos = Vector3.new(757, 1.2, -702) }, -- atrás do torii quebrado
+	{ Id = "F3", Pos = Vector3.new(990, 1.2, -655) }, -- fundo da mata fechada
+	{ Id = "F4", Pos = Vector3.new(998, 1.2, -232) }, -- canto nordeste
+	{ Id = "F5", Pos = Vector3.new(668, 1.2, -786) }, -- canto sudoeste
+	{ Id = "F6", Pos = Vector3.new(668, 1.2, -236) }, -- canto noroeste
+	{ Id = "F7", Pos = Vector3.new(978, 1.2, -450) }, -- atrás da cachoeira
+	{ Id = "F8", Pos = Vector3.new(880, 1.2, -548) }, -- atrás de uma pedra da arena
+}
+
 -- À noite os inimigos do mundo ficam mais fortes e dão mais recompensa.
 WorldData.Noite = { Vida = 1.3, Dano = 1.2, Recompensa = 1.25 }
 

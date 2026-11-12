@@ -150,7 +150,8 @@ local function iniciarTreino(player, id, alvo)
 		return
 	end
 	sessoes[player] = { id = id, inicio = os.clock(), alvo = alvo }
-	minigame:FireClient(player, { acao = "comecar", id = id, nome = info.Name, acertos = ACERTOS, alvo = alvo })
+	minigame:FireClient(player, { acao = "comecar", id = id, nome = info.Name, acertos = ACERTOS, alvo = alvo,
+		titulo = alvo and alvo:GetAttribute("Titulo"), dica = alvo and alvo:GetAttribute("Dica") })
 end
 
 minigame.OnServerEvent:Connect(function(player, resultado, acertos)
@@ -180,7 +181,8 @@ local function estacao(inst)
 	p.ActionText = "Train"
 	p.ObjectText = info.Name .. "  (" .. AttributeData.TRAIN_COST .. " coins)"
 	-- alvos de madeira (PosteTreino) usam o minigame de socos; as outras estações seguram o botão
-	local alvoMadeira = inst.Name == "PosteTreino"
+	-- treinos na natureza (mundo aberto) marcam o atributo Minigame = true e usam o mesmo minigame
+	local alvoMadeira = inst.Name == "PosteTreino" or inst:GetAttribute("Minigame") == true
 	p.HoldDuration = alvoMadeira and 0 or 2
 	p.MaxActivationDistance = 9
 	p.RequiresLineOfSight = false

@@ -551,11 +551,13 @@ task.spawn(function()
 				if z then
 					local data = PlayerData.Get(player)
 					local nivel = data and data.Level or 0
-					if nivel < z.NivelMin then
+					local semRank = z.RankMin ~= nil and (data == nil or data.Rank == nil or data.Rank == "Estudante")
+					if nivel < z.NivelMin or semRank then
 						player.Character:PivotTo(CFrame.new(z.Volta) * CFrame.Angles(0, math.rad(90), 0))
 						if os.clock() - (ultimoAviso[player] or 0) > 3 then
 							ultimoAviso[player] = os.clock()
-							avisoPara(player, string.format("%s requires level %d.", z.Name, z.NivelMin), false)
+							avisoPara(player, semRank and "Only Genin can leave the village. Pass the Ninja Exam first."
+								or string.format("%s requires level %d.", z.Name, z.NivelMin), false)
 						end
 					end
 				end

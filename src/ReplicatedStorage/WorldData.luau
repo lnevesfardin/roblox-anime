@@ -12,6 +12,7 @@ WorldData.Zonas = {
 		Name = "Fire Country Woods",
 		Faixa = "Lv 10-30",
 		NivelMin = 10,
+		RankMin = "Genin", -- precisa ter passado no Exame Ninja
 		-- retângulo da zona no chão (X e Z)
 		Min = Vector3.new(652, 0, -800),
 		Max = Vector3.new(1010, 0, -220),

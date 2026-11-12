@@ -83,30 +83,13 @@ local function buildCosmetic(char, itemId)
 		p:SetAttribute("Cosmetico", true)
 		return p
 	end
-	if item.Slot == "Cabeca" then
-		local hs = head.Size
-		local faixa = part("Bandana", Vector3.new(0.32, hs.X * 1.08, hs.Z * 1.08), item.Color, Enum.Material.Fabric)
-		faixa.Shape = Enum.PartType.Cylinder
-		weldTo(faixa, head, CFrame.new(0, hs.Y * 0.22, 0) * CFrame.Angles(0, 0, math.rad(90)))
-		faixa.Parent = char
-		local placa = part("Placa", Vector3.new(hs.X * 0.5, 0.26, 0.06), Color3.fromRGB(190, 195, 205), Enum.Material.Metal)
-		weldTo(placa, head, CFrame.new(0, hs.Y * 0.22, -hs.Z * 0.55))
-		placa.Parent = char
-		for _, sx in ipairs({ -1, 1 }) do
-			local ponta = part("Ponta", Vector3.new(0.12, 0.22, 0.9), item.Color, Enum.Material.Fabric)
-			weldTo(ponta, head, CFrame.new(sx * 0.12, hs.Y * 0.12, hs.Z * 0.75) * CFrame.Angles(math.rad(-35), 0, math.rad(sx * 8)))
-			ponta.Parent = char
-		end
-	elseif item.Slot == "Pescoco" then
-		local ts = torso.Size
-		local anel = part("Cachecol", Vector3.new(0.5, ts.X * 0.62, ts.Z * 1.2), item.Color, Enum.Material.Fabric)
-		anel.Shape = Enum.PartType.Cylinder
-		weldTo(anel, torso, CFrame.new(0, ts.Y * 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)))
-		anel.Parent = char
-		for i, sx in ipairs({ -0.25, 0.25 }) do
-			local cauda = part("Cauda", Vector3.new(0.45, 1.6 + i * 0.25, 0.12), item.Color, Enum.Material.Fabric)
-			weldTo(cauda, torso, CFrame.new(sx, ts.Y * 0.05, ts.Z * 0.62) * CFrame.Angles(math.rad(14), 0, 0))
-			cauda.Parent = char
+	if item.Slot == "Cabeca" or item.Slot == "Pescoco" then
+		local CosmeticParts = require(game:GetService("ReplicatedStorage"):WaitForChild("CosmeticParts"))
+		for _, info in ipairs(CosmeticParts.Pecas(item, head.Size, torso.Size)) do
+			local p = CosmeticParts.Criar(info)
+			p:SetAttribute("Cosmetico", true)
+			weldTo(p, info.Base == "head" and head or torso, info.CF)
+			p.Parent = char
 		end
 	elseif item.Slot == "Aura" then
 		local att = Instance.new("Attachment")

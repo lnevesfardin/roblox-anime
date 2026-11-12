@@ -36,6 +36,14 @@ local function dados(player)
 	end
 	local m = data.Missoes
 	m.Historia = tonumber(m.Historia) or 0
+	-- a história mudou de 5 para 7 passos: converte o progresso antigo uma vez
+	if m.V ~= 2 then
+		local antigo = { [0] = 0, 1, 5, 5, 6, 7 }
+		m.Historia = antigo[math.clamp(m.Historia, 0, 5)]
+		if type(m.Ativa) == "table" and tostring(m.Ativa.Id):sub(1, 1) == "H" then m.Ativa = nil end
+		m.V = 2
+	end
+	if type(data.Rank) == "string" and data.Rank ~= "Estudante" then m.Historia = MissionData.TotalHistoria end
 	if type(m.Cool) ~= "table" then m.Cool = {} end
 	if type(m.Feitas) ~= "table" then m.Feitas = {} end -- missões únicas já feitas
 	ClanPowers.Sincronizar(data) -- trocou de clã: missões do clã antigo somem
@@ -46,6 +54,7 @@ end
 
 local function disponivel(data, m, missao)
 	if m.Ativa and m.Ativa.Id == missao.Id then return false end
+	if missao.Historia and m.Historia ~= missao.Historia - 1 then return false end -- história: só o próximo passo aparece
 	if missao.Cla and not (data.Cla and data.Cla.Id == missao.Cla) then return false end
 	if missao.Unica and m.Feitas[missao.Id] then return false end
 	if missao.Requer and not m.Feitas[missao.Requer] then return false end
@@ -267,7 +276,7 @@ local function conversar(player, npcKey, modelo)
 	-- missão "falar com" este NPC
 	if m.Ativa then
 		local missao = MissionData.Get(m.Ativa.Id)
-		if missao.Tipo == "falar" and missao.Alvo == npcKey then
+		if missao.Tipo == "falar" and (missao.Alvo == npcKey or (modelo and missao.Alvo == modelo.Name)) then
 			progredir(player, "falar", 1)
 		end
 	end
@@ -287,7 +296,7 @@ local function conversar(player, npcKey, modelo)
 		tipo = "dialogo", npc = npcKey, nome = npcKey == "Quadro" and (atendente and atendente.Name or "Mission Board") or info.Name,
 		titulo = npcKey == "Quadro" and "All available missions" or info.Titulo,
 		fala = npcKey == "Quadro" and (atendente and atendente.Fala or "Pick a mission. You can only do one at a time.") or fala,
-		ofertas = ofertas, temAtiva = m.Ativa ~= nil,
+		ofertas = ofertas, temAtiva = m.Ativa ~= nil, modelo = modelo,
 	})
 end
 

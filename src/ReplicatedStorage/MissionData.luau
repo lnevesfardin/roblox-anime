@@ -55,22 +55,31 @@ MissionData.NPCs = {
 -- Missões. Historia = cadeia principal (feita uma vez, na ordem). As outras repetem depois do COOLDOWN.
 -- Nivel = nível mínimo. Recompensa: XP, Coins, Pontos (pontos de atributo).
 MissionData.Missoes = {
-	-- História (Sensei Kaito)
-	{ Id = "H1", Npc = "Kakashi", Historia = 1, Rank = "D", Name = "First Day",
-		Desc = "Go meet Coach Gaien. He will teach you the basics.",
-		Tipo = "falar", Alvo = "Might guy", N = 1, Recompensa = { XP = 300, Coins = 100 } },
-	{ Id = "H2", Npc = "Kakashi", Historia = 2, Rank = "D", Name = "Basic Training",
+	-- História = o caminho do ninja (feita na ordem, uma vez).
+	-- Parte 1: conhecer as pessoas importantes da vila. Cada uma apresenta a próxima.
+	{ Id = "H1", Npc = "Kakashi", Historia = 1, Rank = "D", Name = "Meet the Coach",
+		Desc = "Coach Gaien trains every student. Go introduce yourself.",
+		Tipo = "falar", Alvo = "Might guy", N = 1, Recompensa = { XP = 150, Coins = 50 } },
+	{ Id = "H2", Npc = "Might guy", Historia = 2, Rank = "D", Name = "The Mission Desk",
+		Desc = "Yumi runs the QUESTS desk in the square. Every mission passes through her.",
+		Tipo = "falar", Alvo = "Hinata", N = 1, Recompensa = { XP = 150, Coins = 50 } },
+	{ Id = "H3", Npc = "Hinata", Historia = 3, Rank = "D", Name = "The Village Medic",
+		Desc = "Hana heals the village ninjas. Go meet her.",
+		Tipo = "falar", Alvo = "Sakura (Naruto Shippuden)", N = 1, Recompensa = { XP = 150, Coins = 50 } },
+	{ Id = "H4", Npc = "Sakura (Naruto Shippuden)", Historia = 4, Rank = "D", Name = "The Village Elder",
+		Desc = "Lady Tsuna leads the village and knows the secrets of every clan. Pay your respects.",
+		Tipo = "falar", Alvo = "Tsunade", N = 1, Recompensa = { XP = 200, Coins = 80, Pontos = 1 } },
+	-- Parte 2: virar Genin (obrigatório para as missões de rank C e para sair da vila pelo portão leste).
+	{ Id = "H5", Npc = "Tsunade", Historia = 5, Rank = "D", Name = "Basic Training",
 		Desc = "Train twice at the Ninja Academy stations.",
 		Tipo = "treinar", N = 2, Recompensa = { XP = 500, Coins = 120, Pontos = 1 } },
-	{ Id = "H3", Npc = "Kakashi", Historia = 3, Rank = "D", Name = "Village Patrol",
-		Desc = "Patrol the village: go to Market Street.",
-		Tipo = "ir", Alvo = "Mercado", N = 1, Recompensa = { XP = 600, Coins = 150 } },
-	{ Id = "H4", Npc = "Kakashi", Historia = 4, Rank = "D", Name = "Bandits Nearby",
-		Desc = "Bandits set up a camp outside the village. Defeat 4 of them.",
+	{ Id = "H6", Npc = "Kakashi", Historia = 6, Rank = "D", Name = "Bandits Nearby",
+		Desc = "Bandits are hiding in the forest outside the village. Defeat 4 of them.",
 		Tipo = "derrotar", Alvo = "Acampamento", N = 4, Recompensa = { XP = 1200, Coins = 250, Pontos = 2 } },
-	{ Id = "H5", Npc = "Kakashi", Historia = 5, Rank = "C", Name = "The Ninja Exam", Nivel = 10,
+	{ Id = "H7", Npc = "Kakashi", Historia = 7, Rank = "C", Name = "The Ninja Exam", Nivel = 10,
 		Desc = "Pass the Ninja Exam to become a Genin.",
 		Tipo = "exame", Mapa = "ExameNinja", N = 1, Recompensa = { XP = 1500, Coins = 500, Pontos = 3 }, Promove = "Genin" },
+	-- (Chunin e Jonin: continuação do caminho, a definir)
 
 	-- Repetíveis
 	{ Id = "R_Ramen", Npc = "Naruto", Rank = "D", Name = "Ramen Delivery",
@@ -88,7 +97,7 @@ MissionData.Missoes = {
 	{ Id = "R_Gato", Npc = "Hinata", Rank = "D", Name = "Lost Cat",
 		Desc = "Search for the cat in the West District.",
 		Tipo = "ir", Alvo = "Oeste", N = 1, Recompensa = { XP = 400, Coins = 60 } },
-	{ Id = "R_Elder", Npc = "Tsunade", Rank = "C", Name = "Camp Raid", Nivel = 10,
+	{ Id = "R_Elder", Npc = "Tsunade", Rank = "C", Name = "Camp Raid", Nivel = 10, RankMin = "Genin",
 		Desc = "Defeat 10 bandits at the hideouts.",
 		Tipo = "derrotar", Alvo = "Acampamento", N = 10, Recompensa = { XP = 1500, Coins = 200, Pontos = 1 } },
 }
@@ -126,6 +135,18 @@ table.insert(MissionData.Missoes, { Id = "E_MuayThai", Npc = "Sasuke", Rank = "C
 table.insert(MissionData.Missoes, { Id = "E_JiuJitsu", Npc = "Ino (PTS)", Rank = "B", Unica = true, Nivel = 20,
 	Name = "The Gentle Art", Desc = "The Stranger wants 8 glowing herbs from the forest before teaching Jiu-Jitsu.",
 	Tipo = "coletar", Alvo = "Floresta", N = 8, Recompensa = { XP = 1800, Coins = 250, Estilo = "JiuJitsu" } })
+
+-- quantas missões tem a história e qual é a de número n
+MissionData.TotalHistoria = 0
+for _, m in ipairs(MissionData.Missoes) do
+	if m.Historia then MissionData.TotalHistoria = math.max(MissionData.TotalHistoria, m.Historia) end
+end
+function MissionData.DaHistoria(n)
+	for _, m in ipairs(MissionData.Missoes) do
+		if m.Historia == n then return m end
+	end
+	return nil
+end
 
 function MissionData.Get(id)
 	for _, m in ipairs(MissionData.Missoes) do

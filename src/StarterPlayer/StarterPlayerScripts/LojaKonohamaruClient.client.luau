@@ -6,6 +6,8 @@ local player = Players.LocalPlayer
 local abrir = ReplicatedStorage:WaitForChild("AbrirLojaKonohamaru")
 local acao = ReplicatedStorage:WaitForChild("LojaKonohamaru")
 local equipar = ReplicatedStorage:WaitForChild("EquipCosmetic")
+local FocoNPC = require(ReplicatedStorage:WaitForChild("FocoNPC"))
+local CosmeticParts = require(ReplicatedStorage:WaitForChild("CosmeticParts"))
 
 local SLOT = { Cabeca = "HEAD", Pescoco = "NECK", Aura = "AURA", Rastro = "TRAIL" }
 local COR = {
@@ -62,6 +64,59 @@ local function mostrarAviso(t, cor)
 	end)
 end
 
+-- Miniatura 3D do item (boneco simples usando o acessório)
+local function miniatura(card, it)
+	local vp = new("ViewportFrame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(66, 66), BackgroundColor3 = Color3.fromRGB(24, 20, 30),
+		Ambient = Color3.fromRGB(200, 200, 200), LightColor = Color3.new(1, 1, 1), LightDirection = Vector3.new(-1, -1, 1), Parent = card }, { canto(8) })
+	local function peca(size, cf, cor, mat, forma, transp)
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.Size, p.CFrame, p.Color = size, cf, cor
+		p.Material = mat or Enum.Material.SmoothPlastic
+		if forma then p.Shape = forma end
+		p.Transparency = transp or 0
+		p.Parent = vp
+		return p
+	end
+	local PELE, ROUPA = Color3.fromRGB(225, 185, 150), Color3.fromRGB(70, 75, 90)
+	local head = peca(Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 4.6, 0), PELE)
+	head.Transparency = 1 -- a cabeça que aparece é redonda (cilindro em pé)
+	peca(Vector3.new(1.2, 1.2, 1.2), head.CFrame * CFrame.Angles(0, 0, math.rad(90)), PELE, nil, Enum.PartType.Cylinder)
+	local torso = peca(Vector3.new(2, 2, 1), CFrame.new(0, 3, 0), ROUPA)
+	for _, sx in ipairs({ -1, 1 }) do
+		peca(Vector3.new(0.9, 2, 0.9), CFrame.new(sx * 1.5, 3, 0), PELE)
+		peca(Vector3.new(0.95, 2, 0.95), CFrame.new(sx * 0.5, 1, 0), ROUPA:Lerp(Color3.new(0, 0, 0), 0.3))
+	end
+	for _, info in ipairs(CosmeticParts.Pecas({ Slot = it.slot, Color = it.cor }, head.Size, torso.Size)) do
+		local p = CosmeticParts.Criar(info)
+		p.Anchored = true
+		p.CFrame = (info.Base == "head" and head or torso).CFrame * info.CF
+		p.Parent = vp
+	end
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 40
+	if it.slot == "Cabeca" then
+		cam.CFrame = CFrame.lookAt(Vector3.new(-1.9, 5.1, -3.1), Vector3.new(0, 4.7, 0))
+	elseif it.slot == "Pescoco" then
+		cam.CFrame = CFrame.lookAt(Vector3.new(2.6, 4.6, 4.2), Vector3.new(0, 3.5, 0.2))
+	else
+		cam.CFrame = CFrame.lookAt(Vector3.new(-4.5, 4, -8), Vector3.new(0.3, 2.8, 0.6))
+		if it.slot == "Rastro" then cam.CFrame = CFrame.lookAt(Vector3.new(-9, 4, 3.5), Vector3.new(0, 2.8, 3)) end -- de lado, para ver o rastro
+		if it.slot == "Aura" then
+			for i = 1, 7 do
+				local a = i / 7 * math.pi * 2
+				peca(Vector3.new(1.1, 2.2 + (i % 3) * 0.9, 1.1), CFrame.new(math.cos(a) * 1.7, 1.6 + (i % 3) * 0.5, math.sin(a) * 1.2), it.cor, Enum.Material.Neon, Enum.PartType.Ball, 0.45)
+			end
+		else -- Rastro
+			for i = 1, 5 do
+				peca(Vector3.new(0.12, 2.6 - i * 0.4, 1.3), CFrame.new(0, 2.9, 0.7 + i * 1.2), it.cor:Lerp(Color3.fromRGB(200, 30, 20), i / 6), Enum.Material.Neon, nil, 0.15 + i * 0.15)
+			end
+		end
+	end
+	cam.Parent = vp
+	vp.CurrentCamera = cam
+end
+
 local desenhar
 local ocupado = false
 local function clicar(it)
@@ -89,10 +144,10 @@ desenhar = function(estado)
 	moedas.Text = "Coins: " .. tostring(estado.coins)
 	for i, it in ipairs(estado.itens) do
 		local card = new("Frame", { LayoutOrder = i, BackgroundColor3 = COR.card, Parent = lista }, { canto(10) })
-		new("Frame", { Position = UDim2.fromOffset(10, 14), Size = UDim2.fromOffset(50, 50), BackgroundColor3 = it.cor, Parent = card }, { canto(25) })
-		new("TextLabel", { Position = UDim2.fromOffset(70, 10), Size = UDim2.new(1, -80, 0, 22), BackgroundTransparency = 1, Text = it.nome,
+		miniatura(card, it)
+		new("TextLabel", { Position = UDim2.fromOffset(80, 10), Size = UDim2.new(1, -86, 0, 22), BackgroundTransparency = 1, Text = it.nome,
 			Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
-		new("TextLabel", { Position = UDim2.fromOffset(70, 30), Size = UDim2.fromOffset(100, 16), BackgroundTransparency = 1, Text = SLOT[it.slot] or it.slot,
+		new("TextLabel", { Position = UDim2.fromOffset(80, 30), Size = UDim2.fromOffset(100, 16), BackgroundTransparency = 1, Text = SLOT[it.slot] or it.slot,
 			Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Color3.fromRGB(180, 170, 200), TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
 		local texto, cor
 		if not it.tem then
@@ -109,6 +164,7 @@ desenhar = function(estado)
 end
 
 local function fechar()
+	FocoNPC.Soltar()
 	gui.Enabled = false
 	dialogo.Visible = false
 	loja.Visible = false
@@ -119,6 +175,7 @@ abrir.OnClientEvent:Connect(function(texto)
 	loja.Visible = false
 	dialogo.Visible = true
 	gui.Enabled = true
+	FocoNPC.Focar(workspace:FindFirstChild("Konohamaru"))
 end)
 bTchau.MouseButton1Click:Connect(fechar)
 bFechar.MouseButton1Click:Connect(fechar)

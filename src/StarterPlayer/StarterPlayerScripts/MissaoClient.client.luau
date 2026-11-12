@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
+local FocoNPC = require(ReplicatedStorage:WaitForChild("FocoNPC"))
 local action = ReplicatedStorage:WaitForChild("MissionAction")
 local evento = ReplicatedStorage:WaitForChild("MissionEvent")
 local player = Players.LocalPlayer
@@ -90,8 +91,10 @@ local mDist = label(marca, "", 12, Color3.new(1, 1, 1), { Position = UDim2.fromO
 new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Parent = mDist })
 
 local function npcModelo(key)
-	for _, m in ipairs(CollectionService:GetTagged("NPC")) do
-		if m.Name == key then return m end
+	for _, tag in ipairs({ "NPC", "NPCParado" }) do
+		for _, m in ipairs(CollectionService:GetTagged(tag)) do
+			if m.Name == key then return m end
+		end
 	end
 	return nil
 end
@@ -134,21 +137,34 @@ CollectionService:GetInstanceAddedSignal("NPC"):Connect(placaNpc)
 local function atualizar()
 	tRank.Text = "RANK · " .. string.upper(MissionData.RankName(estado.Rank or "Estudante"))
 	local missao = estado.Ativa and MissionData.Get(estado.Ativa.Id)
+	local proxima = nil
 	if missao then
 		tNome.Text = ("[%s] %s"):format(missao.Rank, missao.Name)
 		tNome.TextColor3 = RANK_COR[missao.Rank] or COR.texto
 		tObj.Text = objetivo(missao, estado.Ativa.P)
 		tDrop.Visible = not missao.Historia
 	else
-		tNome.Text = "No mission"
-		tNome.TextColor3 = COR.texto
-		tObj.Text = "Talk to people with a  !  or use the QUESTS board in the square."
+		-- sem missão: mostra o próximo passo do caminho (história)
+		proxima = MissionData.DaHistoria((estado.Historia or 0) + 1)
+		if proxima then
+			tNome.Text = ("PATH %d/%d · %s"):format(proxima.Historia, MissionData.TotalHistoria, proxima.Name)
+			tNome.TextColor3 = COR.ouro
+			tObj.Text = "Talk to " .. nomeNpc(proxima.Npc) .. " to continue." .. (proxima.Promove and "  (You become a Genin!)" or "")
+		else
+			tNome.Text = "No mission"
+			tNome.TextColor3 = COR.texto
+			tObj.Text = "Talk to people with a  !  or use the QUESTS board in the square."
+		end
 		tDrop.Visible = false
 	end
 	for m, pl in pairs(placas) do
 		pl.ex.Visible = estado.NpcsComMissao[m.Name] == true and not estado.Ativa
 	end
 	local pos = alvoMarcador(missao)
+	if not pos and proxima then
+		local quem = npcModelo(proxima.Npc)
+		pos = quem and quem:GetPivot().Position
+	end
 	if pos then
 		ancora.Position = pos
 		marca.Enabled = true
@@ -201,6 +217,10 @@ local lista = new("ScrollingFrame", { Position = UDim2.fromOffset(12, 92), Size 
 new("UIListLayout", { Padding = UDim.new(0, 6), Parent = lista })
 local dAviso = label(dialogo, "", 12, COR.vermelho, { Position = UDim2.new(0, 16, 1, -30), Size = UDim2.new(1, -32, 0, 22), TextXAlignment = Enum.TextXAlignment.Left })
 dFechar.MouseButton1Click:Connect(function() dialogo.Visible = false end)
+-- ao fechar a conversa (de qualquer jeito) a câmera volta ao normal
+dialogo:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not dialogo.Visible then FocoNPC.Soltar() end
+end)
 
 local function recompensaTexto(r)
 	local t = {}
@@ -292,6 +312,7 @@ evento.OnClientEvent:Connect(function(d)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		origemDialogo = root and root.Position
 		abrirDialogo(d)
+		if d.modelo then FocoNPC.Focar(d.modelo) end
 	elseif d.tipo == "concluida" then
 		mostrarToast("MISSION COMPLETE!", d.nome .. "   " .. recompensaTexto(d.recompensa or {}), COR.ouro)
 	elseif d.tipo == "aviso" then

@@ -45,7 +45,7 @@ MissionData.NPCs = {
 	["Naruto"] = { Name = "Kenta", Titulo = "Ramen Lover", Fala = "Hey! You look hungry. Wanna help me out?" },
 	["Sakura (Naruto Shippuden)"] = { Name = "Hana", Titulo = "Medic in Training", Fala = "I need herbs for the hospital. Can you help?" },
 	["Sasuke"] = { Name = "Ryo", Titulo = "Lone Genin", Fala = "Bandits again... Don't slow me down." },
-	["Hinata"] = { Name = "Yumi", Titulo = "Shy Villager", Fala = "U-um... have you seen my cat?" },
+	["Hinata"] = { Name = "Yumi", Titulo = "Mission Desk", Quadro = true, Fala = "W-welcome! The mission board is right here... and, um, have you seen my cat?" },
 	["Tsunade"] = { Name = "Lady Tsuna", Titulo = "Village Elder", Fala = "Strong ninjas protect the village. Prove yourself." },
 	["Pain"] = { Name = "Stranger", Titulo = "???", Fala = "This village... is quieter than I expected." },
 	["Ino (PTS)"] = { Name = "Stranger", Titulo = "Wandering Grappler", Fala = "Strength is nothing if you can't control it. Want to learn?" },

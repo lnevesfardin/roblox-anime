@@ -56,6 +56,28 @@ EconomyData.Items = {
 	aura_azul = { Name = "Blue Chakra Aura", Type = "Cosmetic", Slot = "Aura", Color = Color3.fromRGB(70, 160, 255) },
 	rastro_fogo = { Name = "Fire Trail", Type = "Cosmetic", Slot = "Rastro", Color = Color3.fromRGB(255, 120, 30) },
 	aura_dourada = { Name = "Golden Rikudou Aura", Type = "Cosmetic", Slot = "Aura", Color = Color3.fromRGB(255, 200, 60) },
+
+	-- vendidos pelo Konohamaru (moedas)
+	bandana_azul = { Name = "Blue Headband", Type = "Cosmetic", Slot = "Cabeca", Color = Color3.fromRGB(40, 90, 200) },
+	bandana_preta = { Name = "Black Headband", Type = "Cosmetic", Slot = "Cabeca", Color = Color3.fromRGB(35, 35, 40) },
+	cachecol_vermelho = { Name = "Red Scarf", Type = "Cosmetic", Slot = "Pescoco", Color = Color3.fromRGB(180, 35, 35) },
+	cachecol_verde = { Name = "Green Scarf", Type = "Cosmetic", Slot = "Pescoco", Color = Color3.fromRGB(60, 140, 70) },
+	aura_roxa = { Name = "Purple Chakra Aura", Type = "Cosmetic", Slot = "Aura", Color = Color3.fromRGB(150, 80, 230) },
+	rastro_raio = { Name = "Lightning Trail", Type = "Cosmetic", Slot = "Rastro", Color = Color3.fromRGB(120, 220, 255) },
+}
+
+-- Loja de personalização do Konohamaru: itens e preço em moedas
+EconomyData.LojaKonohamaru = {
+	{ Id = "bandana_azul", Preco = 250 },
+	{ Id = "bandana_vermelha", Preco = 250 },
+	{ Id = "bandana_preta", Preco = 400 },
+	{ Id = "cachecol_shinobi", Preco = 350 },
+	{ Id = "cachecol_vermelho", Preco = 350 },
+	{ Id = "cachecol_verde", Preco = 350 },
+	{ Id = "rastro_fogo", Preco = 900 },
+	{ Id = "rastro_raio", Preco = 1100 },
+	{ Id = "aura_azul", Preco = 1200 },
+	{ Id = "aura_roxa", Preco = 1500 },
 }
 
 ---------------------------------------------------------------

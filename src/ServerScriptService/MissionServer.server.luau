@@ -272,6 +272,7 @@ local function conversar(player, npcKey, modelo)
 		end
 	end
 	local info = MissionData.NPCs[npcKey] or MissionData.NPCs.StarterCharacter
+	local atendente = npcKey == "Quadro" and modelo and MissionData.NPCs[modelo.Name]
 	local ofertas = ofertasDe(player, npcKey)
 	local fala = info.Fala
 	-- o Sensei relança o Exame se ele estiver ativo
@@ -283,9 +284,9 @@ local function conversar(player, npcKey, modelo)
 		end
 	end
 	evento:FireClient(player, {
-		tipo = "dialogo", npc = npcKey, nome = npcKey == "Quadro" and "Mission Board" or info.Name,
+		tipo = "dialogo", npc = npcKey, nome = npcKey == "Quadro" and (atendente and atendente.Name or "Mission Board") or info.Name,
 		titulo = npcKey == "Quadro" and "All available missions" or info.Titulo,
-		fala = npcKey == "Quadro" and "Pick a mission. You can only do one at a time." or fala,
+		fala = npcKey == "Quadro" and (atendente and atendente.Fala or "Pick a mission. You can only do one at a time.") or fala,
 		ofertas = ofertas, temAtiva = m.Ativa ~= nil,
 	})
 end
@@ -296,14 +297,15 @@ local function prepararNpc(modelo)
 	local info = MissionData.NPCs[modelo.Name] or MissionData.NPCs.StarterCharacter
 	local p = Instance.new("ProximityPrompt")
 	p.Name = "ConversaPrompt"
-	p.ActionText = "Talk"
+	p.ActionText = info.Quadro and "Missions" or "Talk"
 	p.ObjectText = info.Name
 	p.KeyboardKeyCode = Enum.KeyCode.E
 	p.MaxActivationDistance = 10
 	p.RequiresLineOfSight = false
 	p.Parent = root
 	p.Triggered:Connect(function(player)
-		conversar(player, modelo.Name, modelo)
+		-- atendente do balcão QUESTS abre o quadro com todas as missões
+		conversar(player, info.Quadro and "Quadro" or modelo.Name, modelo)
 	end)
 	-- nome e função em cima da cabeça (todos os jogadores veem)
 	local head = modelo:FindFirstChild("Head") or root
@@ -349,6 +351,11 @@ task.spawn(function()
 	local balcao = centro and centro:WaitForChild("BalcaoNPC_Quests", 20)
 	local peca = balcao and balcao:FindFirstChildWhichIsA("BasePart", true)
 	if not peca then return end
+	-- se a atendente (Hinata) estiver no balcão, o quadro abre por ela
+	for _, mdl in ipairs(CollectionService:GetTagged("NPCParado")) do
+		local info = MissionData.NPCs[mdl.Name]
+		if info and info.Quadro then return end
+	end
 	local p = Instance.new("ProximityPrompt")
 	p.Name = "QuadroPrompt"
 	p.ActionText = "Missions"

@@ -80,7 +80,7 @@ local function mostrarResultado(id)
 		raridade.Text = k.Rarity:upper()
 		raridade.TextColor3 = KekkeiData.Rarities[k.Rarity] or COR.fraco
 		borda.Color = KekkeiData.Rarities[k.Rarity] or k.Color
-		detalhe.Text = ("Passive: %s\nPower [%s]: %s — unlocks at level %d"):format(k.Passivo, KekkeiData.TECLA, k.Poder.Name, KekkeiData.NIVEL_PODER)
+		detalhe.Text = ("Passive: %s\nPower [%s]: learn it later in a mission with Lady Tsuna"):format(k.Passivo, KekkeiData.TECLA)
 	else
 		nome.Text = "No Kekkei Genkai"
 		nome.TextColor3 = COR.fraco

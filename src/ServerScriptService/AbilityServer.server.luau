@@ -1296,11 +1296,12 @@ local function enviarEstado(plr)
 		ok[slot] = o
 		motivo[slot] = m or ""
 	end
-	-- Kekkei Genkai: poder da tecla V (libera no nível KekkeiData.NIVEL_PODER)
+	-- Kekkei Genkai: poder da tecla V (só depois da missão KekkeiData.MISSAO, da Lady Tsuna)
 	local k = KekkeiData.DoSave(data)
-	local kOk = k ~= nil and (data.Level or 1) >= KekkeiData.NIVEL_PODER
+	local feitas = type(data.Missoes) == "table" and type(data.Missoes.Feitas) == "table" and data.Missoes.Feitas or {}
+	local kOk = k ~= nil and feitas[KekkeiData.MISSAO] == true
 	plr:SetAttribute("PoderesEstado", HttpService:JSONEncode({ Cla = clan or "", Ok = ok, Motivo = motivo,
-		K = k or "", KOk = kOk, KMotivo = (k and not kOk) and ("Needs Level " .. KekkeiData.NIVEL_PODER) or "" }))
+		K = k or "", KOk = kOk, KMotivo = (k and not kOk) and "Learn it in Lady Tsuna's mission 'Bloodline Awakening'" or "" }))
 end
 
 local atualizarEv = Instance.new("BindableEvent")
@@ -1386,8 +1387,9 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		local k = KekkeiData.DoSave(data)
 		if not k then return end
 		info = KekkeiData.Tipos[k].Poder
-		if (data.Level or 1) < KekkeiData.NIVEL_PODER then
-			feedback(plr, { msg = info.Name .. " unlocks at level " .. KekkeiData.NIVEL_PODER .. ".", slot = slot, cooldown = 0 })
+		local feitas = type(data.Missoes) == "table" and type(data.Missoes.Feitas) == "table" and data.Missoes.Feitas or {}
+		if not feitas[KekkeiData.MISSAO] then
+			feedback(plr, { msg = "You have not learned this jutsu yet. Lady Tsuna can awaken your bloodline.", slot = slot, cooldown = 0 })
 			return
 		end
 	else

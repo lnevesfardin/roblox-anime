@@ -251,6 +251,23 @@ do
 	end
 end
 
+-- Kekkei Genkai: o poder da tecla V é ensinado pela Lady Tsuna (só para quem nasceu com uma linhagem).
+do
+	local KekkeiData = require(script.Parent:WaitForChild("KekkeiData"))
+	local ClanPowers = require(script.Parent:WaitForChild("ClanPowers"))
+	table.insert(MissionData.Missoes, { Id = KekkeiData.MISSAO, Npc = "Tsunade", Rank = "C", Kekkei = true, Unica = true,
+		Nivel = KekkeiData.NIVEL_PODER, HistoriaMin = ClanPowers.HIST_PRIMEIRO,
+		Name = "Bloodline Awakening",
+		Desc = "Your blood carries a Kekkei Genkai. Defeat 6 bandits at the hideouts and Lady Tsuna will awaken its power.",
+		Tipo = "derrotar", Alvo = "Acampamento", N = 6, Recompensa = { XP = 900, Coins = 180, KekkeiPoder = true },
+		Conversa = {
+			{ Fala = "I felt it the day you arrived. Your blood is different. A Kekkei Genkai sleeps in you. Do you know what that means?", Opcoes = {
+				{ T = "A power only my bloodline has.", R = "Yes. And a power nobody else can teach you to control. Only you can.", Bom = true },
+				{ T = "That I'm stronger than everyone.", R = "It means you are a bigger target. Strength comes from control." } } },
+			{ Fala = "Defeat 6 bandits at the hideouts using only what you know. When your chakra is pushed to the limit, the bloodline will wake up." },
+		} })
+end
+
 -- quantas missões tem a história e qual é a de número n
 MissionData.TotalHistoria = 0
 for _, m in ipairs(MissionData.Missoes) do

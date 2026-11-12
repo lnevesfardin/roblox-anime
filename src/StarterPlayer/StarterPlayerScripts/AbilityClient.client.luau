@@ -448,8 +448,8 @@ local function atualizar()
 	botaoPoderes.Position = UDim2.fromOffset(kg and 436 or 327, 20)
 	if kg then
 		local s4 = slots[4]
-		s4.nome.Text = kg.Poder.Name
-		s4.custo.Text = kg.Poder.Chakra .. " CP"
+		s4.nome.Text = estado.KOk and kg.Poder.Name or "???"
+		s4.custo.Text = estado.KOk and (kg.Poder.Chakra .. " CP") or ""
 		s4.stroke.Color = estado.KOk and kg.Color or Color3.fromRGB(70, 70, 85)
 		s4.cadeado.Visible = estado.KOk ~= true
 	end
@@ -457,13 +457,19 @@ local function atualizar()
 		local p = c.Powers[i]
 		local ok = estado.Ok[i] == true
 		local s = slots[i]
-		s.nome.Text = p.Name
-		s.custo.Text = p.Chakra .. " CP"
+		-- jutsu que o jogador ainda não aprendeu: o nome fica escondido até a missão
+		s.nome.Text = ok and p.Name or "???"
+		s.custo.Text = ok and (p.Chakra .. " CP") or ""
 		s.stroke.Color = ok and c.Color or Color3.fromRGB(70, 70, 85)
 		s.cadeado.Visible = not ok
 		local l = linhas[i]
-		l.nome.Text = p.Name .. "   ·   " .. p.Chakra .. " chakra   ·   " .. p.Cooldown .. "s"
-		l.desc.Text = p.Desc
+		if ok then
+			l.nome.Text = p.Name .. "   ·   " .. p.Chakra .. " chakra   ·   " .. p.Cooldown .. "s"
+			l.desc.Text = p.Desc
+		else
+			l.nome.Text = "???   ·   Unknown jutsu"
+			l.desc.Text = "You will learn this technique in a future mission."
+		end
 		if ok then
 			l.status.Text = "UNLOCKED"
 			l.status.TextColor3 = Color3.fromRGB(120, 230, 130)
@@ -601,7 +607,7 @@ local function usar(slot)
 		if not kg then return end
 		p = kg.Poder
 		if estado.KOk ~= true then
-			mostrarAviso(p.Name .. " is locked. " .. (estado.KMotivo or ""))
+			mostrarAviso("You have not learned this jutsu yet. " .. (estado.KMotivo or ""))
 			return
 		end
 	else
@@ -611,7 +617,7 @@ local function usar(slot)
 		end
 		p = c.Powers[slot]
 		if estado.Ok[slot] ~= true then
-			mostrarAviso(p.Name .. " is locked. " .. (estado.Motivo[slot] or ""))
+			mostrarAviso("You have not learned this jutsu yet. " .. (estado.Motivo[slot] or ""))
 			return
 		end
 	end

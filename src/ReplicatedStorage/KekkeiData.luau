@@ -11,7 +11,8 @@
 local KekkeiData = {}
 
 KekkeiData.CHANCE_NADA = 70 -- % de nascer sem kekkei genkai
-KekkeiData.NIVEL_PODER = 5   -- nível para liberar o poder da tecla V
+KekkeiData.NIVEL_PODER = 5   -- nível mínimo da missão que ensina o poder da tecla V
+KekkeiData.MISSAO = "KG_Despertar" -- missão da Lady Tsuna que ensina o poder (nada destrava sozinho)
 KekkeiData.TECLA = "V"
 
 KekkeiData.Order = { "Gelo", "Lava", "Fervura", "Tempestade", "Explosao", "Osso", "Calor", "Poeira" }

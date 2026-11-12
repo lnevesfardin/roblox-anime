@@ -56,6 +56,31 @@ corner(tracker, 10)
 new("UIStroke", { Color = COR.linha, Thickness = 1.5, Parent = tracker })
 local tRank = label(tracker, "", 11, COR.laranja, { Position = UDim2.fromOffset(10, 5), Size = UDim2.new(1, -40, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 local tNome = label(tracker, "", 14, COR.texto, { Position = UDim2.fromOffset(10, 20), Size = UDim2.new(1, -20, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+
+-- selo vermelho (losango) das missões principais da história, no lugar da letra do rank
+local VERMELHO_PRINCIPAL = Color3.fromRGB(220, 45, 50)
+local function selo(parent, pos, tam)
+	local s = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = pos, Size = UDim2.fromOffset(tam, tam), Rotation = 45,
+		BackgroundColor3 = VERMELHO_PRINCIPAL, BorderSizePixel = 0, Parent = parent })
+	corner(s, 3)
+	new("UIStroke", { Color = Color3.fromRGB(255, 150, 150), Thickness = 1.5, Parent = s })
+	local miolo = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.36, 0.36),
+		BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Parent = s })
+	corner(miolo, 2)
+	return s
+end
+local function principal(id)
+	if id == "__exame" then return true end
+	local m = MissionData.Get(id)
+	return m ~= nil and m.Historia ~= nil
+end
+local tSelo = selo(tracker, UDim2.fromOffset(18, 29), 12)
+tSelo.Visible = false
+local function nomeComSelo(com)
+	tSelo.Visible = com
+	tNome.Position = UDim2.fromOffset(com and 30 or 10, 20)
+	tNome.Size = UDim2.new(1, com and -40 or -20, 0, 18)
+end
 local tObj = label(tracker, "", 12, COR.fraco, { Position = UDim2.fromOffset(10, 39), Size = UDim2.new(1, -20, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
 local tDrop = botao(tracker, "X", COR.card, UDim2.fromOffset(22, 18), UDim2.new(1, -28, 0, 4))
 tDrop.TextSize = 11
@@ -139,13 +164,21 @@ local function atualizar()
 	local missao = estado.Ativa and MissionData.Get(estado.Ativa.Id)
 	local proxima = nil
 	if missao then
-		tNome.Text = ("[%s] %s"):format(missao.Rank, missao.Name)
-		tNome.TextColor3 = RANK_COR[missao.Rank] or COR.texto
+		if missao.Historia then
+			nomeComSelo(true)
+			tNome.Text = missao.Name
+			tNome.TextColor3 = Color3.fromRGB(255, 105, 105)
+		else
+			nomeComSelo(false)
+			tNome.Text = ("[%s] %s"):format(missao.Rank, missao.Name)
+			tNome.TextColor3 = RANK_COR[missao.Rank] or COR.texto
+		end
 		tObj.Text = objetivo(missao, estado.Ativa.P)
 		tDrop.Visible = not missao.Historia
 	else
 		-- sem missão: mostra o próximo passo do caminho (história)
 		proxima = MissionData.DaHistoria((estado.Historia or 0) + 1)
+		nomeComSelo(proxima ~= nil)
 		if proxima then
 			tNome.Text = ("PATH %d/%d · %s"):format(proxima.Historia, MissionData.TotalHistoria, proxima.Name)
 			tNome.TextColor3 = COR.ouro
@@ -329,8 +362,12 @@ local function abrirDialogo(d)
 	for i, o in ipairs(d.ofertas) do
 		local f = new("Frame", { Size = UDim2.new(1, -6, 0, 62), BackgroundColor3 = COR.card, LayoutOrder = i, Parent = lista })
 		corner(f, 8)
-		local tag = label(f, o.Rank or "D", 12, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(22, 18), BackgroundTransparency = 0, BackgroundColor3 = RANK_COR[o.Rank] or COR.linha, Font = Enum.Font.GothamBlack })
-		corner(tag, 4)
+		if principal(o.Id) then
+			selo(f, UDim2.fromOffset(19, 17), 15)
+		else
+			local tag = label(f, o.Rank or "D", 12, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(22, 18), BackgroundTransparency = 0, BackgroundColor3 = RANK_COR[o.Rank] or COR.linha, Font = Enum.Font.GothamBlack })
+			corner(tag, 4)
+		end
 		label(f, o.Name, 14, COR.texto, { Position = UDim2.fromOffset(36, 6), Size = UDim2.new(1, -150, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 		local sub = o.Desc
 		if d.npc == "Quadro" and o.De then sub = sub .. "  (from " .. o.De .. ")" end

@@ -14,6 +14,7 @@ local CollectionService = game:GetService("CollectionService")
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
 local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
 local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
+local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 
 local action = Instance.new("RemoteFunction")
@@ -68,6 +69,7 @@ local function disponivel(data, m, missao)
 	if missao.Natureza and not NatureData.Tem(data, missao.Natureza) then return false end
 	if missao.NovaNatureza and (NatureData.Contar(data) == 0 or NatureData.Contar(data) >= NatureData.MAX) then return false end
 	if missao.HistoriaMin and m.Historia < missao.HistoriaMin then return false end
+	if missao.Kekkei and not KekkeiData.DoSave(data) then return false end
 	if missao.Nivel and data.Level < missao.Nivel then return false, "Requires level " .. missao.Nivel end
 	if missao.RankMin and MissionData.RankIndex(data.Rank) < MissionData.RankIndex(missao.RankMin) then
 		return false, "Requires rank " .. MissionData.RankName(missao.RankMin)
@@ -146,6 +148,12 @@ local function concluir(player)
 		local clan = ClanPowers.Sincronizar(data)
 		local c = clan and ClanPowers.Clans[clan]
 		if c then aviso(player, ("NEW JUTSU: %s  [%s]"):format(c.Powers[1].Name, ClanPowers.KEYS[1]), true) end
+	end
+	if r.KekkeiPoder then
+		local k = KekkeiData.DoSave(data)
+		if k then aviso(player, ("NEW JUTSU: %s  [%s]"):format(KekkeiData.Tipos[k].Poder.Name, KekkeiData.TECLA), true) end
+		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
+		if atualizar then atualizar:Fire(player) end
 	end
 	if r.Jutsu then
 		local j = NatureData.Jutsu(r.Jutsu)

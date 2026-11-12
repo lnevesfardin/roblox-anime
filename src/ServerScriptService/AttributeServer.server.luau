@@ -124,6 +124,52 @@ local function treinar(player, id)
 	notice:FireClient(player, ("+1 %s  (%d trainings left today)"):format(info.Name, treinoRestante(data)), true)
 end
 
+-- Minigame de tempo (Sensei Kaito): acertar 10 socos no alvo de madeira na hora certa.
+-- O servidor confere se dá para treinar, abre uma sessão e só dá o ponto se o cliente terminar o minigame.
+local minigame = Instance.new("RemoteEvent")
+minigame.Name = "TreinoMinigame"
+minigame.Parent = ReplicatedStorage
+local ACERTOS = 10
+local TEMPO_MINIMO = 6 -- segundos: ninguém acerta 10 socos mais rápido que isso
+local sessoes = {} -- [player] = { id, inicio, alvo }
+
+local function iniciarTreino(player, id, alvo)
+	local data = PlayerData.Get(player)
+	local info = AttributeData.Get(id)
+	if not data or not info or sessoes[player] then return end
+	if treinoRestante(data) <= 0 then
+		notice:FireClient(player, "No training left today. Come back tomorrow.", false)
+		return
+	end
+	if data.Atributos[id] >= AttributeData.Cap(data.Level) then
+		notice:FireClient(player, info.Name .. " is at the cap for your level.", false)
+		return
+	end
+	if data.Coins < AttributeData.TRAIN_COST then
+		notice:FireClient(player, "Training costs " .. AttributeData.TRAIN_COST .. " coins.", false)
+		return
+	end
+	sessoes[player] = { id = id, inicio = os.clock(), alvo = alvo }
+	minigame:FireClient(player, { acao = "comecar", id = id, nome = info.Name, acertos = ACERTOS, alvo = alvo })
+end
+
+minigame.OnServerEvent:Connect(function(player, resultado, acertos)
+	local s = sessoes[player]
+	if not s then return end
+	sessoes[player] = nil
+	if resultado == "ok" and acertos == ACERTOS and os.clock() - s.inicio >= TEMPO_MINIMO then
+		treinar(player, s.id)
+	elseif resultado == "ok" then
+		notice:FireClient(player, "Training failed. Try again!", false)
+	else
+		notice:FireClient(player, "Missed too many punches! Try again.", false)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	sessoes[player] = nil
+end)
+
 local function estacao(inst)
 	local id = inst:GetAttribute("Atributo")
 	local info = id and AttributeData.Get(id)
@@ -133,12 +179,18 @@ local function estacao(inst)
 	p.Name = "TreinoPrompt"
 	p.ActionText = "Train"
 	p.ObjectText = info.Name .. "  (" .. AttributeData.TRAIN_COST .. " coins)"
-	p.HoldDuration = 2
+	-- alvos de madeira (PosteTreino) usam o minigame de socos; as outras estações seguram o botão
+	local alvoMadeira = inst.Name == "PosteTreino"
+	p.HoldDuration = alvoMadeira and 0 or 2
 	p.MaxActivationDistance = 9
 	p.RequiresLineOfSight = false
 	p.Parent = peca
 	p.Triggered:Connect(function(player)
-		treinar(player, id)
+		if alvoMadeira then
+			iniciarTreino(player, id, inst)
+		else
+			treinar(player, id)
+		end
 	end)
 end
 for _, inst in ipairs(CollectionService:GetTagged("Treino")) do

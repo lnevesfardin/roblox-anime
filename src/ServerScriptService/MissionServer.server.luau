@@ -132,6 +132,14 @@ local function concluir(player)
 		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
 		if atualizar then atualizar:Fire(player) end
 	end
+	if r.Estilo then
+		local FightStyles = require(ReplicatedStorage:WaitForChild("FightStyles"))
+		local e = FightStyles.Garantir(data)
+		e.Liberados[r.Estilo] = true
+		aviso(player, ("NEW STYLE: %s!  Equip it in POWERS > STYLES"):format(FightStyles.Get(r.Estilo).Name), true)
+		local atualizar = ServerStorage:FindFirstChild("AtualizarEstilos")
+		if atualizar then atualizar:Fire(player) end
+	end
 	if missao.Promove then
 		data.Rank = missao.Promove
 		aviso(player, "RANK UP!  You are now " .. MissionData.RankName(missao.Promove), true)
@@ -593,7 +601,7 @@ local function novaErva()
 				local data, m = dados(player)
 				local missao = data and m.Ativa and MissionData.Get(m.Ativa.Id)
 				if not missao or missao.Tipo ~= "coletar" then
-					aviso(player, "Hana needs these herbs. Ask her for the mission first.", false)
+					aviso(player, "Someone needs these herbs. Take a mission first (Hana or the Stranger).", false)
 					return
 				end
 				if not e.Parent then return end
@@ -635,6 +643,12 @@ if game:GetService("RunService"):IsStudio() then
 			player:SetAttribute("Rank", valor)
 		elseif acao == "feita" then
 			m.Feitas[valor] = true
+		elseif acao == "estilo" then
+			local e = require(ReplicatedStorage:WaitForChild("FightStyles")).Garantir(data)
+			e.Liberados[valor] = true
+			e.Equipado = valor
+			local ae = ServerStorage:FindFirstChild("AtualizarEstilos")
+			if ae then ae:Fire(player) end
 		end
 		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
 		if atualizar then atualizar:Fire(player) end

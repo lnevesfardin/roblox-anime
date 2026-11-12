@@ -1,10 +1,12 @@
 -- Script: ServerScriptService > CombatServer
--- Golpes do jogador. O cliente só avisa qual golpe quer usar; o servidor decide recarga e dano.
--- Estilo de luta (igual para todos os personagens por enquanto):
---   clique / toque / F  = combo de 4 golpes (3 socos rápidos + chute final)
---   X (segurar e soltar) = soco carregado
---   Y                    = soco aéreo
---   C                    = soco com investida
+-- Golpes do jogador. O cliente só avisa qual golpe quer usar; o servidor decide recarga, chakra e dano.
+-- Os golpes dependem do estilo de luta equipado (ReplicatedStorage > FightStyles — Fase 5):
+--   clique / toque / F  = combo de 4 golpes do estilo
+--   X (segurar e soltar) = golpe carregado (ou estrangulamento no Jiu-Jitsu)
+--   Y                    = golpe aéreo / uppercut / arremesso
+--   C                    = investida
+-- Estilos: liberados pelas missões dos mestres (MissionServer), escolhidos pelo RemoteFunction
+-- "EstiloAcao" ("equipar", id). Estado para o cliente: atributos "Estilo" e "EstiloEstado" (JSON).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,29 +14,26 @@ local ServerStorage = game:GetService("ServerStorage")
 local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
+local FightStyles = require(ReplicatedStorage:WaitForChild("FightStyles"))
 
 local attackEvent = Instance.new("RemoteEvent")
 attackEvent.Name = "Attack"
 attackEvent.Parent = ReplicatedStorage
 
--- combo: multiplicador de dano, alcance, empurrão e tempo até poder bater de novo
-local COMBO = {
-	{ mult = 1.0, range = 9, force = 12, wait = 0.28 },
-	{ mult = 1.0, range = 9, force = 12, wait = 0.28 },
-	{ mult = 1.3, range = 9, force = 20, wait = 0.34 },
-	{ mult = 2.2, range = 11, force = 55, wait = 0.6, kick = true },
-}
-local COMBO_RESET = 1.1 -- sem bater por esse tempo e o combo volta ao primeiro golpe
-local CONE = 0.2 -- quanto maior, mais estreito o golpe à frente
-local COOLDOWN = { charged = 3, air = 3, dash = 4 }
+local estiloAcao = Instance.new("RemoteFunction")
+estiloAcao.Name = "EstiloAcao"
+estiloAcao.Parent = ReplicatedStorage
 
-local state = {} -- [player] = { n, last, nextHit, cd = { charged, air, dash } }
+local CONE = 0.2 -- quanto maior, mais estreito o golpe à frente
+
+local state = {} -- [player] = { n, last, nextHit, cd = { X, Y, C } }
 
 local function getState(plr)
 	if not state[plr] then
-		state[plr] = { n = 0, last = 0, nextHit = 0, cd = { charged = 0, air = 0, dash = 0 } }
+		state[plr] = { n = 0, last = 0, nextHit = 0, cd = { X = 0, Y = 0, C = 0 } }
 	end
 	return state[plr]
 end
@@ -67,6 +66,17 @@ local function inFront(root, range, cone)
 	return out
 end
 
+local function nearestInFront(root, range)
+	local best, bd
+	for _, e in ipairs(inFront(root, range, CONE)) do
+		local d = (e.root.Position - root.Position).Magnitude
+		if not bd or d < bd then
+			best, bd = e, d
+		end
+	end
+	return best
+end
+
 local function burst(pos, diameter, color, time)
 	time = time or 0.25
 	local b = Instance.new("Part")
@@ -81,6 +91,96 @@ local function burst(pos, diameter, color, time)
 	TweenService:Create(b, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.one * diameter, Transparency = 1 }):Play()
 	Debris:AddItem(b, time + 0.1)
 end
+
+-- segura o inimigo parado por alguns segundos (Jiu-Jitsu)
+local function prender(e, dur)
+	if e.raio > 2 then
+		dur *= 0.4
+	end
+	local hum = e.hum
+	if hum:GetAttribute("VelPreso") == nil then
+		hum:SetAttribute("VelPreso", hum.WalkSpeed)
+	end
+	local token = (hum:GetAttribute("PresoToken") or 0) + 1
+	hum:SetAttribute("PresoToken", token)
+	hum.WalkSpeed = 0
+	task.delay(dur, function()
+		if hum.Parent and hum:GetAttribute("PresoToken") == token then
+			hum.WalkSpeed = hum:GetAttribute("VelPreso") or 13
+			hum:SetAttribute("VelPreso", nil)
+		end
+	end)
+end
+
+---------------------------------------------------------------
+-- Estilo e maestria
+---------------------------------------------------------------
+
+local function enviarEstilo(plr)
+	local data = PlayerData.Get(plr)
+	if not data then return end
+	local e = FightStyles.Garantir(data)
+	plr:SetAttribute("Estilo", e.Equipado)
+	plr:SetAttribute("EstiloEstado", HttpService:JSONEncode({ Eq = e.Equipado, Lib = e.Liberados, XP = e.XP }))
+end
+
+local atualizarEv = Instance.new("BindableEvent")
+atualizarEv.Name = "AtualizarEstilos"
+atualizarEv.Parent = ServerStorage
+atualizarEv.Event:Connect(enviarEstilo)
+
+estiloAcao.OnServerInvoke = function(plr, acao, id)
+	local data = PlayerData.Get(plr)
+	if not data then return { ok = false } end
+	local e = FightStyles.Garantir(data)
+	if acao == "equipar" and type(id) == "string" and FightStyles.Styles[id] and e.Liberados[id] then
+		e.Equipado = id
+		enviarEstilo(plr)
+		return { ok = true }
+	end
+	return { ok = false }
+end
+
+local function estiloDe(plr)
+	local data = PlayerData.Get(plr)
+	if not data then return "Basico", FightStyles.Styles.Basico, 1 end
+	local e = FightStyles.Garantir(data)
+	local id = e.Equipado
+	return id, FightStyles.Get(id), FightStyles.Nivel(e.XP[id])
+end
+
+-- cada golpe que acerta conta para a maestria do estilo
+local aviso = ReplicatedStorage:WaitForChild("AbilityFeedback", 30)
+local function ganharMaestria(plr, id, qtd)
+	local data = PlayerData.Get(plr)
+	if not data or qtd <= 0 then return end
+	local e = FightStyles.Garantir(data)
+	local antes = FightStyles.Nivel(e.XP[id])
+	e.XP[id] = (e.XP[id] or 0) + qtd
+	local depois = FightStyles.Nivel(e.XP[id])
+	if depois > antes then
+		if aviso then
+			aviso:FireClient(plr, { msg = ("%s mastery %d!  (+%d%% damage)"):format(FightStyles.Get(id).Name, depois, math.floor((depois - 1) * FightStyles.BONUS_MAESTRIA * 100 + 0.5)) })
+		end
+		enviarEstilo(plr)
+	elseif e.XP[id] % 10 < qtd then
+		enviarEstilo(plr)
+	end
+end
+
+local function prepararJogador(plr)
+	for _ = 1, 60 do
+		if PlayerData.Get(plr) then break end
+		task.wait(0.25)
+	end
+	if plr.Parent then enviarEstilo(plr) end
+end
+Players.PlayerAdded:Connect(prepararJogador)
+for _, plr in ipairs(Players:GetPlayers()) do task.spawn(prepararJogador, plr) end
+
+---------------------------------------------------------------
+-- Golpes
+---------------------------------------------------------------
 
 local function hit(e, amount, from, force, up)
 	if e.hum.Health <= 0 then
@@ -118,26 +218,43 @@ local function context(plr)
 	return hum, root, PlayerData.GetCombatStats(plr).Damage * (1 + (plr:GetAttribute("BuffDano") or 0))
 end
 
-local function onCombo(plr, st, hum, root, dmg)
+-- paga o chakra do golpe especial (o clã Lee paga menos). Devolve false se não tiver.
+local function pagar(plr, custo)
+	custo = (custo or 0) * (1 - (plr:GetAttribute("DescontoEnergia") or 0))
+	local c = plr:GetAttribute("Chakra")
+	if c == nil then return true end
+	if c < custo then
+		if aviso then aviso:FireClient(plr, { msg = "Not enough chakra." }) end
+		return false
+	end
+	plr:SetAttribute("Chakra", c - custo)
+	return true
+end
+
+local function onCombo(plr, st, hum, root, dmg, id, est)
 	local now = os.clock()
 	if now < st.nextHit then
 		return
 	end
-	if now - st.last > COMBO_RESET then
+	if now - st.last > FightStyles.COMBO_RESET then
 		st.n = 0
 	end
-	st.n = st.n % #COMBO + 1
+	st.n = st.n % #est.Combo + 1
 	st.last = now
-	local step = COMBO[st.n]
+	local step = est.Combo[st.n]
 	st.nextHit = now + step.wait
+	local acertos = 0
 	for _, e in ipairs(inFront(root, step.range, CONE)) do
-		hit(e, dmg * step.mult, root.Position, step.force, step.kick and 30 or nil)
+		hit(e, dmg * step.mult, root.Position, step.force, step.up)
+		if step.prender then prender(e, step.prender) end
+		acertos += 1
 	end
-	-- efeito do golpe: arco branco; o chute final é maior e mais baixo
+	ganharMaestria(plr, id, acertos)
+	-- efeito do golpe: arco na cor do estilo; chute é maior e mais baixo
 	local fx = Instance.new("Part")
 	fx.Size = step.kick and Vector3.new(9, 0.4, 7) or Vector3.new(5, 0.3, 5)
 	fx.Material = Enum.Material.Neon
-	fx.Color = step.kick and Color3.fromRGB(255, 220, 140) or Color3.fromRGB(255, 255, 255)
+	fx.Color = st.n == #est.Combo and Color3.fromRGB(255, 220, 140) or est.Color
 	fx.Transparency = 0.35
 	fx.Anchored, fx.CanCollide, fx.CanQuery, fx.CanTouch, fx.CastShadow = true, false, false, false, false
 	fx.CFrame = root.CFrame * CFrame.new(0, step.kick and -1.2 or 0.4, -4.5) * CFrame.Angles(0, 0, math.rad(st.n == 2 and 25 or -25))
@@ -145,50 +262,104 @@ local function onCombo(plr, st, hum, root, dmg)
 	Debris:AddItem(fx, 0.15)
 end
 
--- X: soco carregado — quanto mais tempo segurou (até ~1,2s), mais forte e longe
-local function onCharged(plr, st, hum, root, dmg, held)
-	if os.clock() < st.cd.charged then
+-- X: golpe carregado — quanto mais tempo segurou (até ~1,2s), mais forte e longe.
+-- No Jiu-Jitsu é um estrangulamento: segura o inimigo da frente e machuca aos poucos.
+local function onX(plr, st, hum, root, dmg, id, est, held)
+	local x = est.X
+	if os.clock() < st.cd.X then
 		return
 	end
-	st.cd.charged = os.clock() + COOLDOWN.charged
+	if not pagar(plr, x.Chakra) then return end
+	st.cd.X = os.clock() + x.Cd
+	if x.Tipo == "estrangular" then
+		local e = nearestInFront(root, x.Range)
+		if not e then
+			burst(root.Position + root.CFrame.LookVector * 3, 4, est.Color, 0.25)
+			return
+		end
+		prender(e, x.Tempo)
+		local ticks = 5
+		for _ = 1, ticks do
+			if e.hum.Health <= 0 then break end
+			hit(e, dmg * x.Mult / ticks, nil, 0)
+			burst(e.root.Position + Vector3.new(0, 1.5, 0), 3, est.Color, 0.2)
+			task.wait(x.Tempo / ticks)
+		end
+		ganharMaestria(plr, id, 1)
+		return
+	end
 	held = math.clamp(tonumber(held) or 0, 0, 1.5)
 	local ratio = math.min(held / 1.2, 1)
-	local range = 11 + ratio * 6
+	local range = x.Range + ratio * x.RangeExtra
 	local look = root.CFrame.LookVector
+	local acertos = 0
 	for _, e in ipairs(inFront(root, range, CONE)) do
-		hit(e, dmg * (2 + 4 * ratio), root.Position, 40 + 60 * ratio, 15 + 20 * ratio)
+		hit(e, dmg * (x.Base + x.Extra * ratio), root.Position, x.Force + x.ForceExtra * ratio, 15 + 20 * ratio)
+		acertos += 1
 	end
+	ganharMaestria(plr, id, acertos)
 	local pos = root.Position + Vector3.new(look.X, 0, look.Z).Unit * (range * 0.55)
 	burst(pos, 8 + ratio * 12, Color3.fromRGB(255, 255, 255), 0.35)
-	burst(pos, 4 + ratio * 8, Color3.fromRGB(255, 200, 90), 0.25)
+	burst(pos, 4 + ratio * 8, est.Color, 0.25)
 end
 
--- Y: soco aéreo — só funciona no ar (o cliente pula primeiro se estiver no chão)
-local function onAir(plr, st, hum, root, dmg)
-	if os.clock() < st.cd.air then
+-- Y: "aereo" só funciona no ar (o cliente pula antes); "uppercut" joga para cima;
+-- "arremesso" pega o inimigo da frente e joga por cima do ombro
+local function onY(plr, st, hum, root, dmg, id, est)
+	local y = est.Y
+	if os.clock() < st.cd.Y then
 		return
 	end
-	if hum.FloorMaterial ~= Enum.Material.Air then
+	if y.Tipo == "aereo" and hum.FloorMaterial ~= Enum.Material.Air then
 		return
 	end
-	st.cd.air = os.clock() + COOLDOWN.air
-	for _, e in ipairs(inFront(root, 13, nil)) do
-		hit(e, dmg * 2.5, root.Position, 45, 25)
+	if not pagar(plr, y.Chakra) then return end
+	st.cd.Y = os.clock() + y.Cd
+	local acertos = 0
+	if y.Tipo == "aereo" then
+		for _, e in ipairs(inFront(root, y.Range, nil)) do
+			hit(e, dmg * y.Mult, root.Position, 45, 25)
+			acertos += 1
+		end
+		burst(root.Position - Vector3.new(0, 2, 0), 18, Color3.fromRGB(190, 230, 255), 0.35)
+		burst(root.Position, 8, est.Color, 0.25)
+	elseif y.Tipo == "uppercut" then
+		for _, e in ipairs(inFront(root, y.Range, CONE)) do
+			hit(e, dmg * y.Mult, root.Position, 8, 75)
+			acertos += 1
+		end
+		burst(root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 2, 0), 8, est.Color, 0.3)
+	elseif y.Tipo == "arremesso" then
+		local e = nearestInFront(root, y.Range)
+		if e then
+			hit(e, dmg * y.Mult, nil, 0)
+			if e.raio <= 2 then
+				e.root.AssemblyLinearVelocity = -root.CFrame.LookVector * 45 + Vector3.new(0, 55, 0)
+			end
+			acertos = 1
+			task.delay(0.6, function()
+				if e.root.Parent then burst(e.root.Position - Vector3.new(0, 2, 0), 9, est.Color, 0.3) end
+			end)
+		else
+			burst(root.Position + root.CFrame.LookVector * 3, 4, est.Color, 0.25)
+		end
 	end
-	burst(root.Position - Vector3.new(0, 2, 0), 18, Color3.fromRGB(190, 230, 255), 0.35)
-	burst(root.Position, 8, Color3.fromRGB(255, 255, 255), 0.25)
+	ganharMaestria(plr, id, acertos)
 end
 
--- C: soco com investida — o cliente avança e o servidor acerta quem for tocado durante 0,4s
-local function onDash(plr, st, hum, root, dmg)
-	if os.clock() < st.cd.dash then
+-- C: investida — o cliente avança e o servidor acerta quem for tocado durante a investida
+local function onC(plr, st, hum, root, dmg, id, est)
+	local c = est.C
+	if os.clock() < st.cd.C then
 		return
 	end
-	st.cd.dash = os.clock() + COOLDOWN.dash
+	if not pagar(plr, c.Chakra) then return end
+	st.cd.C = os.clock() + c.Cd
 	task.spawn(function()
 		local hitSet = {}
+		local acertos = 0
 		local t0 = os.clock()
-		while os.clock() - t0 < 0.4 and root.Parent and hum.Health > 0 do
+		while os.clock() - t0 < c.Time + 0.12 and root.Parent and hum.Health > 0 do
 			local look = root.CFrame.LookVector
 			for _, e in ipairs(enemies()) do
 				if not hitSet[e.model] then
@@ -197,13 +368,16 @@ local function onDash(plr, st, hum, root, dmg)
 					if flat.Magnitude <= 6.5 + e.raio and math.abs(off.Y) < 14 + e.raio * 2
 						and (flat.Magnitude < 1.5 or flat.Unit:Dot(look) > -0.2) then
 						hitSet[e.model] = true
-						hit(e, dmg * 2.2, root.Position, 50, 12)
-						burst(e.root.Position, 10, Color3.fromRGB(255, 255, 255), 0.3)
+						hit(e, dmg * c.Mult, root.Position, c.Prender and 10 or 50, 12)
+						if c.Prender then prender(e, c.Prender) end
+						burst(e.root.Position, 10, est.Color, 0.3)
+						acertos += 1
 					end
 				end
 			end
 			task.wait()
 		end
+		ganharMaestria(plr, id, acertos)
 	end)
 end
 
@@ -213,14 +387,16 @@ attackEvent.OnServerEvent:Connect(function(plr, kind, extra)
 		return
 	end
 	local st = getState(plr)
+	local id, est, nivel = estiloDe(plr)
+	dmg *= 1 + (nivel - 1) * FightStyles.BONUS_MAESTRIA
 	if kind == "charged" then
-		onCharged(plr, st, hum, root, dmg, extra)
+		onX(plr, st, hum, root, dmg, id, est, extra)
 	elseif kind == "air" then
-		onAir(plr, st, hum, root, dmg)
+		onY(plr, st, hum, root, dmg, id, est)
 	elseif kind == "dash" then
-		onDash(plr, st, hum, root, dmg)
+		onC(plr, st, hum, root, dmg, id, est)
 	else
-		onCombo(plr, st, hum, root, dmg)
+		onCombo(plr, st, hum, root, dmg, id, est)
 	end
 end)
 

@@ -12,6 +12,7 @@ local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 
 local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
+local FightStyles = require(ReplicatedStorage:WaitForChild("FightStyles"))
 local useEvent = ReplicatedStorage:WaitForChild("UseAbility")
 local feedbackEvent = ReplicatedStorage:WaitForChild("AbilityFeedback")
 
@@ -174,11 +175,14 @@ local painelBorda = Instance.new("UIStroke", painel)
 painelBorda.Color = Color3.fromRGB(255, 140, 40)
 painelBorda.Thickness = 2
 local titulo = Instance.new("TextLabel")
-titulo.Size = UDim2.new(1, -60, 0, 30)
+titulo.Size = UDim2.new(1, -230, 0, 30)
 titulo.Position = UDim2.fromOffset(16, 10)
 titulo.BackgroundTransparency = 1
 titulo.Font = Enum.Font.GothamBlack
 titulo.TextSize = 20
+titulo.TextScaled = true
+local tituloLimite = Instance.new("UITextSizeConstraint", titulo)
+tituloLimite.MaxTextSize = 20
 titulo.TextColor3 = Color3.new(1, 1, 1)
 titulo.TextXAlignment = Enum.TextXAlignment.Left
 titulo.Parent = painel
@@ -186,7 +190,7 @@ local fechar = Instance.new("TextButton")
 fechar.Size = UDim2.fromOffset(32, 28)
 fechar.Position = UDim2.new(1, -44, 0, 10)
 fechar.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
-fechar.Text = "✕"
+fechar.Text = "X" -- o símbolo ✕ não existe nessa fonte
 fechar.Font = Enum.Font.GothamBlack
 fechar.TextSize = 14
 fechar.TextColor3 = Color3.new(1, 1, 1)
@@ -194,13 +198,55 @@ fechar.Parent = painel
 Instance.new("UICorner", fechar).CornerRadius = UDim.new(0, 8)
 fechar.MouseButton1Click:Connect(function() painel.Visible = false end)
 
+-- abas: CLAN (poderes do clã) e STYLES (estilos de luta)
+local abaCla = Instance.new("Frame")
+abaCla.Size = UDim2.fromScale(1, 1)
+abaCla.BackgroundTransparency = 1
+abaCla.Parent = painel
+local abaEstilos = Instance.new("Frame")
+abaEstilos.Size = UDim2.fromScale(1, 1)
+abaEstilos.BackgroundTransparency = 1
+abaEstilos.Visible = false
+abaEstilos.Parent = painel
+local function botaoAba(texto, x)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(72, 28)
+	b.Position = UDim2.new(1, x, 0, 10)
+	b.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+	b.Font = Enum.Font.GothamBlack
+	b.TextSize = 12
+	b.Text = texto
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.Parent = painel
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+	return b
+end
+local tabCla = botaoAba("CLAN", -204)
+local tabEstilos = botaoAba("STYLES", -126)
+local abaEstilosAberta = false
+local function mostrarAba(estilos)
+	abaEstilosAberta = estilos
+	if estilos then
+		titulo.Text = "FIGHTING STYLES"
+	elseif estado and ClanPowers.Clans[estado.Cla] then
+		titulo.Text = estado.Cla:upper() .. " CLAN PATH"
+	end
+	abaCla.Visible = not estilos
+	abaEstilos.Visible = estilos
+	tabCla.BackgroundColor3 = estilos and Color3.fromRGB(40, 40, 52) or Color3.fromRGB(255, 140, 40)
+	tabEstilos.BackgroundColor3 = estilos and Color3.fromRGB(255, 140, 40) or Color3.fromRGB(40, 40, 52)
+end
+tabCla.MouseButton1Click:Connect(function() mostrarAba(false) end)
+tabEstilos.MouseButton1Click:Connect(function() mostrarAba(true) end)
+mostrarAba(false)
+
 local linhas = {}
 for i = 1, 3 do
 	local l = Instance.new("Frame")
 	l.Size = UDim2.new(1, -32, 0, 82)
 	l.Position = UDim2.fromOffset(16, 48 + (i - 1) * 92)
 	l.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	l.Parent = painel
+	l.Parent = abaCla
 	Instance.new("UICorner", l).CornerRadius = UDim.new(0, 10)
 	local k = Instance.new("TextLabel")
 	k.Size = UDim2.fromOffset(40, 40)
@@ -243,20 +289,129 @@ for i = 1, 3 do
 	linhas[i] = { nome = n, desc = d, status = s }
 end
 
--- botão POWERS (ao lado do STATS)
+-- aba STYLES: um estilo por linha, com os golpes, a maestria e o botão de equipar
+local estiloAcao = ReplicatedStorage:WaitForChild("EstiloAcao")
+local estilosEstado = { Eq = "Basico", Lib = { Basico = true }, XP = {} }
+local linhasEstilo = {}
+local function txt(parent, props)
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.TextXAlignment = Enum.TextXAlignment.Left
+	t.TextColor3 = Color3.new(1, 1, 1)
+	for k, v in pairs(props) do t[k] = v end
+	t.Parent = parent
+	return t
+end
+for i, id in ipairs(FightStyles.Order) do
+	local est = FightStyles.Styles[id]
+	local l = Instance.new("Frame")
+	l.Size = UDim2.new(1, -32, 0, 50)
+	l.Position = UDim2.fromOffset(16, 48 + (i - 1) * 54)
+	l.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	l.Parent = abaEstilos
+	Instance.new("UICorner", l).CornerRadius = UDim.new(0, 10)
+	local faixa = Instance.new("Frame")
+	faixa.Size = UDim2.new(0, 5, 1, -12)
+	faixa.Position = UDim2.fromOffset(6, 6)
+	faixa.BackgroundColor3 = est.Color
+	faixa.BorderSizePixel = 0
+	faixa.Parent = l
+	local nome = txt(l, { Size = UDim2.new(1, -130, 0, 18), Position = UDim2.fromOffset(18, 4), Font = Enum.Font.GothamBlack, TextSize = 14 })
+	local golpes = txt(l, { Size = UDim2.new(1, -130, 0, 14), Position = UDim2.fromOffset(18, 21), Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = Color3.fromRGB(200, 200, 210),
+		Text = ("X %s  ·  Y %s  ·  C %s"):format(est.X.Name, est.Y.Name, est.C.Name) })
+	local fundoBarra = Instance.new("Frame")
+	fundoBarra.Size = UDim2.new(1, -140, 0, 5)
+	fundoBarra.Position = UDim2.fromOffset(18, 39)
+	fundoBarra.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+	fundoBarra.BorderSizePixel = 0
+	fundoBarra.Parent = l
+	local barraM = Instance.new("Frame")
+	barraM.Size = UDim2.fromScale(0, 1)
+	barraM.BackgroundColor3 = est.Color
+	barraM.BorderSizePixel = 0
+	barraM.Parent = fundoBarra
+	local botao = Instance.new("TextButton")
+	botao.Size = UDim2.fromOffset(100, 30)
+	botao.Position = UDim2.new(1, -110, 0.5, -15)
+	botao.BackgroundColor3 = Color3.fromRGB(255, 140, 40)
+	botao.Font = Enum.Font.GothamBlack
+	botao.TextSize = 12
+	botao.TextWrapped = true
+	botao.TextColor3 = Color3.new(1, 1, 1)
+	botao.Parent = l
+	Instance.new("UICorner", botao).CornerRadius = UDim.new(0, 8)
+	botao.MouseButton1Click:Connect(function()
+		if estilosEstado.Lib[id] and estilosEstado.Eq ~= id then
+			estiloAcao:InvokeServer("equipar", id)
+		end
+	end)
+	linhasEstilo[id] = { nome = nome, golpes = golpes, barra = barraM, botao = botao }
+end
+
+local function atualizarEstilos()
+	for _, id in ipairs(FightStyles.Order) do
+		local est = FightStyles.Styles[id]
+		local l = linhasEstilo[id]
+		local lib = estilosEstado.Lib[id] == true
+		local xp = (estilosEstado.XP and estilosEstado.XP[id]) or 0
+		local n = FightStyles.Nivel(xp)
+		local M = FightStyles.MAESTRIA
+		if lib then
+			l.nome.Text = ("%s   ·   Mastery %d"):format(est.Name, n)
+			l.barra.Size = UDim2.fromScale(n >= #M and 1 or math.clamp((xp - M[n]) / (M[n + 1] - M[n]), 0, 1), 1)
+		else
+			l.nome.Text = est.Name
+			l.barra.Size = UDim2.fromScale(0, 1)
+		end
+		if estilosEstado.Eq == id then
+			l.botao.Text = "EQUIPPED"
+			l.botao.BackgroundColor3 = Color3.fromRGB(70, 160, 90)
+			l.botao.TextSize = 12
+		elseif lib then
+			l.botao.Text = "EQUIP"
+			l.botao.BackgroundColor3 = Color3.fromRGB(255, 140, 40)
+			l.botao.TextSize = 12
+		else
+			l.botao.Text = "🔒 " .. (est.Mestre or "")
+			l.botao.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+			l.botao.TextSize = 10
+			l.golpes.Text = (est.Mestre or "") .. ": " .. (est.Req or "")
+		end
+		if lib then
+			l.golpes.Text = ("X %s  ·  Y %s  ·  C %s"):format(est.X.Name, est.Y.Name, est.C.Name)
+		end
+	end
+end
+local function lerEstilos()
+	local raw = player:GetAttribute("EstiloEstado")
+	if type(raw) == "string" and raw ~= "" then
+		local ok, t = pcall(HttpService.JSONDecode, HttpService, raw)
+		if ok and type(t) == "table" then
+			estilosEstado = t
+			estilosEstado.Lib = estilosEstado.Lib or {}
+			estilosEstado.XP = estilosEstado.XP or {}
+		end
+	end
+	atualizarEstilos()
+end
+player:GetAttributeChangedSignal("EstiloEstado"):Connect(lerEstilos)
+lerEstilos()
+
+-- botão POWERS: embaixo, logo à direita do poder R (dentro da barra, sem tampar nada)
 local botaoPoderes = Instance.new("TextButton")
 botaoPoderes.Name = "BotaoPoderes"
-botaoPoderes.Size = UDim2.fromOffset(89, 34)
-botaoPoderes.Position = UDim2.fromOffset(232, 53)
+botaoPoderes.Size = UDim2.fromOffset(70, 62)
+botaoPoderes.Position = UDim2.fromOffset(327, 20)
 botaoPoderes.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-botaoPoderes.BackgroundTransparency = 0.1
+botaoPoderes.BackgroundTransparency = 0.15
 botaoPoderes.Font = Enum.Font.GothamBlack
 botaoPoderes.TextSize = 12
-botaoPoderes.Text = "POWERS"
+botaoPoderes.TextWrapped = true
+botaoPoderes.Text = "📜\nPOWERS"
 botaoPoderes.TextColor3 = Color3.new(1, 1, 1)
 botaoPoderes.Visible = false
-botaoPoderes.Parent = gui
-Instance.new("UICorner", botaoPoderes).CornerRadius = UDim.new(0, 8)
+botaoPoderes.Parent = barra
+Instance.new("UICorner", botaoPoderes).CornerRadius = UDim.new(0, 10)
 local bpBorda = Instance.new("UIStroke", botaoPoderes)
 bpBorda.Color = Color3.fromRGB(80, 80, 100)
 bpBorda.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -282,7 +437,9 @@ local function atualizar()
 		painel.Visible = false
 		return
 	end
-	titulo.Text = clan:upper() .. " CLAN PATH"
+	if not abaEstilosAberta then
+		titulo.Text = clan:upper() .. " CLAN PATH"
+	end
 	painelBorda.Color = c.Color
 	for i = 1, 3 do
 		local p = c.Powers[i]

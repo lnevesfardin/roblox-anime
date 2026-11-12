@@ -71,8 +71,19 @@ end)
 -- Golpes: combo, soco carregado (X), soco aéreo (Y) e soco com investida (C)
 ---------------------------------------------------------------
 
+-- valores do estilo de luta equipado (Fase 5: ReplicatedStorage > FightStyles)
+local FightStyles = require(ReplicatedStorage:WaitForChild("FightStyles"))
+local function estilo()
+	return FightStyles.Get(player:GetAttribute("Estilo"))
+end
 local CD = { X = 3, Y = 3, C = 4 }
 local readyAt = { X = 0, Y = 0, C = 0 }
+-- tem chakra para o golpe especial? (o clã Lee paga menos)
+local function temChakra(golpe)
+	local c = player:GetAttribute("Chakra")
+	if c == nil then return true end
+	return c >= (golpe.Chakra or 0) * (1 - (player:GetAttribute("DescontoEnergia") or 0))
+end
 
 local function raiz()
 	local char = player.Character
@@ -288,7 +299,6 @@ RunService.PreSimulation:Connect(function(dt)
 end)
 
 -- combo (o cliente repete a conta do servidor só para saber qual animação tocar)
-local COMBO_WAIT = { 0.28, 0.28, 0.34, 0.6 }
 local comboN, comboLast, comboNext = 0, 0, 0
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
@@ -303,9 +313,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			if agora - comboLast > 1.1 then
 				comboN = 0
 			end
-			comboN = comboN % 4 + 1
+			local combo = estilo().Combo
+			comboN = comboN % #combo + 1
 			comboLast = agora
-			comboNext = agora + COMBO_WAIT[comboN]
+			comboNext = agora + combo[comboN].wait
 			playAnim("combo" .. comboN)
 		end
 	end
@@ -365,8 +376,19 @@ for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash" } }) do
 	secs.TextStrokeTransparency = 0.4
 	secs.Text = ""
 	secs.Parent = f
-	slots[info[1]] = { shade = shade, secs = secs }
+	slots[info[1]] = { shade = shade, secs = secs, name = name }
 end
+
+-- nomes e recargas dos golpes X, Y e C mudam com o estilo
+local function aplicarEstilo()
+	local est = estilo()
+	for _, k in ipairs({ "X", "Y", "C" }) do
+		CD[k] = est[k].Cd
+		slots[k].name.Text = est[k].Name
+	end
+end
+player:GetAttributeChangedSignal("Estilo"):Connect(aplicarEstilo)
+aplicarEstilo()
 
 RunService.RenderStepped:Connect(function()
 	for k, s in pairs(slots) do
@@ -397,7 +419,7 @@ end
 
 local function acaoCarregado(_, estado)
 	if estado == Enum.UserInputState.Begin then
-		if os.clock() < readyAt.X or charging then
+		if os.clock() < readyAt.X or charging or not temChakra(estilo().X) then
 			return Enum.ContextActionResult.Sink
 		end
 		charging, chargeStart = true, os.clock()
@@ -429,7 +451,7 @@ end
 
 -- Y: se estiver no chão, pula e bate no ar
 local function acaoAereo(_, estado)
-	if estado ~= Enum.UserInputState.Begin or os.clock() < readyAt.Y then
+	if estado ~= Enum.UserInputState.Begin or os.clock() < readyAt.Y or not temChakra(estilo().Y) then
 		return Enum.ContextActionResult.Sink
 	end
 	local root, hum = raiz()
@@ -438,7 +460,10 @@ local function acaoAereo(_, estado)
 	end
 	readyAt.Y = os.clock() + CD.Y
 	playAnim("air")
-	if hum.FloorMaterial ~= Enum.Material.Air then
+	if estilo().Y.Tipo ~= "aereo" then
+		-- uppercut / arremesso: no chão mesmo
+		attackEvent:FireServer("air")
+	elseif hum.FloorMaterial ~= Enum.Material.Air then
 		root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 55, root.AssemblyLinearVelocity.Z)
 		task.delay(0.3, function()
 			attackEvent:FireServer("air")
@@ -451,7 +476,7 @@ end
 
 -- C: avança na direção do inimigo mais próximo (ou para a frente) batendo em quem tocar
 local function acaoInvestida(_, estado)
-	if estado ~= Enum.UserInputState.Begin or os.clock() < readyAt.C then
+	if estado ~= Enum.UserInputState.Begin or os.clock() < readyAt.C or not temChakra(estilo().C) then
 		return Enum.ContextActionResult.Sink
 	end
 	local root, hum = raiz()
@@ -467,10 +492,11 @@ local function acaoInvestida(_, estado)
 	root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
 	attackEvent:FireServer("dash")
 	playAnim("dash")
+	local c = estilo().C
 	task.spawn(function()
 		local t0 = os.clock()
-		while os.clock() - t0 < 0.28 and root.Parent do
-			root.AssemblyLinearVelocity = dir * 85 + Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+		while os.clock() - t0 < c.Time and root.Parent do
+			root.AssemblyLinearVelocity = dir * c.Speed + Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
 			RunService.Heartbeat:Wait()
 		end
 	end)

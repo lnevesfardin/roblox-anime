@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 
 local COR = {
 	painel = Color3.fromRGB(20, 20, 23), card = Color3.fromRGB(30, 30, 34), linha = Color3.fromRGB(58, 58, 64),
-	texto = Color3.fromRGB(240, 240, 244), fraco = Color3.fromRGB(140, 140, 150), laranja = Color3.fromRGB(255, 140, 40),
+	texto = Color3.fromRGB(240, 240, 244), fraco = Color3.fromRGB(176, 176, 188), laranja = Color3.fromRGB(255, 140, 40),
 	verde = Color3.fromRGB(70, 190, 110), vermelho = Color3.fromRGB(215, 70, 70),
 }
 local function new(classe, props)
@@ -37,7 +37,7 @@ player:GetAttributeChangedSignal("Jogando"):Connect(function()
 end)
 
 -- botão: fica na mesma linha do clã, logo abaixo da barra de nível do HUD
-local abrir = new("TextButton", { Size = UDim2.fromOffset(104, 40), BackgroundColor3 = COR.painel, Text = "STATS", TextColor3 = COR.texto, Font = Enum.Font.GothamBlack, TextSize = 14, Parent = gui })
+local abrir = new("TextButton", { Size = UDim2.fromOffset(104, 40), BackgroundColor3 = COR.painel, Text = "STATS", TextColor3 = COR.texto, Font = Enum.Font.GothamBlack, TextSize = 17, Parent = gui })
 corner(abrir, 10)
 new("UIStroke", { Color = COR.linha, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = abrir })
 local escalaBtn = new("UIScale", { Parent = abrir })
@@ -45,9 +45,9 @@ local bolinha = label(abrir, "", 12, Color3.new(1, 1, 1), { AnchorPoint = Vector
 corner(bolinha, 10)
 local function posicionar()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) * 0.78 -- HUD compacto: tudo 22% menor (mesma escala do HUD)
+	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) -- escala cheia (mesma escala do HUD)
 	escalaBtn.Scale = sc
-	abrir.Position = UDim2.fromOffset((16 + 142) * sc, GuiService:GetGuiInset().Y + 62 * sc)
+	abrir.Position = UDim2.fromOffset((16 + 142) * sc, GuiService:GetGuiInset().Y + 80 * sc)
 end
 posicionar()
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(posicionar)

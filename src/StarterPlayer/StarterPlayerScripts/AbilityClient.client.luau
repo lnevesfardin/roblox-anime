@@ -39,14 +39,19 @@ barra.Size = UDim2.fromOffset(318, 84)
 -- compacta: 75% do tamanho, presa pela base
 barra.AnchorPoint = Vector2.new(0, 1)
 barra.Position = UDim2.new(0.5, -119, 1, -12)
-Instance.new("UIScale", barra).Scale = 0.75
+local escalaBarra = Instance.new("UIScale", barra)
+local function ajustarBarra() -- cabe na tela: maior em telas grandes, menor no celular (mesma conta do CombatClient e NatureClient)
+	escalaBarra.Scale = math.clamp((workspace.CurrentCamera.ViewportSize.X / 2 + 111) / 864, 0.55, 0.95)
+end
+ajustarBarra()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajustarBarra)
 barra.BackgroundTransparency = 1
 barra.Visible = false
 barra.Parent = gui
 
 -- barra de chakra em cima dos poderes
 local chakraFundo = Instance.new("Frame")
-chakraFundo.Size = UDim2.new(1, 0, 0, 12)
+chakraFundo.Size = UDim2.new(1, 0, 0, 15)
 chakraFundo.BackgroundColor3 = Color3.fromRGB(20, 25, 40)
 chakraFundo.BackgroundTransparency = 0.2
 chakraFundo.BorderSizePixel = 0
@@ -62,7 +67,7 @@ local chakraTexto = Instance.new("TextLabel")
 chakraTexto.Size = UDim2.fromScale(1, 1)
 chakraTexto.BackgroundTransparency = 1
 chakraTexto.Font = Enum.Font.GothamBlack
-chakraTexto.TextSize = 10
+chakraTexto.TextSize = 13
 chakraTexto.TextColor3 = Color3.new(1, 1, 1)
 chakraTexto.TextStrokeTransparency = 0.5
 chakraTexto.ZIndex = 2
@@ -73,7 +78,7 @@ aviso.Size = UDim2.fromOffset(460, 24)
 aviso.Position = UDim2.new(0.5, -230, 1, -128)
 aviso.BackgroundTransparency = 1
 aviso.Font = Enum.Font.GothamBold
-aviso.TextSize = 16
+aviso.TextSize = 20
 aviso.TextColor3 = Color3.fromRGB(255, 120, 120)
 aviso.TextStrokeTransparency = 0.4
 aviso.Text = ""
@@ -98,7 +103,7 @@ for i = 1, 4 do
 	tecla.Position = UDim2.fromOffset(6, 4)
 	tecla.BackgroundTransparency = 1
 	tecla.Font = Enum.Font.GothamBlack
-	tecla.TextSize = 15
+	tecla.TextSize = 18
 	tecla.TextColor3 = Color3.new(1, 1, 1)
 	tecla.TextXAlignment = Enum.TextXAlignment.Left
 	tecla.Text = KEYS[i] or KekkeiData.TECLA
@@ -110,7 +115,7 @@ for i = 1, 4 do
 	nome.Position = UDim2.fromOffset(5, 22)
 	nome.BackgroundTransparency = 1
 	nome.Font = Enum.Font.GothamBold
-	nome.TextSize = 12
+	nome.TextSize = 14
 	nome.TextWrapped = true
 	nome.TextColor3 = Color3.new(1, 1, 1)
 	nome.ZIndex = 3
@@ -121,7 +126,7 @@ for i = 1, 4 do
 	custo.Position = UDim2.new(0, 4, 1, -14)
 	custo.BackgroundTransparency = 1
 	custo.Font = Enum.Font.GothamBold
-	custo.TextSize = 10
+	custo.TextSize = 13
 	custo.TextColor3 = Color3.fromRGB(120, 190, 255)
 	custo.TextXAlignment = Enum.TextXAlignment.Right
 	custo.ZIndex = 3
@@ -142,7 +147,7 @@ for i = 1, 4 do
 	tempo.Position = UDim2.new(1, -44, 0, 4)
 	tempo.BackgroundTransparency = 1
 	tempo.Font = Enum.Font.GothamBlack
-	tempo.TextSize = 14
+	tempo.TextSize = 17
 	tempo.TextColor3 = Color3.fromRGB(255, 220, 120)
 	tempo.TextXAlignment = Enum.TextXAlignment.Right
 	tempo.ZIndex = 4

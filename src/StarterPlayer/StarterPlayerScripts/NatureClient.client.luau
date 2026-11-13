@@ -158,11 +158,15 @@ player:GetAttributeChangedSignal("Jogando"):Connect(checarRoleta)
 checarRoleta()
 
 ---------------------------------------------------------------
--- HUD: jutsus de natureza (G e H) e botao NATURES
+-- HUD: jutsus de natureza (G, H, J e K) e botao NATURES
 ---------------------------------------------------------------
+local ICONE_NAT = { Fogo = "🔥", Vento = "💨", Raio = "⚡", Terra = "🌍", Agua = "💧" } -- imagem no lugar de texto
+local function escalaHotbar() -- mesma conta da barra de poderes (AbilityClient)
+	return math.clamp((workspace.CurrentCamera.ViewportSize.X / 2 + 111) / 864, 0.55, 0.95)
+end
 local hud = new("ScreenGui", { Name = "HudNatureza", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = pg })
 local barra = new("Frame", { AnchorPoint = Vector2.new(0, 1), Size = UDim2.fromOffset(350, 84), BackgroundTransparency = 1, Visible = false, Parent = hud })
-new("UIScale", { Scale = 0.75, Parent = barra })
+local escalaBarra = new("UIScale", { Scale = escalaHotbar(), Parent = barra })
 
 local readyAt, total = { 0, 0, 0, 0 }, { 1, 1, 1, 1 }
 local slots = {}
@@ -171,16 +175,17 @@ for i = 1, NatureData.SLOTS do
 		BackgroundTransparency = 0.15, ClipsDescendants = true, Parent = barra })
 	canto(f, 10)
 	local stroke = new("UIStroke", { Thickness = 2, Color = COR.linha, Parent = f })
-	label(f, NatureData.KEYS[i], 15, COR.texto, { Size = UDim2.fromOffset(22, 18), Position = UDim2.fromOffset(6, 4), Font = Enum.Font.GothamBlack, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
-	local nome = label(f, "", 10, COR.texto, { Size = UDim2.new(1, -6, 0, 30), Position = UDim2.fromOffset(3, 22), ZIndex = 3 })
-	local custo = label(f, "", 10, Color3.fromRGB(120, 190, 255), { Size = UDim2.new(1, -8, 0, 12), Position = UDim2.new(0, 4, 1, -14), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
+	label(f, NatureData.KEYS[i], 18, COR.texto, { Size = UDim2.fromOffset(22, 18), Position = UDim2.fromOffset(6, 4), Font = Enum.Font.GothamBlack, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+	local icone = label(f, "", 24, COR.texto, { Size = UDim2.fromOffset(36, 30), Position = UDim2.fromOffset(26, 1), ZIndex = 3 })
+	local nome = label(f, "", 11, COR.texto, { Size = UDim2.new(1, -6, 0, 14), Position = UDim2.fromOffset(3, 30), TextWrapped = false, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3 })
+	local custo = label(f, "", 12, Color3.fromRGB(120, 190, 255), { Size = UDim2.new(1, -8, 0, 13), Position = UDim2.new(0, 4, 1, -15), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
 	local sombra = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 0.35, BorderSizePixel = 0, ZIndex = 2, Parent = f })
-	local tempo = label(f, "", 14, Color3.fromRGB(255, 220, 120), { Size = UDim2.fromOffset(40, 18), Position = UDim2.new(1, -44, 0, 4), Font = Enum.Font.GothamBlack, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-	slots[i] = { frame = f, stroke = stroke, nome = nome, custo = custo, sombra = sombra, tempo = tempo }
+	local tempo = label(f, "", 17, Color3.fromRGB(255, 220, 120), { Size = UDim2.fromOffset(46, 22), Position = UDim2.new(1, -48, 0, 2), Font = Enum.Font.GothamBlack, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	slots[i] = { frame = f, stroke = stroke, icone = icone, nome = nome, custo = custo, sombra = sombra, tempo = tempo }
 end
 local bNat = new("TextButton", { Name = "BotaoNaturezas", Size = UDim2.fromOffset(70, 62), Position = UDim2.fromOffset(276, 20), BackgroundColor3 = Color3.fromRGB(25, 25, 35),
-	BackgroundTransparency = 0.15, Font = Enum.Font.GothamBlack, TextSize = 12, TextWrapped = true, Text = "🌀\nNATURES", TextColor3 = COR.texto, Parent = barra })
+	BackgroundTransparency = 0.15, Font = Enum.Font.GothamBlack, TextSize = 14, TextWrapped = true, Text = "🌀\nNATURES", TextColor3 = COR.texto, Parent = barra })
 canto(bNat, 10)
 new("UIStroke", { Color = COR.linha, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = bNat })
 
@@ -240,7 +245,7 @@ local function montarPainel()
 		canto(f, 8)
 		new("Frame", { Position = UDim2.fromOffset(0, 8), Size = UDim2.new(0, 5, 1, -16), BackgroundColor3 = meu and t.Color or COR.linha, BorderSizePixel = 0, Parent = f })
 		local mestre = MissionData.NPCs[t.Mestre] and MissionData.NPCs[t.Mestre].Name or "?"
-		local titulo = t.Name:upper()
+		local titulo = (ICONE_NAT[id] or "") .. "  " .. t.Name:upper()
 		if estado.Afinidade == id then titulo ..= "   ★ AFFINITY" end
 		label(f, titulo, 15, meu and t.Color or COR.fraco, { Position = UDim2.fromOffset(14, 6), Size = UDim2.fromOffset(240, 20), Font = Enum.Font.GothamBlack, TextXAlignment = Enum.TextXAlignment.Left })
 		label(f, meu and ("Master: " .. mestre) or "🔒 Not awakened", 12, COR.fraco, { Position = UDim2.new(1, -210, 0, 7), Size = UDim2.fromOffset(200, 16), TextXAlignment = Enum.TextXAlignment.Right })
@@ -345,7 +350,7 @@ mostrarEscolha = function(nat, tier)
 	escolhaAlvo = { nat = nat, tier = tier }
 	jaMostrou[nat .. tier] = true
 	confirmaOpcao = nil
-	escolhaTitulo.Text = ("%s  ·  STAGE %d"):format(t.Name:upper(), tier)
+	escolhaTitulo.Text = ("%s %s  ·  STAGE %d"):format(ICONE_NAT[nat] or "", t.Name:upper(), tier)
 	escolhaTitulo.TextColor3 = t.Color
 	for op, c in ipairs(escolhaCards) do
 		local j = par[op]
@@ -404,17 +409,21 @@ atualizar = function()
 	end
 	local temKekkei = type(pe.K) == "string" and pe.K ~= ""
 	barra.Visible = jogando and estado.Rolou == true and type(pe.Cla) == "string" and pe.Cla ~= ""
-	barra.Position = UDim2.new(0.5, -119 + ((temKekkei and 436 or 327) + 78) * 0.75, 1, -12)
+	local S = escalaHotbar()
+	escalaBarra.Scale = S
+	barra.Position = UDim2.new(0.5, -119 + ((temKekkei and 436 or 327) + 78) * S, 1, -12)
 	if not barra.Visible then painel.Visible = false end
 	for i = 1, NatureData.SLOTS do
 		local j = estado.Equip[i] and NatureData.Jutsu(estado.Equip[i])
 		local s = slots[i]
 		if j then
+			s.icone.Text = ICONE_NAT[j.Natureza] or ""
 			s.nome.Text = j.Name
 			s.nome.TextColor3 = COR.texto
 			s.custo.Text = custoDe(j) .. " CP"
 			s.stroke.Color = NatureData.Tipos[j.Natureza].Color
 		else
+			s.icone.Text = ""
 			s.nome.Text = "empty"
 			s.nome.TextColor3 = COR.fraco
 			s.custo.Text = ""
@@ -453,6 +462,7 @@ end
 player:GetAttributeChangedSignal("NaturezaEstado"):Connect(lerEstado)
 player:GetAttributeChangedSignal("PoderesEstado"):Connect(atualizar)
 player:GetAttributeChangedSignal("Jogando"):Connect(atualizar)
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function() atualizar() end)
 lerEstado()
 
 RunService.RenderStepped:Connect(function()

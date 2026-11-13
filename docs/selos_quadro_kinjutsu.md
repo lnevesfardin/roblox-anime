@@ -73,3 +73,14 @@
 - Quem já tinha `nat_X1`/`nat_X2` (opção A das etapas 1 e 2) mantém o jutsu como a escolha daquela etapa.
 - Jutsus novos usam executores genéricos (`EF.proj/area/cone/line/target/rain`) descritos no campo `Ef` de cada jutsu.
 - Dano = `PowerDamage x multiplicador`; natureza de afinidade: +25% de dano e -20% de chakra.
+
+## HUD: letras maiores e mais imagens
+- Escala: o HUD era reduzido duas vezes (0,78 na raiz x 0,8 no topo e no menu, ~62% do tamanho). Agora a raiz usa escala cheia
+  (`HUD`, `AtributosClient`, `ClanClient` com a mesma conta), o topo fica em 1,0 e o menu lateral em 0,92.
+- Barra do topo: nível 32, moedas e gemas 26, XP 14; moeda dourada de verdade (`iconeMoeda`) e gema maior.
+- Menu lateral: botões 118x100, ícones 1,4x e coloridos por tela (`COR_ICONE`: Crates dourado, Collection azul, Battle Pass amarelo,
+  Shop ciano, Settings cinza), nome em 14 (antes 9 espaçado), selo de notificação maior.
+- Texto secundário (`COR.fraco`) mais claro (176,176,188) em HUD, Missões, Atributos e Clã.
+- Barras de habilidades (X/Y/C em `CombatClient`, poderes do clã em `AbilityClient`, naturezas em `NatureClient`): escala responsiva
+  `clamp((largura/2 + 111) / 864, 0.55, 0.95)` (antes fixa em 0,75), letras de 13 a 21; botões STATS/CLAN abaixo da barra do topo (y = 80 x escala).
+- Naturezas: emoji do elemento no lugar do nome (🔥 Fogo, 💨 Vento, ⚡ Raio, 🌍 Terra, 💧 Água) nos slots, no painel e na escolha.

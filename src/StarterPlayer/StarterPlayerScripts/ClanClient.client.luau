@@ -24,7 +24,7 @@ local COR = {
 	card = Color3.fromRGB(30, 30, 34),
 	linha = Color3.fromRGB(58, 58, 64),
 	texto = Color3.fromRGB(240, 240, 244),
-	fraco = Color3.fromRGB(140, 140, 150),
+	fraco = Color3.fromRGB(176, 176, 188),
 	laranja = Color3.fromRGB(255, 140, 40),
 	verde = Color3.fromRGB(70, 190, 110),
 	vermelho = Color3.fromRGB(215, 70, 70),
@@ -71,9 +71,9 @@ local badgeStroke = stroke(badge, COR.linha, 2)
 local badgeEscala = new("UIScale", { Parent = badge })
 local function posicionarBadge()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) * 0.78 -- HUD compacto: tudo 22% menor
+	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) -- escala cheia (mesma escala do HUD)
 	badgeEscala.Scale = sc
-	badge.Position = UDim2.fromOffset(16 * sc, game:GetService("GuiService"):GetGuiInset().Y + 62 * sc)
+	badge.Position = UDim2.fromOffset(16 * sc, game:GetService("GuiService"):GetGuiInset().Y + 80 * sc)
 end
 posicionarBadge()
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(posicionarBadge)

@@ -34,7 +34,7 @@ local COR = {
 	card = Color3.fromRGB(30, 30, 34),
 	linha = Color3.fromRGB(58, 58, 64),
 	texto = Color3.fromRGB(240, 240, 244),
-	fraco = Color3.fromRGB(140, 140, 150),
+	fraco = Color3.fromRGB(176, 176, 188),
 	laranja = Color3.fromRGB(255, 140, 40),
 	ouro = Color3.fromRGB(255, 205, 70),
 	verde = Color3.fromRGB(70, 190, 110),
@@ -166,7 +166,7 @@ local raiz = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim
 local escala = new("UIScale", { Parent = raiz })
 local function ajustarEscala()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) * 0.78 -- HUD compacto: tudo 22% menor
+	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) -- escala cheia: letras grandes e faceis de ler
 	escala.Scale = sc
 	raiz.Size = UDim2.fromScale(1 / sc, 1 / sc)
 end
@@ -178,12 +178,12 @@ local avisoAtual
 local function aviso(texto, cor)
 	if avisoAtual then avisoAtual:Destroy() end
 	local f = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -110), Size = UDim2.fromOffset(420, 46),
+		AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -110), Size = UDim2.fromOffset(520, 58),
 		BackgroundColor3 = COR.painel, Parent = raiz, ZIndex = 50,
 	})
 	corner(f, 12)
 	stroke(f, cor or COR.laranja, 2)
-	label(f, texto, 16, COR.texto, { Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(10, 0), ZIndex = 51 })
+	label(f, texto, 20, COR.texto, { Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(10, 0), ZIndex = 51 })
 	avisoAtual = f
 	f.Position = UDim2.new(0.5, 0, 1, -80)
 	tween(f, 0.25, { Position = UDim2.new(0.5, 0, 1, -110) }, Enum.EasingStyle.Back)
@@ -274,6 +274,25 @@ local DESENHOS = {
 	end,
 }
 
+-- cada icone ganha a sua cor (mais facil de reconhecer do que tudo branco)
+local COR_ICONE = {
+	caixas = Color3.fromRGB(255, 176, 60), colecao = Color3.fromRGB(110, 190, 255), passe = Color3.fromRGB(255, 214, 80),
+	loja = Color3.fromRGB(120, 235, 255), config = Color3.fromRGB(200, 200, 212),
+}
+local function colorirIcone(raizIcone, cor)
+	if not cor then return end
+	local claro = cor:Lerp(Color3.new(1, 1, 1), 0.45)
+	for _, o in ipairs(raizIcone:GetDescendants()) do
+		if o:IsA("Frame") then
+			if o.BackgroundColor3 == BRANCO then o.BackgroundColor3 = cor
+			elseif o.BackgroundColor3 == BRILHO then o.BackgroundColor3 = claro end
+		elseif o:IsA("UIStroke") then
+			if o.Color == BRANCO then o.Color = cor
+			elseif o.Color == BRILHO then o.Color = claro end
+		end
+	end
+end
+
 -- texto com letras espaçadas (como no estilo de jogo)
 local function espacado(txt)
 	return (txt:upper():gsub("(.)", "%1 ")):sub(1, -2)
@@ -283,30 +302,27 @@ end
 -- Barra de cima: nível, XP, moedas, gemas
 ---------------------------------------------------------------
 local topo = new("Frame", { Position = UDim2.fromOffset(16, 8), Size = UDim2.fromOffset(720, 60), BackgroundTransparency = 1, Parent = raiz })
-new("UIScale", { Scale = 0.8, Parent = topo }) -- HUD mais compacto
+new("UIScale", { Scale = 1, Parent = topo })
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), Parent = topo })
 
 local blocoNivel, _, cNivel = placa(topo, 330, 60)
 local _, faixaNum, cNum = placa(cNivel, 76, 60, Color3.fromRGB(44, 44, 48))
 new("Frame", { Position = UDim2.fromOffset(4, 0), Size = UDim2.new(0, 3, 1, 0), BackgroundColor3 = VERMELHO_HUD, BorderSizePixel = 0, Rotation = 0, Parent = faixaNum })
-local txtNivel = label(cNum, "1", 24, BRANCO, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
-local txtNivelNome = label(cNivel, "LEVEL 1", 12, BRANCO, { Position = UDim2.fromOffset(92, 10), Size = UDim2.fromOffset(110, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold })
-local txtXP = label(cNivel, "0 / 100 XP", 12, Color3.fromRGB(150, 150, 158), { Position = UDim2.fromOffset(190, 10), Size = UDim2.fromOffset(112, 18), TextXAlignment = Enum.TextXAlignment.Right, Font = Enum.Font.GothamBold })
-local barraXP = new("Frame", { Position = UDim2.fromOffset(92, 34), Size = UDim2.fromOffset(206, 8), BackgroundColor3 = Color3.fromRGB(8, 8, 9), BorderSizePixel = 0, Parent = cNivel })
+local txtNivel = label(cNum, "1", 32, BRANCO, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+local txtNivelNome = label(cNivel, "LEVEL 1", 16, BRANCO, { Position = UDim2.fromOffset(92, 7), Size = UDim2.fromOffset(100, 22), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold })
+local txtXP = label(cNivel, "0 / 100 XP", 14, Color3.fromRGB(205, 205, 212), { Position = UDim2.fromOffset(172, 8), Size = UDim2.fromOffset(130, 20), TextXAlignment = Enum.TextXAlignment.Right, Font = Enum.Font.GothamBold })
+local barraXP = new("Frame", { Position = UDim2.fromOffset(92, 35), Size = UDim2.fromOffset(206, 12), BackgroundColor3 = Color3.fromRGB(8, 8, 9), BorderSizePixel = 0, Parent = cNivel })
 local fillXP = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = VERMELHO_HUD, BorderSizePixel = 0, Parent = barraXP })
 grad(fillXP, Color3.fromRGB(255, 120, 120), Color3.fromRGB(160, 60, 60), 90)
 
-local _, _, cMoedas = placa(topo, 150, 52)
-local moeda = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 26, 0.5, 0), Size = UDim2.fromOffset(24, 24), BackgroundTransparency = 1, Parent = cMoedas })
-corner(moeda, 999)
-new("UIStroke", { Color = Color3.fromRGB(230, 130, 30), Thickness = 2, Parent = moeda })
-label(moeda, "$", 15, Color3.fromRGB(240, 145, 40), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
-local txtMoedas = label(cMoedas, "0", 22, BRANCO, { Position = UDim2.fromOffset(62, 0), Size = UDim2.new(1, -78, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+local _, _, cMoedas = placa(topo, 164, 56)
+iconeMoeda(cMoedas, UDim2.fromOffset(34, 34), UDim2.new(0, 20, 0.5, -17))
+local txtMoedas = label(cMoedas, "0", 26, BRANCO, { Position = UDim2.fromOffset(64, 0), Size = UDim2.new(1, -80, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 
-local _, _, cGemas = placa(topo, 124, 52)
+local _, _, cGemas = placa(topo, 146, 56)
 if EconomyData.Gems.IconId ~= "" then
 	-- ícone oficial das Gemas do Rikudou (imagem enviada ao Roblox)
-	iconeGema(cGemas, UDim2.fromOffset(34, 34), UDim2.new(0, 19, 0.5, -17))
+	iconeGema(cGemas, UDim2.fromOffset(42, 42), UDim2.new(0, 16, 0.5, -21))
 else
 	local hexa = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 24, 0.5, 0), Size = UDim2.fromOffset(26, 26), BackgroundTransparency = 1, Parent = cGemas })
 	for i = 0, 2 do -- hexágono = 3 retângulos girados
@@ -314,7 +330,7 @@ else
 	end
 	new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(7, 12), BackgroundColor3 = Color3.fromRGB(215, 60, 50), BorderSizePixel = 0, Parent = hexa })
 end
-local txtGemas = label(cGemas, "0", 22, BRANCO, { Position = UDim2.fromOffset(60, 0), Size = UDim2.new(1, -72, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+local txtGemas = label(cGemas, "0", 26, BRANCO, { Position = UDim2.fromOffset(64, 0), Size = UDim2.new(1, -76, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 
 local quadroMais, _, cMais = placa(topo, 52, 44, Color3.fromRGB(42, 42, 46))
 local maisGemas = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", Parent = cMais })
@@ -346,14 +362,14 @@ atualizarTopo()
 ---------------------------------------------------------------
 -- Menu lateral e painel central
 ---------------------------------------------------------------
-local menu = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 26, 0.5, 44), Size = UDim2.fromOffset(120, 500), BackgroundTransparency = 1, Parent = raiz })
+local menu = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 26, 0.5, 44), Size = UDim2.fromOffset(132, 560), BackgroundTransparency = 1, Parent = raiz })
 new("UIListLayout", { Padding = UDim.new(0, 12), VerticalAlignment = Enum.VerticalAlignment.Center, Parent = menu })
-new("UIScale", { Scale = 0.8, Parent = menu })
+new("UIScale", { Scale = 0.92, Parent = menu })
 
 -- seta ao lado do menu: esconde e mostra os botões
 local MENU_X = 26
 -- fica em cima do primeiro botão do menu, pequena; só gira ao esconder/mostrar
-local setaQuadro, _, cSeta = placa(raiz, 30, 20, PLACA, { Name = "SetaMenu", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, MENU_X + 2, 0.5, 44 - 196) })
+local setaQuadro, _, cSeta = placa(raiz, 30, 20, PLACA, { Name = "SetaMenu", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, MENU_X + 2, 0.5, 44 - 254) })
 local chevron = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 14), BackgroundTransparency = 1, Parent = cSeta })
 traco(chevron, UDim2.fromOffset(7, 2), UDim2.new(0.5, 0, 0.5, -2), -45)
 traco(chevron, UDim2.fromOffset(7, 2), UDim2.new(0.5, 0, 0.5, 2), 45)
@@ -362,7 +378,7 @@ local menuAberto = true
 botaoSeta.Activated:Connect(function()
 	som("Clique")
 	menuAberto = not menuAberto
-	tween(menu, 0.25, { Position = UDim2.new(0, menuAberto and MENU_X or -110, 0.5, 44) })
+	tween(menu, 0.25, { Position = UDim2.new(0, menuAberto and MENU_X or -135, 0.5, 44) })
 	tween(chevron, 0.25, { Rotation = menuAberto and 0 or 180 })
 end)
 
@@ -374,7 +390,7 @@ corner(painel, 6)
 stroke(painel, COR.linha, 1.5)
 new("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundColor3 = VERMELHO_HUD, BorderSizePixel = 0, Parent = painel })
 local painelEscala = new("UIScale", { Parent = painel })
-local tituloPainel = label(painel, "", 18, COR.texto, { Position = UDim2.fromOffset(24, 14), Size = UDim2.new(1, -100, 0, 34), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, ZIndex = 6 })
+local tituloPainel = label(painel, "", 22, COR.texto, { Position = UDim2.fromOffset(24, 14), Size = UDim2.new(1, -100, 0, 34), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, ZIndex = 6 })
 local fecharPainel = new("TextButton", { Size = UDim2.fromOffset(40, 40), Position = UDim2.new(1, -52, 0, 12), BackgroundColor3 = Color3.fromRGB(38, 38, 42), Text = "", AutoButtonColor = false, Parent = painel, ZIndex = 6 })
 corner(fecharPainel, 4)
 stroke(fecharPainel, COR.linha, 1.5)
@@ -391,7 +407,7 @@ local function realcar(nome)
 	for n, b in pairs(botoesMenu) do
 		local ativo = n == nome
 		tween(b.borda, 0.15, { Color = ativo and Color3.fromRGB(200, 60, 50) or BORDA, Thickness = ativo and 2 or 1.5 })
-		tween(b.texto, 0.15, { TextColor3 = ativo and BRANCO or Color3.fromRGB(120, 120, 128) })
+		tween(b.texto, 0.15, { TextColor3 = ativo and BRANCO or Color3.fromRGB(190, 190, 200) })
 	end
 end
 
@@ -424,13 +440,15 @@ end)
 local function novaTela(nome, titulo)
 	local f = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, Parent = conteudo })
 	telas[nome] = { frame = f, titulo = titulo }
-	local quadro, _, c, borda = placa(menu, 106, 86, PLACA, { Name = "Menu_" .. nome })
-	local area = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 3, 0, 14), Size = UDim2.fromOffset(34, 34), BackgroundTransparency = 1, Parent = c })
+	local quadro, _, c, borda = placa(menu, 118, 100, PLACA, { Name = "Menu_" .. nome })
+	local area = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 4, 0, 10), Size = UDim2.fromOffset(34, 34), BackgroundTransparency = 1, Parent = c })
+	new("UIScale", { Scale = 1.4, Parent = area })
 	DESENHOS[nome](area)
-	local texto = label(c, espacado(titulo), 9, Color3.fromRGB(120, 120, 128), { Position = UDim2.new(0, 4, 1, -30), Size = UDim2.new(1, -4, 0, 20), Font = Enum.Font.GothamMedium })
-	local badge = new("Frame", { Size = UDim2.fromOffset(20, 20), Position = UDim2.new(1, -18, 0, -6), BackgroundColor3 = Color3.fromRGB(190, 30, 30), Visible = false, Parent = c })
-	corner(badge, 10)
-	local badgeTxt = label(badge, "", 11, BRANCO, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+	colorirIcone(area, COR_ICONE[nome])
+	local texto = label(c, titulo:upper(), 14, Color3.fromRGB(190, 190, 200), { Position = UDim2.new(0, 6, 1, -33), Size = UDim2.new(1, -10, 0, 24), Font = Enum.Font.GothamBlack })
+	local badge = new("Frame", { Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -22, 0, -8), BackgroundColor3 = Color3.fromRGB(190, 30, 30), Visible = false, Parent = c })
+	corner(badge, 13)
+	local badgeTxt = label(badge, "", 14, BRANCO, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
 	local b = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", Parent = c })
 	local sc = new("UIScale", { Parent = quadro })
 	b.MouseEnter:Connect(function() tween(sc, 0.12, { Scale = 1.06 }) end)

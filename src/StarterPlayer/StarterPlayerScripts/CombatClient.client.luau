@@ -334,8 +334,14 @@ local barra = Instance.new("Frame")
 barra.Size = UDim2.fromOffset(168, 66)
 -- compacta: 75% do tamanho, à esquerda da barra de poderes
 barra.AnchorPoint = Vector2.new(0, 1)
-barra.Position = UDim2.new(0.5, -119 - 8 - 126, 1, -12)
-Instance.new("UIScale", barra).Scale = 0.75
+local escalaBarra = Instance.new("UIScale", barra)
+local function ajustarBarra() -- mesma escala da barra de poderes (AbilityClient)
+	local S = math.clamp((workspace.CurrentCamera.ViewportSize.X / 2 + 111) / 864, 0.55, 0.95)
+	escalaBarra.Scale = S
+	barra.Position = UDim2.new(0.5, -119 - 8 - 168 * S, 1, -12)
+end
+ajustarBarra()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajustarBarra)
 barra.BackgroundTransparency = 1
 barra.Parent = gui
 
@@ -361,7 +367,7 @@ for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash" } }) do
 	key.Size = UDim2.new(1, 0, 0, 24)
 	key.BackgroundTransparency = 1
 	key.Font = Enum.Font.GothamBlack
-	key.TextSize = 18
+	key.TextSize = 21
 	key.TextColor3 = Color3.new(1, 1, 1)
 	key.Text = info[1]
 	key.Parent = f
@@ -370,7 +376,7 @@ for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash" } }) do
 	name.Size = UDim2.new(1, 0, 0, 16)
 	name.BackgroundTransparency = 1
 	name.Font = Enum.Font.GothamBold
-	name.TextSize = 11
+	name.TextSize = 13
 	name.TextColor3 = Color3.fromRGB(220, 220, 230)
 	name.Text = info[2]
 	name.Parent = f

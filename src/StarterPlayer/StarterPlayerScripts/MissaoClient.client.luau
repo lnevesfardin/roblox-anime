@@ -16,7 +16,7 @@ local player = Players.LocalPlayer
 
 local COR = {
 	painel = Color3.fromRGB(20, 20, 23), card = Color3.fromRGB(30, 30, 34), linha = Color3.fromRGB(58, 58, 64),
-	texto = Color3.fromRGB(240, 240, 244), fraco = Color3.fromRGB(140, 140, 150), laranja = Color3.fromRGB(255, 140, 40),
+	texto = Color3.fromRGB(240, 240, 244), fraco = Color3.fromRGB(176, 176, 188), laranja = Color3.fromRGB(255, 140, 40),
 	verde = Color3.fromRGB(70, 190, 110), vermelho = Color3.fromRGB(215, 70, 70), ouro = Color3.fromRGB(255, 205, 70),
 }
 local RANK_COR = { D = Color3.fromRGB(120, 200, 120), C = Color3.fromRGB(90, 160, 255), B = Color3.fromRGB(180, 100, 255), A = Color3.fromRGB(255, 160, 40), S = Color3.fromRGB(255, 70, 90) }

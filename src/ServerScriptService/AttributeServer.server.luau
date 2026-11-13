@@ -10,6 +10,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local AttributeData = require(ReplicatedStorage:WaitForChild("AttributeData"))
+local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 
 local action = Instance.new("RemoteFunction")
@@ -136,24 +137,44 @@ local SERIES = 4
 local TEMPO_MINIMO_TECLAS = 4
 local sessoes = {} -- [player] = { id, inicio, alvo }
 
+-- tem missão de treino ativa (principal ou lateral)?
+local function temMissaoTreino(data)
+	local m = data.Missoes
+	if type(m) ~= "table" then return false end
+	for _, esp in ipairs({ "Ativa", "Lado" }) do
+		local e = m[esp]
+		local missao = type(e) == "table" and MissionData.Get(e.Id)
+		if missao and missao.Tipo == "treinar" then return true end
+	end
+	return false
+end
+
 local function iniciarTreino(player, id, alvo, modo)
 	local data = PlayerData.Get(player)
 	local info = AttributeData.Get(id)
 	if not data or not info or sessoes[player] then return end
-	if treinoRestante(data) <= 0 then
-		notice:FireClient(player, "No training left today. Come back tomorrow.", false)
-		return
+	-- limite do dia ou teto do atributo: ainda dá para treinar só para a missão (sem ponto e sem pagar)
+	local soMissao = false
+	if treinoRestante(data) <= 0 or data.Atributos[id] >= AttributeData.Cap(data.Level) then
+		if temMissaoTreino(data) then
+			soMissao = true
+		elseif treinoRestante(data) <= 0 then
+			notice:FireClient(player, "No training left today. Come back tomorrow.", false)
+			return
+		else
+			notice:FireClient(player, info.Name .. " is at the cap for your level.", false)
+			return
+		end
 	end
-	if data.Atributos[id] >= AttributeData.Cap(data.Level) then
-		notice:FireClient(player, info.Name .. " is at the cap for your level.", false)
-		return
-	end
-	if data.Coins < AttributeData.TRAIN_COST then
+	if not soMissao and data.Coins < AttributeData.TRAIN_COST then
 		notice:FireClient(player, "Training costs " .. AttributeData.TRAIN_COST .. " coins.", false)
 		return
 	end
 	local teclas = modo == "teclas"
-	sessoes[player] = { id = id, inicio = os.clock(), alvo = alvo, acertos = teclas and SERIES or ACERTOS, minimo = teclas and TEMPO_MINIMO_TECLAS or TEMPO_MINIMO }
+	sessoes[player] = { id = id, inicio = os.clock(), alvo = alvo, acertos = teclas and SERIES or ACERTOS, minimo = teclas and TEMPO_MINIMO_TECLAS or TEMPO_MINIMO, soMissao = soMissao }
+	if soMissao then
+		notice:FireClient(player, "Mission training: counts for your mission, but no stat point (daily limit reached).", true)
+	end
 	-- treino de chakra (atributo Chakra ou estação com Meditar = true): cena de meditação no cliente
 	local cena = (id == "Chakra" or (alvo and alvo:GetAttribute("Meditar") == true)) and "chakra" or nil
 	minigame:FireClient(player, { acao = "comecar", id = id, nome = info.Name, acertos = sessoes[player].acertos, alvo = alvo, modo = teclas and "teclas" or "socos", cena = cena,
@@ -165,7 +186,13 @@ minigame.OnServerEvent:Connect(function(player, resultado, acertos)
 	if not s then return end
 	sessoes[player] = nil
 	if resultado == "ok" and acertos == s.acertos and os.clock() - s.inicio >= s.minimo then
-		treinar(player, s.id)
+		if s.soMissao then
+			local prog = ServerStorage:FindFirstChild("MissaoProgresso")
+			if prog then prog:Fire(player, "treinar", 1) end
+			notice:FireClient(player, "Mission progress! (no stat point today)", true)
+		else
+			treinar(player, s.id)
+		end
 	elseif resultado == "ok" then
 		notice:FireClient(player, "Training failed. Try again!", false)
 	else

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
+local TweenService = game:GetService("TweenService")
 
 local MapData = require(ReplicatedStorage:WaitForChild("MapData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
@@ -342,7 +343,31 @@ local function aplicarLook(model, look, soCores)
 	end
 end
 
-local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor, look, skin, skinIdx)
+-- encolhe as peças presas na cabeça (cabelo, rosto da skin) mantendo a base no pescoço
+local function encolherCabeca(model, f)
+	local head = model:FindFirstChild("Head")
+	if not head then return end
+	local desce = -(1 - f) * head.Size.Y / 2
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") and p ~= head then
+			for _, w in ipairs(p:GetChildren()) do
+				if w:IsA("WeldConstraint") and (w.Part0 == head or w.Part1 == head) then
+					local rel = head.CFrame:ToObjectSpace(p.CFrame)
+					w.Enabled = false
+					p.Size = p.Size * f
+					p.CFrame = head.CFrame * CFrame.new(rel.Position * f + Vector3.new(0, desce, 0)) * (rel - rel.Position)
+					for _, sm in ipairs(p:GetChildren()) do
+						if sm:IsA("SpecialMesh") then sm.Scale = sm.Scale * f end
+					end
+					w.Enabled = true
+					break
+				end
+			end
+		end
+	end
+end
+
+local function spawnEnemy(name, color, scale, health, damage, position, isBoss, speed, noDecor, look, skin, skinIdx, cabecaEscala)
 	local tpl = getTemplate()
 	if not tpl then
 		return nil
@@ -378,6 +403,7 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 		end)
 		if ok and aplicou then
 			comSkin = true
+			if cabecaEscala and cabecaEscala ~= 1 then encolherCabeca(model, cabecaEscala) end
 			if not temCorpo and look then
 				aplicarLook(model, look, true) -- skin so de cabeca: o corpo ganha as cores do visual
 			end
@@ -399,14 +425,17 @@ local function spawnEnemy(name, color, scale, health, damage, position, isBoss, 
 	hum.HealthDisplayDistance = 80
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
 
+	-- entra no mapa antes de escalar: escalado fora do mapa, as peças soltas da skin (cabelo, rosto)
+	-- crescem de novo ao entrar e o inimigo ficava com cabeção
+	model:PivotTo(CFrame.new(position))
+	model.Parent = workspace
 	if scale ~= 1 then
 		model:ScaleTo(scale)
+		model:PivotTo(CFrame.new(position))
 	end
-	model:PivotTo(CFrame.new(position))
 	hum.WalkSpeed = speed or (isBoss and 11 or 13)
 	model:SetAttribute("Raio", (scale - 1) * 3)
 	CollectionService:AddTag(model, "Inimigo")
-	model.Parent = workspace
 	if isBoss and not noDecor and not comSkin then
 		decorateBoss(model, scale)
 	end
@@ -474,13 +503,14 @@ local function randomSpawnPos(centro, spawnPart, floorY, maxR)
 end
 
 -- Cobra inimiga (invocada pelo White Snake): rápida, frágil e morde
-local function spawnSnake(cfg, position)
+local function spawnSnake(cfg, position, escala)
+	escala = escala or 1
 	local model = Instance.new("Model")
-	model.Name = cfg.SnakeName
+	model.Name = escala > 1 and ("Giant " .. cfg.SnakeName) or cfg.SnakeName
 
 	local root = Instance.new("Part")
 	root.Name = "HumanoidRootPart"
-	root.Size = Vector3.new(2, 1, 2)
+	root.Size = Vector3.new(2, 1, 2) * escala
 	root.Transparency = 1
 	root.CFrame = CFrame.new(position)
 	root.Parent = model
@@ -490,17 +520,17 @@ local function spawnSnake(cfg, position)
 	hum.RequiresNeck = false
 	hum.BreakJointsOnDeath = false
 	hum.HipHeight = 0
-	hum.MaxHealth = cfg.SnakeHealth
-	hum.Health = cfg.SnakeHealth
-	hum.WalkSpeed = 20
+	hum.MaxHealth = cfg.SnakeHealth * escala * escala
+	hum.Health = cfg.SnakeHealth * escala * escala
+	hum.WalkSpeed = escala > 1 and 15 or 20
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	hum.Parent = model
 	model.PrimaryPart = root
 
-	buildSnake(model, root, root.CFrame * CFrame.new(0, -0.5, 0), 1, cfg.SnakeColor, true)
+	buildSnake(model, root, root.CFrame * CFrame.new(0, -0.5 * escala, 0), escala, cfg.SnakeColor, true)
 
-	model:SetAttribute("Raio", -1)
+	model:SetAttribute("Raio", escala > 1 and (escala - 1) * 1.5 or -1)
 	CollectionService:AddTag(model, "Inimigo")
 	model.Parent = workspace
 	pcall(function()
@@ -508,8 +538,8 @@ local function spawnSnake(cfg, position)
 	end)
 
 	local entry = {
-		model = model, hum = hum, root = root, damage = cfg.SnakeDamage * difAtual.Dano, lastHit = 0,
-		isBoss = false, isSnake = true, radius = -1, interval = 1.0,
+		model = model, hum = hum, root = root, damage = cfg.SnakeDamage * escala * difAtual.Dano, lastHit = 0,
+		isBoss = false, isSnake = true, radius = escala > 1 and (escala - 1) * 1.5 or -1, interval = 1.0, gigante = escala > 1,
 		nextSlam = 0, nextBite = 0, nextSummon = 0,
 	}
 	table.insert(enemies, entry)
@@ -633,6 +663,130 @@ local function bossSummon(e, cfg, floorY, centro)
 	end
 end
 
+---------------------------------------------------------------
+-- Kit do White Snake (cfg.BossKit = "WhiteSnake"): ataques próprios no lugar dos padrões
+---------------------------------------------------------------
+local WS_VERDE = Color3.fromRGB(110, 230, 90)
+local WS_ROXO = Color3.fromRGB(160, 90, 210)
+
+local function efeito(props)
+	local p = Instance.new("Part")
+	p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+	p.Material = Enum.Material.Neon
+	for k, v in pairs(props) do p[k] = v end
+	p.Parent = workspace
+	return p
+end
+
+local function damageInLine(origin, dir, len, width, damage)
+	damage *= difAtual.Dano
+	for plr in pairs(participants) do
+		local char = plr.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if hum and root and hum.Health > 0 then
+			local rel = (root.Position - origin) * Vector3.new(1, 0, 1)
+			local along = rel:Dot(dir)
+			if along >= -1 and along <= len and (rel - dir * along).Magnitude <= width / 2 then
+				hum:TakeDamage(damage)
+			end
+		end
+	end
+end
+
+-- 1) Striking Shadow Snakes: faixa marcada até o jogador mais próximo; 3 cobras disparam por ela
+local function wsCobrasSombra(e, cfg, floorY)
+	local alvo = nearestTarget(e.root.Position)
+	if not alvo then return end
+	local de = Vector3.new(e.root.Position.X, floorY, e.root.Position.Z)
+	local d = (alvo.root.Position - de) * Vector3.new(1, 0, 1)
+	if d.Magnitude < 0.5 then return end
+	local dir = d.Unit
+	local len, larg = 34, 7
+	local faixa = efeito({ Size = Vector3.new(larg, 0.3, len), Color = WS_VERDE, Transparency = 0.6,
+		CFrame = CFrame.lookAt(de + dir * (len / 2) + Vector3.new(0, 0.25, 0), de + dir * len + Vector3.new(0, 0.25, 0)) })
+	e.root.CFrame = CFrame.lookAt(e.root.Position, e.root.Position + dir)
+	task.delay(1.1, function()
+		faixa:Destroy()
+		if not enemyAlive(e) or state ~= "running" then return end
+		local lado = Vector3.new(-dir.Z, 0, dir.X)
+		for k = -1, 1 do
+			local ini = de + lado * (k * 1.8) + Vector3.new(0, 2, 0)
+			local fim = ini + dir * len
+			local cabeca = efeito({ Shape = Enum.PartType.Ball, Size = Vector3.one * 1.6, Color = WS_VERDE, CFrame = CFrame.new(ini) })
+			local corpo = efeito({ Size = Vector3.new(0.9, 0.9, 1), Color = Color3.fromRGB(60, 140, 60), CFrame = CFrame.new(ini) })
+			TweenService:Create(cabeca, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { CFrame = CFrame.new(fim) }):Play()
+			TweenService:Create(corpo, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Size = Vector3.new(0.9, 0.9, len), CFrame = CFrame.lookAt((ini + fim) / 2, fim) }):Play()
+			task.delay(0.55, function()
+				TweenService:Create(corpo, TweenInfo.new(0.25), { Transparency = 1 }):Play()
+				TweenService:Create(cabeca, TweenInfo.new(0.25), { Transparency = 1 }):Play()
+				Debris:AddItem(corpo, 0.3)
+				Debris:AddItem(cabeca, 0.3)
+			end)
+		end
+		task.wait(0.2)
+		damageInLine(de, dir, len, larg, cfg.BossDamage * 1.5)
+	end)
+end
+
+-- 2) Kusanagi Sword: marca um jogador; ele some numa nuvem e reaparece ali cortando em volta
+local function wsKusanagi(e, cfg, floorY, centro)
+	local vivos = {}
+	for plr in pairs(participants) do
+		local char = plr.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if hum and root and hum.Health > 0 then table.insert(vivos, root) end
+	end
+	if #vivos == 0 then return end
+	local pos = vivos[math.random(1, #vivos)].Position
+	local raio = 9
+	local m = mark(pos, raio, floorY + 0.25, WS_ROXO)
+	task.delay(1.2, function()
+		if enemyAlive(e) and state == "running" then
+			local nuvem = efeito({ Shape = Enum.PartType.Ball, Size = Vector3.one * 4, Color = Color3.fromRGB(220, 220, 225), Transparency = 0.3,
+				Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(e.root.Position) })
+			TweenService:Create(nuvem, TweenInfo.new(0.4), { Size = Vector3.one * 9, Transparency = 1 }):Play()
+			Debris:AddItem(nuvem, 0.45)
+			local x = math.clamp(pos.X, centro.Position.X - 44, centro.Position.X + 44)
+			local z = math.clamp(pos.Z, centro.Position.Z - 44, centro.Position.Z + 44)
+			e.root.CFrame = CFrame.new(x, e.root.Position.Y, z) * (e.root.CFrame - e.root.Position)
+			local corte = efeito({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 2, 2), Color = Color3.fromRGB(235, 220, 255), Transparency = 0.15,
+				CFrame = CFrame.new(x, floorY + 2.5, z) * CFrame.Angles(0, 0, math.rad(90)) })
+			TweenService:Create(corte, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { Size = Vector3.new(0.3, raio * 2, raio * 2), Transparency = 1 }):Play()
+			Debris:AddItem(corte, 0.35)
+			damageInRadius(pos, raio, cfg.BossDamage * 1.4)
+			m.Transparency = 0.2
+		end
+		Debris:AddItem(m, 0.2)
+	end)
+end
+
+-- 3) Invocação: uma cobra gigante (só uma viva por vez); se já houver, vêm duas pequenas
+local function wsInvocar(e, cfg, floorY, centro)
+	local gigante, pequenas = false, 0
+	for _, x in ipairs(enemies) do
+		if x.isSnake and enemyAlive(x) then
+			if x.gigante then gigante = true else pequenas += 1 end
+		end
+	end
+	local function ponto(dist)
+		local ang = math.random() * math.pi * 2
+		local p = e.root.Position + Vector3.new(math.cos(ang) * dist, 0, math.sin(ang) * dist)
+		return Vector3.new(math.clamp(p.X, centro.Position.X - 44, centro.Position.X + 44), floorY + 1, math.clamp(p.Z, centro.Position.Z - 44, centro.Position.Z + 44))
+	end
+	local fumaca = efeito({ Shape = Enum.PartType.Ball, Size = Vector3.one * 3, Color = Color3.fromRGB(230, 230, 235), Transparency = 0.3,
+		Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(e.root.Position) })
+	TweenService:Create(fumaca, TweenInfo.new(0.5), { Size = Vector3.one * 14, Transparency = 1 }):Play()
+	Debris:AddItem(fumaca, 0.55)
+	if not gigante then
+		spawnSnake(cfg, ponto(10), 2.2)
+	elseif pequenas < 4 then
+		spawnSnake(cfg, ponto(8))
+		spawnSnake(cfg, ponto(8))
+	end
+end
+
 local function setAviso(texto)
 	avisoTexto = texto
 	avisoAte = os.clock() + 2.5
@@ -658,17 +812,17 @@ local function aiLoop(cfg, floorY, centro)
 						if now >= e.nextSlam then
 							e.nextSlam = now + cfg.BossSlamEvery
 							setAviso(cfg.BossName .. ": " .. (cfg.SlamLabel or "Venom Slam!"))
-							bossSlam(e, cfg, floorY)
+							if cfg.BossKit == "WhiteSnake" then wsCobrasSombra(e, cfg, floorY) else bossSlam(e, cfg, floorY) end
 						end
 						if now >= e.nextBite then
 							e.nextBite = now + cfg.BossBiteEvery
 							setAviso(cfg.BiteLabel or "Watch out: snake bites!")
-							bossBites(e, cfg, floorY)
+							if cfg.BossKit == "WhiteSnake" then wsKusanagi(e, cfg, floorY, centro) else bossBites(e, cfg, floorY) end
 						end
 						if now >= e.nextSummon then
 							e.nextSummon = now + cfg.BossSummonEvery
 							setAviso(cfg.BossName .. (cfg.SummonLabel or " summons snakes!"))
-							bossSummon(e, cfg, floorY, centro)
+							if cfg.BossKit == "WhiteSnake" then wsInvocar(e, cfg, floorY, centro) else bossSummon(e, cfg, floorY, centro) end
 						end
 					end
 				end
@@ -793,7 +947,7 @@ local function runMap(mapId)
 		broadcast({ text = duelo and ("DUEL: %s!"):format(cfg.BossName) or ("Wave %d/%d: BOSS %s!"):format(total, total, cfg.BossName) })
 		task.wait(3)
 		local boss = spawnEnemy(cfg.BossName, cfg.BossColor, cfg.BossScale or 2.5, cfg.BossHealth * hpScale, cfg.BossDamage,
-			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss, nil, cfg.BossSkin)
+			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss, nil, cfg.BossSkin, nil, cfg.BossHeadScale)
 		if boss then
 			boss.nextSlam = os.clock() + cfg.BossSlamEvery
 			boss.nextBite = os.clock() + 5

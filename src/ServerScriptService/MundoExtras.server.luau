@@ -2,12 +2,13 @@
 -- Monta, quando o servidor abre, as coisas do mundo que as missões usam:
 --   * pontos de prática das naturezas (tag "Pratica", atributo "Natureza") na floresta de fora;
 --   * o cemitério antigo na floresta de dentro, com o túmulo do Primeiro (mestre do clã Mokuton);
---   * os mestres de clã que não têm boneco no mapa: Rokuro (Lee) e Kiro com o cachorro Aka (Inu).
+--   * o mestre de clã que não tem boneco no mapa: Kiro com o cachorro Aka (Inu). (O mestre Lee, Rokuro, é o Villager do mercado, já no mapa.)
 -- Os lugares vêm de MissionData.Lugares; cada peça procura um pedaço de chão livre perto do ponto pedido.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+local ServerStorage = game:GetService("ServerStorage")
 
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
 local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
@@ -225,7 +226,10 @@ local function mestre(nome, x, z, olharPara, pele, corpo, pernas, enfeitar)
 		p.Parent = m
 		return p
 	end
-	if head then enfeitar(m, colar, head) end
+	if head then
+		local okEnfeite, erroEnfeite = pcall(enfeitar, m, colar, head)
+		if not okEnfeite then warn("[MundoExtras] Enfeites de " .. nome .. ": " .. tostring(erroEnfeite)) end
+	end
 	m.Parent = pasta
 	CollectionService:AddTag(m, "NPCParado")
 	return m, chao
@@ -251,6 +255,108 @@ local function cachorro(pos, olharPara)
 end
 
 ---------------------------------------------------------------
+-- Kiro (Inu): igual ao Kiba: cabelo castanho espetado, testeira de Konoha, presas vermelhas, jaqueta cinza e faixa na perna
+---------------------------------------------------------------
+local PecasNPC = ServerStorage:FindFirstChild("PecasNPC") -- pasta com o KibaHair (acessório do cabelo)
+local function kibaEnfeites(m, colar, head)
+	local hx, hy, hz = head.Size.X, head.Size.Y, head.Size.Z
+	local pele = head.Color
+	local jaqueta, cinza = Color3.fromRGB(84, 84, 94), Color3.fromRGB(140, 140, 150)
+	local function glifo(p, txt, cor)
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = Enum.NormalId.Front
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		sg.PixelsPerStud = 80
+		sg.Parent = p
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.Text = txt
+		t.TextScaled = true
+		t.Font = Enum.Font.GothamBlack
+		t.TextColor3 = cor
+		t.Parent = sg
+	end
+	-- cabelo: a peça da loja guardada em ServerStorage.PecasNPC.KibaHair (se faltar, monta com pontas)
+	local molde = PecasNPC and PecasNPC:FindFirstChild("KibaHair")
+	local fio = molde and molde:FindFirstChild("Handle")
+	if fio then
+		local h = fio:Clone()
+		for _, c in ipairs(h:GetChildren()) do
+			if c:IsA("Attachment") or c:IsA("TouchTransmitter") then c:Destroy() end
+		end
+		h.Name = "Cabelo"
+		h.Anchored, h.CanCollide, h.CanQuery, h.CanTouch, h.Massless = false, false, false, false, true
+		h.CFrame = head.CFrame * CFrame.new(0, hy * 0.36, hz * 0.34) * CFrame.Angles(math.rad(-6), 0, 0)
+		local w = Instance.new("WeldConstraint")
+		w.Part0, w.Part1 = head, h
+		w.Parent = h
+		h.Parent = m
+	else
+		local marrom = Color3.fromRGB(70, 45, 30)
+		colar("Cabelo", Vector3.new(hx * 1.12, hy * 0.5, hz * 1.12), CFrame.new(0, hy * 0.38, hz * 0.04), marrom, Enum.PartType.Ball, Enum.Material.Fabric)
+		for i = 0, 6 do
+			local a = math.rad(i * 51)
+			colar("Ponta", Vector3.new(0.3, hy * 0.55, 0.3), CFrame.new(math.cos(a) * hx * 0.3, hy * 0.62, math.sin(a) * hz * 0.3) * CFrame.Angles(math.sin(a) * 0.5, 0, -math.cos(a) * 0.5), marrom, nil, Enum.Material.Fabric)
+		end
+	end
+	-- testeira de Konoha: faixa azul-escura com a placa de metal e o símbolo da folha
+	colar("Testeira", Vector3.new(hx * 1.07, hy * 0.24, hz * 1.07), CFrame.new(0, hy * 0.27, 0), Color3.fromRGB(26, 32, 58), nil, Enum.Material.Fabric)
+	local placa = colar("TesteiraPlaca", Vector3.new(hx * 0.64, hy * 0.22, 0.1), CFrame.new(0, hy * 0.27, -hz * 0.55), Color3.fromRGB(190, 195, 205), nil, Enum.Material.Metal)
+	glifo(placa, "@", Color3.fromRGB(40, 45, 60))
+	-- as marcas vermelhas das presas (triângulos para baixo) nas bochechas
+	for _, x in ipairs({ -1, 1 }) do
+		local mk = colar("Marca", Vector3.new(hx * 0.26, hy * 0.32, 0.04), CFrame.new(x * hx * 0.3, -hy * 0.1, -hz * 0.505), Color3.fromRGB(200, 35, 40))
+		mk.Transparency = 1
+		glifo(mk, "\u{25BC}", Color3.fromRGB(200, 35, 40))
+	end
+	-- jaqueta aberta no peito (camisa de rede), zíper, cós claro, mãos e botas
+	local torso, baixo = m:FindFirstChild("UpperTorso"), m:FindFirstChild("LowerTorso")
+	if torso then
+		local sx, sy, sz = torso.Size.X, torso.Size.Y, torso.Size.Z
+		colar("Gola", Vector3.new(sx * 0.98, sy * 0.2, sz * 1.08), CFrame.new(0, sy * 0.42, 0), jaqueta, nil, Enum.Material.Fabric, torso)
+		colar("Rede", Vector3.new(sx * 0.36, sy * 0.36, 0.06), CFrame.new(0, sy * 0.26, -sz * 0.5), Color3.fromRGB(150, 150, 156), nil, Enum.Material.DiamondPlate, torso)
+		colar("Ziper", Vector3.new(0.09, sy * 0.62, 0.05), CFrame.new(0, -sy * 0.17, -sz * 0.51), Color3.fromRGB(200, 200, 208), nil, Enum.Material.Metal, torso)
+	end
+	if baixo then baixo.Color = cinza end
+	for _, n in ipairs({ "LeftHand", "RightHand" }) do
+		local p = m:FindFirstChild(n)
+		if p then p.Color = pele end
+	end
+	for _, n in ipairs({ "LeftFoot", "RightFoot" }) do
+		local p = m:FindFirstChild(n)
+		if p then p.Color = Color3.fromRGB(62, 62, 72) end
+	end
+	-- faixa branca na perna direita
+	local coxa = m:FindFirstChild("RightUpperLeg")
+	if coxa then
+		colar("FaixaPerna", Vector3.new(coxa.Size.X * 1.16, coxa.Size.Y * 0.5, coxa.Size.Z * 1.16), CFrame.new(0, -coxa.Size.Y * 0.1, 0), Color3.fromRGB(238, 238, 238), nil, Enum.Material.Fabric, coxa)
+	end
+	-- pose (mão direita na cintura, braço esquerdo apontando para frente): as peças ficam ancoradas já na posição.
+	-- cada junta (Motor6D ou AnimationConstraint) leva a peça filha para: pai * C0 * rotação * C1^-1
+	local function posar(nome, rot)
+		local j = m:FindFirstChild(nome, true)
+		if not j then return end
+		local pai, filho, c0, c1
+		if j:IsA("Motor6D") then
+			pai, filho, c0, c1 = j.Part0, j.Part1, j.C0, j.C1
+		elseif j:IsA("AnimationConstraint") and j.Attachment0 and j.Attachment1 then
+			pai, filho, c0, c1 = j.Attachment0.Parent, j.Attachment1.Parent, j.Attachment0.CFrame, j.Attachment1.CFrame
+		end
+		if pai and filho then filho.CFrame = pai.CFrame * c0 * rot * c1:Inverse() end
+	end
+	posar("RightShoulder", CFrame.Angles(0, 0, math.rad(32)))
+	posar("RightElbow", CFrame.Angles(0, 0, math.rad(-75)))
+	posar("RightWrist", CFrame.identity)
+	posar("LeftShoulder", CFrame.Angles(math.rad(80), 0, math.rad(-14)))
+	posar("LeftElbow", CFrame.Angles(math.rad(-12), 0, 0))
+	posar("LeftWrist", CFrame.identity)
+	for _, d in ipairs(m:GetDescendants()) do
+		if d:IsA("BasePart") then d.Anchored = true end
+	end
+end
+
+---------------------------------------------------------------
 -- Montagem
 ---------------------------------------------------------------
 task.spawn(function()
@@ -264,26 +370,9 @@ task.spawn(function()
 	end
 	cemiterio()
 	local pele = Color3.fromRGB(235, 195, 160)
-	-- Rokuro (Lee): macacão verde, polainas laranja, cabelo de tigela e faixa vermelha na cintura
-	local gaien = Vector3.new(227, 3, -400)
-	mestre("MestreLee", 238, -388, gaien, pele, Color3.fromRGB(45, 140, 70), Color3.fromRGB(45, 140, 70), function(m, colar, head)
-		colar("Cabelo", Vector3.new(head.Size.X * 1.15, head.Size.Y * 0.75, head.Size.Z * 1.15), CFrame.new(0, head.Size.Y * 0.28, 0), Color3.fromRGB(20, 20, 22), Enum.PartType.Ball)
-		for _, n in ipairs({ "LeftLowerLeg", "RightLowerLeg" }) do
-			local p = m:FindFirstChild(n)
-			if p then p.Color = Color3.fromRGB(240, 140, 40) end
-		end
-		local torso = m:FindFirstChild("LowerTorso")
-		if torso then colar("Faixa", Vector3.new(torso.Size.X * 1.08, 0.35, torso.Size.Z * 1.12), CFrame.new(0, torso.Size.Y * 0.3, 0), Color3.fromRGB(200, 40, 40), nil, Enum.Material.Fabric, torso) end
-	end)
-	-- Kiro (Inu): casaco cinza de capuz com pelo, cabelo castanho espetado e o cachorro Aka ao lado
+	-- Kiro (Inu): vestido como o Kiba, com o cachorro Aka ao lado
 	local praca = MissionData.Lugares.Praca.Pos
-	local _, chao = mestre("MestreInu", 85, 5, praca, pele, Color3.fromRGB(105, 105, 112), Color3.fromRGB(45, 45, 55), function(m, colar, head)
-		colar("Capuz", Vector3.new(head.Size.X * 1.3, head.Size.Y * 0.9, head.Size.Z * 1.25), CFrame.new(0, head.Size.Y * 0.12, head.Size.Z * 0.12), Color3.fromRGB(105, 105, 112), Enum.PartType.Ball, Enum.Material.Fabric)
-		colar("Pelo", Vector3.new(head.Size.X * 1.38, head.Size.Y * 0.25, head.Size.Z * 0.5), CFrame.new(0, head.Size.Y * 0.42, -head.Size.Z * 0.35), Color3.fromRGB(230, 225, 215), nil, Enum.Material.Fabric)
-		for _, x in ipairs({ -1, 1 }) do
-			colar("Marca", Vector3.new(0.08, head.Size.Y * 0.3, 0.2), CFrame.new(x * head.Size.X * 0.5, -head.Size.Y * 0.12, -head.Size.Z * 0.2), Color3.fromRGB(190, 40, 40))
-		end
-	end)
+	local _, chao = mestre("MestreInu", 85, 5, praca, pele, Color3.fromRGB(84, 84, 94), Color3.fromRGB(58, 64, 82), kibaEnfeites)
 	if chao then
 		local p = chaoLivre(chao.X + 3.5, chao.Z + 1, 3)
 		cachorro(p, praca)

@@ -76,7 +76,7 @@ local function nuvens(lado) -- lado = 0 (esquerda) ou 1 (direita)
 	end
 end
 
--- emblema: losango com três faixas (roxo, dourado e vermelho), borda brilhante e as letras SL em pincelada
+-- emblema: losango escuro com borda brilhante e as letras SL em pincelada (sem as listras coloridas)
 local brilho = Instance.new("Frame")
 brilho.AnchorPoint = Vector2.new(0.5, 0.5)
 brilho.Position = UDim2.new(0.5, 0, 0, 160)
@@ -98,30 +98,6 @@ losango.Rotation = 45
 losango.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 losango.Parent = centro
 Instance.new("UICorner", losango).CornerRadius = UDim.new(0, 8)
-local faixas = Instance.new("Frame")
-faixas.AnchorPoint = Vector2.new(0.5, 0.5)
-faixas.Position = UDim2.fromScale(0.5, 0.5)
-faixas.Size = UDim2.fromOffset(310, 310)
-faixas.Rotation = -45
-faixas.BackgroundTransparency = 1
-faixas.Parent = losango
-for i, par in ipairs({
-	{ Color3.fromRGB(150, 80, 255), Color3.fromRGB(40, 12, 90) },
-	{ Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 110, 20) },
-	{ Color3.fromRGB(235, 45, 55), Color3.fromRGB(80, 10, 20) },
-}) do
-	local fx = Instance.new("Frame")
-	fx.Position = UDim2.new((i - 1) / 3, 3, 0, 0)
-	fx.Size = UDim2.new(1 / 3, -6, 1, 0)
-	fx.BorderSizePixel = 0
-	fx.BackgroundColor3 = Color3.new(1, 1, 1)
-	fx.Parent = faixas
-	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(par[1], par[2])
-	g.Rotation = 90
-	g.Parent = fx
-end
-
 local function letras(cor, dx, dy, contorno)
 	local l = Instance.new("TextLabel")
 	l.AnchorPoint = Vector2.new(0.5, 0.5)

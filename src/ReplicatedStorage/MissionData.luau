@@ -79,7 +79,7 @@ MissionData.NPCs = {
 	["StarterCharacter"] = { Name = "Villager", Titulo = "Konoha Resident", Fala = "Nice weather today, isn't it?" },
 	-- mestres de clã (ClanPowers.Mestres). Onde = dica de onde encontrar
 	["Neji"] = { Name = "Seiji", Titulo = "Gentle Fist Prodigy", Onde = "near the village square", Fala = "Fate does not hand out techniques. Earn them." },
-	["MestreLee"] = { Name = "Rokuro", Titulo = "Taijutsu Genius", Onde = "next to Coach Gaien", Fala = "Hard work beats talent! Show me your sweat!" },
+	["MestreLee"] = { Name = "Rokuro", Titulo = "Taijutsu Genius", Onde = "near Market Street", Fala = "Hard work beats talent! Show me your sweat!" },
 	["MestreInu"] = { Name = "Kiro", Titulo = "Beast Tamer", Onde = "in the village square, with his dog", Fala = "Aka can smell a real ninja. He likes you... I think." },
 	["Mahito_Orochimaru_Verified"] = { Name = "Master Jakou", Titulo = "Serpent Sage", Alcance = 45, Onde = "on top of the giant snake in the forest", Fala = "Ssso... the monkey clan still sends children to me." },
 	["TumuloPrimeiro"] = { Name = "Grave of Hashiro", Titulo = "The First · Wood Sage", Rezar = true, Onde = "in the old cemetery in the forest", Fala = "(The wood of the grave feels warm. Something is listening.)" },

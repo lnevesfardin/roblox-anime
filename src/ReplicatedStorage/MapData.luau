@@ -69,7 +69,7 @@ MapData.Maps = {
 	-- Exame Ninja (vira Genin): duelo contra o Sensei Kaito (modelo do Kakashi), sem ondas.
 	ExameNinja = {
 		Name = "Ninja Exam",
-		Arena = "Ninja", -- luta na arena Mapa_Ninja
+		Arena = "ExameNinja", -- luta na arena Mapa_ExameNinja: gramado no centro e floresta em volta
 
 		Waves = {},
 

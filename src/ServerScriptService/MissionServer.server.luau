@@ -410,6 +410,7 @@ end)
 -- Ações do cliente
 ---------------------------------------------------------------
 local ultimoNpc = {} -- [player] = nome do NPC da última conversa (ou "Quadro")
+local atendenteDe = {} -- [player] = nome do modelo da atendente quando a conversa foi no balcão (ela também entrega missões da história)
 local conversaDe = {} -- [player] = { Id = missão "falar" cuja conversa está aberta, Npc = chave, Modelo = modelo }
 local conversar
 local BONUS_RESPOSTA = 25 -- XP por resposta boa numa conversa
@@ -429,7 +430,7 @@ action.OnServerInvoke = function(player, acao, id)
 		local missao = MissionData.Get(id)
 		if not missao then return { ok = false, erro = "Unknown mission." } end
 		local de = ultimoNpc[player]
-		if de ~= missao.Npc then
+		if de ~= missao.Npc and not (de == "Quadro" and atendenteDe[player] == missao.Npc) then
 			return { ok = false, erro = "Talk to the right person first." }
 		end
 		local esp = espacoDe(missao)
@@ -511,6 +512,7 @@ conversar = function(player, npcKey, modelo)
 	local data, m = dados(player)
 	if not data then return end
 	ultimoNpc[player] = npcKey
+	atendenteDe[player] = (npcKey == "Quadro" and modelo) and modelo.Name or nil
 	conversaDe[player] = nil
 	-- missão "falar com" este NPC (principal ou lateral)
 	local espFalar, missaoFalar = acharAtiva(m, function(x)
@@ -533,6 +535,11 @@ conversar = function(player, npcKey, modelo)
 	local info = MissionData.NPCs[npcKey] or MissionData.NPCs.StarterCharacter
 	local atendente = npcKey == "Quadro" and modelo and MissionData.NPCs[modelo.Name]
 	local ofertas = ofertasDe(player, npcKey)
+	-- a atendente do balcão (Yumi) também entrega as missões da história que são dela: vêm antes das do quadro
+	if npcKey == "Quadro" and modelo and modelo.Name ~= "Quadro" then
+		local dela = ofertasDe(player, modelo.Name)
+		for i = #dela, 1, -1 do table.insert(ofertas, 1, dela[i]) end
+	end
 	local fala = info.Fala
 	-- o Sensei relança o Exame se ele estiver ativo
 	if m.Ativa then
@@ -986,6 +993,8 @@ if game:GetService("RunService"):IsStudio() then
 			player:SetAttribute("Rank", valor)
 		elseif acao == "feita" then
 			m.Feitas[valor] = true
+		elseif acao == "historia" then
+			m.Historia = valor
 		elseif acao == "jutsu" then
 			-- dá o jutsu de natureza (e a natureza dele) e equipa na tecla G
 			local j = NatureData.Jutsu(valor)
@@ -1048,5 +1057,6 @@ Players.PlayerAdded:Connect(setup)
 for _, p in ipairs(Players:GetPlayers()) do setup(p) end
 Players.PlayerRemoving:Connect(function(player)
 	ultimoNpc[player] = nil
+	atendenteDe[player] = nil
 	conversaDe[player] = nil
 end)

@@ -355,7 +355,7 @@ local PECAS = { titulo = titulo, dica = dica, bSair = bSair, feedback = feedback
 	placar = placar, vidasTxt = vidasTxt, botoesTecla = botoesTecla }
 local guardado = {}
 -- telas que somem durante a cutscene (voltam como estavam)
-local OUTRAS_TELAS = { "HUD", "HudOnda", "HudPoderes", "HudNatureza", "ViagemUI", "AtributosUI", "MissaoUI", "ClaUI" }
+local OUTRAS_TELAS = { "HUD", "HudOnda", "HudPoderes", "HudNatureza", "ViagemUI", "AtributosUI", "MissaoUI", "ClaUI", "Extras", "TutorialBotao" }
 local telasDesligadas = {}
 
 local function cameraCinema(root)

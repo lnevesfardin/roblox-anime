@@ -119,7 +119,8 @@ acao.OnServerInvoke = function(player, pedido, a)
 	local d, l = garantir(player, data)
 	if pedido == "missao" then
 		local m = d.Missoes[tonumber(a) or 0]
-		if not m or m.Pega or m.Prog < m.N then return { ok = false, erro = "Not finished yet.", estado = estado(player) } end
+		if m and m.Pega then return { ok = false, erro = "Already claimed.", estado = estado(player) } end
+		if not m or m.Prog < m.N then return { ok = false, erro = "Not finished yet.", estado = estado(player) } end
 		m.Pega = true
 		PlayerData.AddCoins(player, m.Coins)
 		PlayerData.AddXP(player, m.XP)
@@ -127,7 +128,8 @@ acao.OnServerInvoke = function(player, pedido, a)
 	elseif pedido == "bonus" then
 		local feitas = 0
 		for _, m in ipairs(d.Missoes) do if m.Pega then feitas += 1 end end
-		if d.BonusPego or feitas < #d.Missoes then return { ok = false, erro = "Claim all daily missions first.", estado = estado(player) } end
+		if d.BonusPego then return { ok = false, erro = "Already claimed.", estado = estado(player) } end
+		if feitas < #d.Missoes then return { ok = false, erro = "Claim all daily missions first.", estado = estado(player) } end
 		d.BonusPego = true
 		PlayerData.GrantReward(player, DiariasData.BONUS)
 		salvar(player)

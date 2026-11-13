@@ -763,7 +763,7 @@ end
 -- Enquanto a sala está aberta, o resto da interface some (HUD, poderes, viagem, atributos e o botão do clã).
 -- Tudo volta só depois do CONTINUE.
 local StarterGui = game:GetService("StarterGui")
-local OUTRAS = { "HUD", "HudOnda", "HudPoderes", "HudNatureza", "ViagemUI", "AtributosUI", "MissaoUI" }
+local OUTRAS = { "HUD", "HudOnda", "HudPoderes", "HudNatureza", "ViagemUI", "AtributosUI", "MissaoUI", "Extras", "TutorialBotao" }
 local function outras(ligar)
 	local pg = player.PlayerGui
 	for _, n in ipairs(OUTRAS) do

@@ -10,7 +10,9 @@
 
 ## Quadro de missões
 - Não há mais limite diário/por hora: `QUADRO_POR_HORA` foi removido. O quadro mostra `QUADRO_OFERTAS` (4) missões do rank do
-  jogador e repõe uma nova a cada missão concluída (não repete as últimas `QUADRO_MEMORIA`).
+  jogador e repõe uma nova a cada missão concluída.
+- Rodízio: nenhuma missão volta antes de as outras do rank terem aparecido. A memória é `max(QUADRO_MEMORIA, missões do rank - QUADRO_OFERTAS)`
+  e o save guarda até `QUADRO_HISTORICO` (60) ids em `q.Rec` (a ordem mostra a última vez que cada uma foi feita).
 - O título mostra `Rank missions · N done`.
 - 50 missões do quadro (`Quadro = true` em `MissionData.Missoes`): entregar algo a alguém (`falar` com o NPC), achar algo para
   alguém (`coletar`/`ir`) e derrotar bandidos (`derrotar`). O 8º campo da lista é o texto do objetivo (`Obj`), usado pelo
@@ -29,3 +31,20 @@
 - Clique em "Reset", depois em "Confirm?" em até 4 s. O servidor (`ResetarProgresso`) grava o save padrão e expulsa a conta.
 - Não funciona durante uma partida (`InRun`). `CanSave` fica falso durante a gravação para o progresso antigo não voltar ao sair.
 - Para liberar outra conta, acrescente o nome em `RESET_PERMITIDO`.
+
+## Golpes dos inimigos (`ServerStorage.InimigoGolpe`)
+- Inimigos humanoides (ondas, bandidos do acampamento e inimigos da floresta) batem em combo de 3 golpes com os mesmos efeitos de
+  soco do jogador (rastro em meia-lua, anel de impacto, flash branco no alvo). Dano: 0,6x, 0,6x e 1,0x; pausa de ~1,9 s depois do
+  3º golpe (a "janela" para revidar). Cobras (`isSnake`) e chefes com kit próprio não usam o módulo.
+- Levar um golpe do jogador atordoa o inimigo e corta o combo (`Interromper`).
+
+## XP por inimigo derrotado
+- Ondas: `max(3, floor(VidaBase x 0,22 x XP da dificuldade))` para cada jogador da partida.
+- Acampamento: Rogue Scout 10, Rogue Ninja 18, Rogue Brute 36 (quem estiver a menos de 70 studs).
+- Os inimigos da floresta continuam pagando XP/moedas por `recompensarPerto`.
+
+## Missões da história
+- H7 "Rogue Ninjas Nearby" virou missão de reconhecimento (`ir` ao Acampamento): não repete o "derrotar" do H6.
+
+## Treino dos postes (Vitality, Strength, Agility)
+- Minigame de socos: 6 acertos (antes 10), faixa 0,32 -> 0,15 da barra, marcador mais lento e 5 vidas (antes 3).

@@ -125,13 +125,13 @@ local function treinar(player, id)
 	notice:FireClient(player, ("+1 %s  (%d trainings left today)"):format(info.Name, treinoRestante(data)), true)
 end
 
--- Minigame de tempo (Sensei Kaito): acertar 10 socos no alvo de madeira na hora certa.
+-- Minigame de tempo (Sensei Kaito): acertar 6 socos no alvo de madeira na hora certa.
 -- O servidor confere se dá para treinar, abre uma sessão e só dá o ponto se o cliente terminar o minigame.
 local minigame = Instance.new("RemoteEvent")
 minigame.Name = "TreinoMinigame"
 minigame.Parent = ReplicatedStorage
-local ACERTOS = 10
-local TEMPO_MINIMO = 6 -- segundos: ninguém acerta 10 socos mais rápido que isso
+local ACERTOS = 6
+local TEMPO_MINIMO = 3 -- segundos: ninguém acerta 6 socos mais rápido que isso
 -- modo "teclas" (Coach Gaien e estações que não são alvo de madeira): 4 séries de sequências W A S D
 local SERIES = 8
 local TEMPO_MINIMO_TECLAS = 6

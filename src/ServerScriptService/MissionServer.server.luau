@@ -18,6 +18,7 @@ local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
 local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
 local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
+local InimigoGolpe = require(ServerStorage:WaitForChild("InimigoGolpe"))
 
 local action = Instance.new("RemoteFunction")
 action.Name = "MissionAction"
@@ -98,9 +99,18 @@ local function encherQuadro(data, m)
 		local x = m[esp] and MissionData.Get(m[esp].Id)
 		if x and x.Quadro then usados[pedido(x)] = true end
 	end
+	-- rodízio: nenhuma missão volta antes de todas as outras do rank terem aparecido. A memória cresce com o
+	-- tamanho do rank (rank com poucas missões = memória maior), então só repete quando já passou por todas.
+	local pool = 0
+	for _, missao in ipairs(MissionData.Missoes) do
+		if missao.Quadro and table.find(ranks, missao.Rank) then pool += 1 end
+	end
+	local memoria = math.max(MissionData.QUADRO_MEMORIA, pool - MissionData.QUADRO_OFERTAS)
+	local recentes = {}
+	for i = math.max(1, #q.Rec - memoria + 1), #q.Rec do recentes[q.Rec[i]] = true end
 	local candidatas = {}
 	for _, missao in ipairs(MissionData.Missoes) do
-		if missao.Quadro and table.find(ranks, missao.Rank) and not table.find(q.Of, missao.Id) and not table.find(q.Rec, missao.Id)
+		if missao.Quadro and table.find(ranks, missao.Rank) and not table.find(q.Of, missao.Id) and not recentes[missao.Id]
 			and not (m.Lado and m.Lado.Id == missao.Id) then
 			table.insert(candidatas, missao)
 		end
@@ -263,8 +273,10 @@ local function concluir(player, esp)
 		local q = m.Q
 		local i = table.find(q.Of, missao.Id)
 		if i then table.remove(q.Of, i) end
+		local antiga = table.find(q.Rec, missao.Id)
+		if antiga then table.remove(q.Rec, antiga) end -- a ordem mostra a última vez que cada missão foi feita
 		table.insert(q.Rec, missao.Id)
-		while #q.Rec > MissionData.QUADRO_MEMORIA do table.remove(q.Rec, 1) end
+		while #q.Rec > MissionData.QUADRO_HISTORICO do table.remove(q.Rec, 1) end
 		q.N += 1
 		encherQuadro(data, m)
 		aviso(player, "Board mission complete! New missions are waiting at the board.", true)
@@ -789,9 +801,9 @@ end
 
 -- tipos de nukenin: o comum, o batedor (rápido e fraco) e o bruto (grande, lento e forte)
 local TIPOS_NUKENIN = {
-	{ Nome = "Rogue Ninja", Peso = 60, Vida = 70, Vel = 12, Dano = 6, Escala = 1 },
-	{ Nome = "Rogue Scout", Peso = 25, Vida = 50, Vel = 16, Dano = 5, Escala = 0.9 },
-	{ Nome = "Rogue Brute", Peso = 15, Vida = 130, Vel = 10, Dano = 10, Escala = 1.25 },
+	{ Nome = "Rogue Ninja", Peso = 60, Vida = 70, Vel = 12, Dano = 6, Escala = 1, XP = 18 },
+	{ Nome = "Rogue Scout", Peso = 25, Vida = 50, Vel = 16, Dano = 5, Escala = 0.9, XP = 10 },
+	{ Nome = "Rogue Brute", Peso = 15, Vida = 130, Vel = 10, Dano = 10, Escala = 1.25, XP = 36 },
 }
 local function tipoNukenin()
 	local r = rng:NextNumber(0, 100)
@@ -802,12 +814,15 @@ local function tipoNukenin()
 	return TIPOS_NUKENIN[1]
 end
 
-local function creditar(posicao)
+-- quem está perto ganha o progresso da missão e o XP do tipo de bandido (o bruto vale mais que o batedor)
+local function creditar(posicao, nome, xp)
+	local fb = ReplicatedStorage:FindFirstChild("AbilityFeedback")
 	for _, player in ipairs(Players:GetPlayers()) do
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		if root and (root.Position - posicao).Magnitude < 70 then
 			progredir(player, "derrotar", 1, "Acampamento")
-			PlayerData.AddXP(player, 15)
+			PlayerData.AddXP(player, xp * PlayerData.GetBoostMult(player, "XP"))
+			if fb then fb:FireClient(player, { msg = ("%s defeated  +%d XP"):format(nome, xp) }) end
 		end
 	end
 end
@@ -843,12 +858,12 @@ local function novoBandido(e)
 		if morto then return end
 		morto = true
 		CollectionService:RemoveTag(m, "Inimigo")
-		creditar(root.Position)
+		creditar(root.Position, tipo.Nome, tipo.XP)
 		task.delay(2, function() m:Destroy() end)
 	end)
 	-- IA simples: persegue quem chega perto e bate
 	task.spawn(function()
-		local ultimoGolpe = 0
+		local golpe = InimigoGolpe.Novo()
 		while m.Parent and hum.Health > 0 do
 			local alvo, dist = nil, 45
 			for _, player in ipairs(Players:GetPlayers()) do
@@ -862,13 +877,13 @@ local function novoBandido(e)
 			if (m:GetAttribute("Atordoado") or 0) > os.clock() then
 				-- levou um golpe: fica travado e não revida enquanto o combo conecta
 				hum:MoveTo(root.Position)
-				ultimoGolpe = math.max(ultimoGolpe, os.clock() - 0.8)
+				InimigoGolpe.Interromper(golpe)
 			elseif alvo then
 				local r = alvo.Parent.HumanoidRootPart
 				hum:MoveTo(r.Position)
-				if dist < 5 * tipo.Escala and os.clock() - ultimoGolpe > 1.3 then
-					ultimoGolpe = os.clock()
-					alvo:TakeDamage(tipo.Dano)
+				if dist < 5 * tipo.Escala then
+					-- combo de 3 golpes com os efeitos de soco do jogador, depois uma pausa
+					InimigoGolpe.Tentar(golpe, m, root, alvo, tipo.Dano, { Escala = tipo.Escala })
 				end
 			elseif (root.Position - casa).Magnitude > 16 then
 				hum:MoveTo(casa)

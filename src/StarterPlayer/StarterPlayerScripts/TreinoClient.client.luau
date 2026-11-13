@@ -1,6 +1,6 @@
 -- Treino da Academia (Sensei Kaito): minigame de tempo nos alvos de madeira.
 -- Treino de chakra: vira uma cutscene (barras de cinema, câmera em volta do personagem) com o minigame dentro das barras.
--- Acerte 10 socos quando o marcador estiver na faixa verde. A faixa diminui e o marcador acelera; 3 erros = falhou.
+-- Acerte 6 socos quando o marcador estiver na faixa verde. A faixa diminui e o marcador acelera; 5 erros = falhou.
 -- Modo "teclas" (Coach Gaien, estações que não são alvo de madeira): 8 níveis; em cada um aparece uma
 -- sequência curta de teclas W A S D para apertar na ordem. Tecla errada não tira vida: só perde vida (5)
 -- quando o tempo do nível acaba.
@@ -16,7 +16,7 @@ local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 local minigame = ReplicatedStorage:WaitForChild("TreinoMinigame")
 
-local VIDAS = 3        -- minigame de socos
+local VIDAS = 5        -- minigame de socos
 local VIDAS_TECLAS = 5 -- minigame de teclas
 local function lerp(a, b, t) return a + (b - a) * t end
 
@@ -471,8 +471,8 @@ local function novaRodada()
 	if estado.modo == "teclas" then return novaSerie() end
 	local k = estado.acertos
 	local t = math.clamp(k / (estado.total - 1), 0, 1)
-	estado.largura = lerp(0.22, 0.065, t)
-	estado.vel = lerp(0.85, 2.3, t)
+	estado.largura = lerp(0.32, 0.15, t)
+	estado.vel = lerp(0.7, 1.5, t)
 	local m = estado.largura / 2 + 0.04
 	local c
 	repeat

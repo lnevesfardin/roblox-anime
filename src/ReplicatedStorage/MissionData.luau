@@ -18,7 +18,8 @@ MissionData.COOLDOWN = 8 * 60 -- segundos até a mesma missão repetível poder 
 -- Quadro de missões (balcão QUESTS)
 -- (sem limite de missões do quadro por hora ou por dia: dá para fazer quantas quiser)
 MissionData.QUADRO_OFERTAS = 4   -- quantas aparecem de cada vez
-MissionData.QUADRO_MEMORIA = 8   -- as últimas N concluídas não voltam a aparecer
+MissionData.QUADRO_MEMORIA = 8   -- no mínimo, as últimas N concluídas não voltam a aparecer
+MissionData.QUADRO_HISTORICO = 60 -- ids guardados no save para o rodízio (ranks com poucas missões usam mais memória)
 -- rank da missão que cada rank ninja pode pegar
 MissionData.QuadroRank = { Estudante = { "D" }, Genin = { "D", "C" }, Chunin = { "C", "B" }, Jonin = { "B", "A" }, Elite = { "B", "A" }, Kage = { "A" } }
 
@@ -160,9 +161,11 @@ MissionData.Missoes = {
 				{ T = "Because you are all too slow to teach me.", R = "Maybe. Or maybe you are too fast to listen." } } },
 			{ Fala = "There are rogue ninjas in the forest outside the village. Beat two of them with nothing but your fists, and I will tell you who can teach you the first technique of your clan." },
 		} },
+	-- (não repete o "derrotar" do H6: aqui o aluno só reconhece os esconderijos, sem lutar de novo)
 	{ Id = "H7", Npc = "Kakashi", Historia = 7, Rank = "D", Name = "Rogue Ninjas Nearby",
-		Desc = "Rogue ninjas keep coming. Defeat 4 of them in the forest.",
-		Tipo = "derrotar", Alvo = "Acampamento", N = 4, Recompensa = { XP = 1200, Coins = 250, Pontos = 2 } },
+		Desc = "Rogue ninjas keep coming. Scout the Rogue Ninja Hideouts in the forest and report what you see.",
+		Tipo = "ir", Alvo = "Acampamento", N = 1, Obj = "Scout the Rogue Ninja Hideouts",
+		Recompensa = { XP = 1200, Coins = 250, Pontos = 2 } },
 	{ Id = "H8", Npc = "Kakashi", Historia = 8, Rank = "C", Name = "The Ninja Exam", Nivel = 10,
 		Desc = "The Ninja Exam is a duel: defeat Sensei Kaito to become a Genin.",
 		Tipo = "exame", Mapa = "ExameNinja", N = 1, Recompensa = { XP = 1500, Coins = 500, Pontos = 3 }, Promove = "Genin" },

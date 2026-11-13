@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local MapData = require(ReplicatedStorage:WaitForChild("MapData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
+local InimigoGolpe = require(ServerStorage:WaitForChild("InimigoGolpe"))
 
 -- skins dos inimigos (modelos em ServerStorage.Aparencias); se falhar, vale o visual por codigo
 local okSkin, SkinInimigo = pcall(function()
@@ -919,9 +920,17 @@ local function aiLoop(cfg, floorY, centro)
 						e.hum:MoveTo(e.root.Position)
 						if e.radius <= 2 and (e.model:GetAttribute("Atordoado") or 0) > os.clock() then
 							e.lastHit = math.max(e.lastHit, now - e.interval + 0.6) -- travado pelo combo: não revida já
-						elseif now - e.lastHit >= e.interval then
-							e.lastHit = now
-							target.hum:TakeDamage(e.damage)
+							if e.golpe then InimigoGolpe.Interromper(e.golpe) end
+						elseif e.isSnake then
+							if now - e.lastHit >= e.interval then
+								e.lastHit = now
+								target.hum:TakeDamage(e.damage)
+							end
+						else
+							-- combo de 3 golpes com os efeitos de soco do jogador, depois uma pausa
+							e.golpe = e.golpe or InimigoGolpe.Novo()
+							InimigoGolpe.Tentar(e.golpe, e.model, e.root, target.hum, e.damage,
+								{ Cor = e.corGolpe, Escala = 1 + math.max(e.radius, 0) * 0.15 })
 						end
 					else
 						e.hum:MoveTo(target.root.Position)
@@ -1047,6 +1056,19 @@ local function runMap(mapId)
 				local ent = spawnEnemy(t.Name, t.Color, t.Scale or 1, t.Health * hpScale, t.Damage,
 					randomSpawnPos(centro, spawnPart, floorY, arena:GetAttribute("RaioSpawn") or 40), false, t.Speed, nil, t.Look,
 					t.Skin, t.SkinIdx or i)
+				if ent then -- XP por inimigo derrotado, conforme a "patente": quanto mais vida base, mais XP
+					local xpKill = math.max(3, math.floor(t.Health * 0.22 * difAtual.XP))
+					ent.hum.Died:Connect(function()
+						if state ~= "running" then return end
+						local fb = ReplicatedStorage:FindFirstChild("AbilityFeedback")
+						for plr in pairs(participants) do
+							if plr.Parent then
+								PlayerData.AddXP(plr, xpKill * PlayerData.GetBoostMult(plr, "XP"))
+								if fb then fb:FireClient(plr, { msg = ("%s defeated  +%d XP"):format(t.Name, xpKill) }) end
+							end
+						end
+					end)
+				end
 				if ent and t.Kin then -- kinjutsu: o primeiro vem entre 0.5x e 1.5x do intervalo
 					ent.kin = t.Kin
 					ent.kinCada = t.KinCada or 10

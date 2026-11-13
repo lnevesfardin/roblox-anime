@@ -17,6 +17,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local WorldData = require(ReplicatedStorage:WaitForChild("WorldData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
+local InimigoGolpe = require(ServerStorage:WaitForChild("InimigoGolpe"))
 
 local rng = Random.new()
 
@@ -197,7 +198,7 @@ local function criarInimigo(opts)
 
 	-- IA: persegue quem chega perto, bate, e volta para casa se for longe demais
 	task.spawn(function()
-		local ultimoGolpe, ultimoEspecial = 0, os.clock()
+		local golpe, ultimoEspecial = InimigoGolpe.Novo(), os.clock()
 		local alcance = opts.info.Alcance or 40
 		local coleira = alcance + 35
 		while m.Parent and hum.Health > 0 do
@@ -220,10 +221,9 @@ local function criarInimigo(opts)
 					local travado = not opts.chefe and (m:GetAttribute("Atordoado") or 0) > os.clock()
 					if travado then
 						hum:Move(Vector3.zero)
-						ultimoGolpe = math.max(ultimoGolpe, os.clock() - 1)
-					elseif dist < alcanceGolpe and os.clock() - ultimoGolpe > 1.6 then
-						ultimoGolpe = os.clock()
-						alvo:TakeDamage(dano)
+						InimigoGolpe.Interromper(golpe)
+					elseif dist < alcanceGolpe then
+						InimigoGolpe.Tentar(golpe, m, root, alvo, dano, { Escala = opts.escala or 1 })
 					end
 					-- chefes: pancada no chão com aviso vermelho
 					if opts.chefe and os.clock() - ultimoEspecial > 7 and dist < 20 then

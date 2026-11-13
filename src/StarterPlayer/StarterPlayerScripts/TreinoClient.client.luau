@@ -358,6 +358,7 @@ local function cameraCinema(root)
 		end
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = CFrame.lookAt(pos, foco)
+		cam.Focus = CFrame.new(foco) -- o jogo carrega e mostra o que está em volta do personagem
 		cam.FieldOfView = 60
 	end)
 end

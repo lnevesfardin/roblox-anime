@@ -1,8 +1,8 @@
 -- ModuleScript: ReplicatedStorage > ClanPowers
 -- Caminho de poderes de cada clã (Fase 4). Cada clã tem 3 poderes: Q, E e R.
--- Poderes nunca são comprados: o jogador nasce só com os socos. O 1º vem na missão "Your First Jutsu"
--- do caminho (história, passo HIST_PRIMEIRO); 2º e 3º por nível + rank + missão do clã.
--- As missões do clã ficam em MissionData (ids C2_<Clã> e C3_<Clã>, dadas pela Lady Tsuna).
+-- Poderes nunca são comprados: o jogador nasce só com os socos. Os 3 poderes vêm por missões do MESTRE do clã
+-- (ClanPowers.Mestres): a 1ª depois do passo HIST_PRIMEIRO da história; 2ª e 3ª por nível + rank.
+-- As missões do clã ficam em MissionData (ids C1_<Clã>, C2_<Clã> e C3_<Clã>).
 -- Ao trocar de clã, o caminho do clã antigo se perde.
 
 local ClanPowers = {}
@@ -14,9 +14,21 @@ ClanPowers.KEYS = { "Q", "E", "R" }
 ClanPowers.HIST_PRIMEIRO = 6
 
 ClanPowers.REQ = {
-	{ Level = 1, Historia = true },
+	{ Level = 1, Missao = true },
 	{ Level = 15, Rank = "Genin", Missao = true },
 	{ Level = 35, Rank = "Chunin", Missao = true },
+}
+
+-- Mestre de cada clã: Npc = chave em MissionData.NPCs (nome do modelo), Nome = nome mostrado no jogo
+ClanPowers.Mestres = {
+	Uzu = { Npc = "Naruto", Nome = "Kenta" },
+	Uchiwa = { Npc = "Sasuke", Nome = "Ryo" },
+	Mokuton = { Npc = "TumuloPrimeiro", Nome = "the First's Grave" },
+	Byakugan = { Npc = "Neji", Nome = "Seiji" },
+	Lee = { Npc = "MestreLee", Nome = "Rokuro" },
+	Shirokiba = { Npc = "Kakashi", Nome = "Sensei Kaito" },
+	Enma = { Npc = "Mahito_Orochimaru_Verified", Nome = "Master Jakou" },
+	Inu = { Npc = "MestreInu", Nome = "Kiro" },
 }
 
 -- Chakra: regenera sozinho (fração do máximo por segundo)
@@ -132,7 +144,7 @@ function ClanPowers.Sincronizar(data)
 	if type(data.Poderes) ~= "table" then data.Poderes = {} end
 	if data.Poderes.Cla ~= clan then
 		for id in pairs(m.Feitas) do
-			if type(id) == "string" and (id:sub(1, 3) == "C2_" or id:sub(1, 3) == "C3_") then
+			if type(id) == "string" and id:match("^C[123]_") then
 				m.Feitas[id] = nil
 			end
 		end
@@ -149,13 +161,9 @@ function ClanPowers.Liberado(data, slot)
 	end
 	local nivel, rank, missao = ClanPowers.Requisito(clan, slot)
 	local falta = {}
-	if ClanPowers.REQ[slot].Historia and (data.Rank or "Estudante") == "Estudante"
-		and (tonumber(data.Missoes.Historia) or 0) < ClanPowers.HIST_PRIMEIRO then
-		return false, "Learn it in the mission 'Your First Jutsu' (Sensei Kaito)"
-	end
 	if (data.Level or 1) < nivel then table.insert(falta, "Level " .. nivel) end
 	if rank and (RANKS[data.Rank] or 1) < RANKS[rank] then table.insert(falta, NOMES[rank] .. " rank") end
-	if missao and not data.Missoes.Feitas[("C%d_%s"):format(slot, clan)] then table.insert(falta, "clan mission (Lady Tsuna)") end
+	if missao and not data.Missoes.Feitas[("C%d_%s"):format(slot, clan)] then table.insert(falta, "clan mission (" .. ClanPowers.Mestres[clan].Nome .. ")") end
 	if #falta > 0 then
 		return false, "Needs " .. table.concat(falta, " + ")
 	end

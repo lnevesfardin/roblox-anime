@@ -133,8 +133,8 @@ minigame.Parent = ReplicatedStorage
 local ACERTOS = 10
 local TEMPO_MINIMO = 6 -- segundos: ninguém acerta 10 socos mais rápido que isso
 -- modo "teclas" (Coach Gaien e estações que não são alvo de madeira): 4 séries de sequências W A S D
-local SERIES = 4
-local TEMPO_MINIMO_TECLAS = 4
+local SERIES = 8
+local TEMPO_MINIMO_TECLAS = 6
 local sessoes = {} -- [player] = { id, inicio, alvo }
 
 -- tem missão de treino ativa (principal ou lateral)?
@@ -181,10 +181,69 @@ local function iniciarTreino(player, id, alvo, modo)
 		titulo = alvo and alvo:GetAttribute("Titulo"), dica = alvo and alvo:GetAttribute("Dica") })
 end
 
+-- Prática de natureza: pontos com a tag "Pratica" e o atributo "Natureza" (criados pelo script MundoExtras).
+-- Só quem tem a missão do mestre daquela natureza pratica; cada sessão concluída conta 1 na missão.
+local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
+local PRATICA = {
+	Agua = { Series = { "FEEL THE WATER", "SHAPE IT", "HOLD THE FLOW", "RELEASE!" }, Dica = "Pull the water of the lake into your chakra." },
+	Fogo = { Series = { "BREATHE IN", "IGNITE", "FEED THE FLAME", "RELEASE!" }, Dica = "Turn your breath into fire." },
+	Terra = { Series = { "ROOT YOURSELF", "FEEL THE GROUND", "RAISE THE STONE", "RELEASE!" }, Dica = "Push your chakra into the ground." },
+	Raio = { Series = { "SPARK", "BUILD THE CHARGE", "HOLD THE CURRENT", "RELEASE!" }, Dica = "Try to form electricity between your hands." },
+	Vento = { Series = { "FEEL THE WIND", "GATHER IT", "SPIN IT", "RELEASE!" }, Dica = "Gather the wind in your palms." },
+}
+local function iniciarPratica(player, nat, alvo)
+	local data = PlayerData.Get(player)
+	local t = NatureData.Tipos[nat]
+	if not data or not t or sessoes[player] then return end
+	local tem = false
+	local m = data.Missoes
+	for _, esp in ipairs({ "Ativa", "Lado" }) do
+		local e = type(m) == "table" and m[esp]
+		local missao = type(e) == "table" and MissionData.Get(e.Id)
+		if missao and missao.Tipo == "praticar" and missao.Alvo == "Pratica_" .. nat then tem = true end
+	end
+	if not tem then
+		local mestre = MissionData.NPCs[t.Mestre]
+		notice:FireClient(player, NatureData.Tem(data, nat) and ("Ask " .. (mestre and mestre.Name or "the master") .. " for the " .. t.Name .. " mission first.")
+			or ("You do not have the " .. t.Name .. " nature."), false)
+		return
+	end
+	sessoes[player] = { pratica = nat, inicio = os.clock(), alvo = alvo, acertos = SERIES, minimo = TEMPO_MINIMO_TECLAS }
+	minigame:FireClient(player, { acao = "comecar", id = "Chakra", nome = t.Name, acertos = SERIES, alvo = alvo, modo = "teclas", cena = "natureza",
+		cor = t.Color, series = PRATICA[nat].Series, dica = PRATICA[nat].Dica })
+end
+local function pontoPratica(inst)
+	local nat = inst:GetAttribute("Natureza")
+	local t = nat and NatureData.Tipos[nat]
+	local peca = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart", true)
+	if not t or not peca or peca:FindFirstChild("PraticaPrompt") then return end
+	local p = Instance.new("ProximityPrompt")
+	p.Name = "PraticaPrompt"
+	p.ActionText = "Practice"
+	p.ObjectText = t.Name .. " nature"
+	p.HoldDuration = 0
+	p.MaxActivationDistance = 10
+	p.RequiresLineOfSight = false
+	p.Parent = peca
+	p.Triggered:Connect(function(player) iniciarPratica(player, nat, inst) end)
+end
+for _, inst in ipairs(CollectionService:GetTagged("Pratica")) do pontoPratica(inst) end
+CollectionService:GetInstanceAddedSignal("Pratica"):Connect(pontoPratica)
+
 minigame.OnServerEvent:Connect(function(player, resultado, acertos)
 	local s = sessoes[player]
 	if not s then return end
 	sessoes[player] = nil
+	if s.pratica then
+		if resultado == "ok" and acertos == s.acertos and os.clock() - s.inicio >= s.minimo then
+			local prog = ServerStorage:FindFirstChild("MissaoProgresso")
+			if prog then prog:Fire(player, "praticar", 1, "Pratica_" .. s.pratica) end
+			notice:FireClient(player, "Practice complete! Your control is growing.", true)
+		else
+			notice:FireClient(player, "You lost control. Try again!", false)
+		end
+		return
+	end
 	if resultado == "ok" and acertos == s.acertos and os.clock() - s.inicio >= s.minimo then
 		if s.soMissao then
 			local prog = ServerStorage:FindFirstChild("MissaoProgresso")

@@ -44,7 +44,7 @@ FightStyles.Styles = {
 	},
 	Karate = {
 		Name = "Karate", Color = Color3.fromRGB(245, 245, 235),
-		Mestre = "Sensei Kaito", Req = "Level 10 + defeat 10 bandits",
+		Mestre = "Sensei Kaito", Req = "Level 10 + defeat 10 rogue ninjas",
 		Combo = {
 			{ mult = 1.05, range = 9, force = 14, wait = 0.27 },
 			{ mult = 1.05, range = 9, force = 14, wait = 0.27 },
@@ -57,7 +57,7 @@ FightStyles.Styles = {
 	},
 	MuayThai = {
 		Name = "Muay Thai", Color = Color3.fromRGB(255, 170, 60),
-		Mestre = "Ryo", Req = "Level 15 + Genin + defeat 12 bandits",
+		Mestre = "Ryo", Req = "Level 15 + Genin + defeat 12 rogue ninjas",
 		Combo = {
 			{ mult = 1.25, range = 11, force = 18, wait = 0.36, kick = true },
 			{ mult = 1.25, range = 11, force = 18, wait = 0.36, kick = true },

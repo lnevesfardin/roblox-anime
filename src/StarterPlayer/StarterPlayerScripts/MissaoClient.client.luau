@@ -112,7 +112,9 @@ local function objetivo(missao, p)
 	if t == "falar" then return "Talk to " .. nomeNpc(missao.Alvo) end
 	if t == "ir" then return "Go to " .. MissionData.Lugares[missao.Alvo].Name end
 	if t == "treinar" then return ("Train at the Ninja Academy  %d/%d"):format(p, missao.N) end
-	if t == "derrotar" then return ("Defeat bandits at the hideouts  %d/%d"):format(p, missao.N) end
+	if t == "derrotar" and missao.Alvo == "Mundo" then return ("Defeat enemies in the outer forest  %d/%d"):format(p, missao.N) end
+	if t == "derrotar" then return ("Defeat rogue ninjas at the hideouts  %d/%d"):format(p, missao.N) end
+	if t == "praticar" then return ("Practice at %s  %d/%d"):format(MissionData.Lugares[missao.Alvo].Name, p, missao.N) end
 	if t == "coletar" then return ("Collect glowing herbs in the forest  %d/%d"):format(p, missao.N) end
 	if t == "exame" then return "Talk to " .. nomeNpc(missao.Npc) .. " to start the exam" end
 	return ""

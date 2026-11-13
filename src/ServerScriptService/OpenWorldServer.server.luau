@@ -181,6 +181,14 @@ local function criarInimigo(opts)
 		if morto then return end
 		morto = true
 		CollectionService:RemoveTag(m, "Inimigo")
+		-- missões do quadro "derrote inimigos na floresta de fora": conta para quem está por perto
+		local prog = game:GetService("ServerStorage"):FindFirstChild("MissaoProgresso")
+		if prog then
+			for _, player in ipairs(Players:GetPlayers()) do
+				local r = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if r and (r.Position - root.Position).Magnitude < 70 then prog:Fire(player, "derrotar", 1, "Mundo") end
+			end
+		end
 		if opts.aoMorrer then
 			task.spawn(opts.aoMorrer, m, hum, root, noite)
 		end
@@ -209,7 +217,11 @@ local function criarInimigo(opts)
 							root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
 						end
 					end
-					if dist < alcanceGolpe and os.clock() - ultimoGolpe > 1.6 then
+					local travado = not opts.chefe and (m:GetAttribute("Atordoado") or 0) > os.clock()
+					if travado then
+						hum:Move(Vector3.zero)
+						ultimoGolpe = math.max(ultimoGolpe, os.clock() - 1)
+					elseif dist < alcanceGolpe and os.clock() - ultimoGolpe > 1.6 then
 						ultimoGolpe = os.clock()
 						alvo:TakeDamage(dano)
 					end

@@ -801,7 +801,9 @@ local function aiLoop(cfg, floorY, centro)
 				if target then
 					if dist <= 5 + e.radius then
 						e.hum:MoveTo(e.root.Position)
-						if now - e.lastHit >= e.interval then
+						if e.radius <= 2 and (e.model:GetAttribute("Atordoado") or 0) > os.clock() then
+							e.lastHit = math.max(e.lastHit, now - e.interval + 0.6) -- travado pelo combo: não revida já
+						elseif now - e.lastHit >= e.interval then
 							e.lastHit = now
 							target.hum:TakeDamage(e.damage)
 						end

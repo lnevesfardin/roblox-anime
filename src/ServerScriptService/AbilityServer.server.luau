@@ -200,6 +200,10 @@ local function hit(e, amount, from, force)
 	end
 	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.hum:TakeDamage(amount)
+	-- o golpe "conecta": inimigo comum fica travado um instante e não revida no meio do combo (chefes não)
+	if e.raio <= 2 then
+		e.model:SetAttribute("Atordoado", math.max(e.model:GetAttribute("Atordoado") or 0, os.clock() + 0.7))
+	end
 	if from and force and force > 0 and not e.root.Anchored then
 		if e.raio > 2 then
 			force *= 0.2 -- o boss quase não é empurrado
@@ -755,10 +759,48 @@ P.moku_floresta = function(plr, char, root, dmg)
 	end
 end
 
+-- Combo que conecta: o jogador gruda no inimigo, que fica preso e sem revidar até o último golpe.
+-- golpes rápidos (dmgCada) com faíscas e, no fim, um golpe forte (dmgFinal) que joga o inimigo longe.
+local function combo(root, e, golpes, intervalo, dmgCada, dmgFinal, cor, forca)
+	local dur = golpes * intervalo + 0.35
+	prender(e, dur)
+	if e.raio <= 2 then e.model:SetAttribute("Atordoado", os.clock() + dur) end
+	for i = 1, golpes do
+		if e.hum.Health <= 0 or not e.root.Parent or not root.Parent then return end
+		local alvo = e.root.Position
+		local d = (alvo - root.Position) * Vector3.new(1, 0, 1)
+		if d.Magnitude > 0.5 and not root.Anchored then
+			-- fica de frente e colado no inimigo
+			local perto = alvo - d.Unit * (3 + e.raio)
+			root.CFrame = CFrame.lookAt(Vector3.new(perto.X, root.Position.Y, perto.Z), Vector3.new(alvo.X, root.Position.Y, alvo.Z))
+		end
+		if e.raio <= 2 then e.root.AssemblyLinearVelocity = Vector3.zero end
+		local p = alvo + Vector3.new(math.random() * 2 - 1, math.random() * 2.4 - 0.6, math.random() * 2 - 1)
+		burst(p, 2.2, cor, 0.12, 0.15)
+		emitir(p, cor, 6, { vel = 14, vida = 0.25 })
+		hit(e, dmgCada, nil, 0)
+		task.wait(intervalo)
+	end
+	if e.hum.Health > 0 and e.root.Parent then
+		local alvo = e.root.Position
+		clarao(alvo, cor, 16, 4)
+		ring(alvo - Vector3.new(0, 2, 0), 14, cor, 0.3)
+		burst(alvo, 7, cor, 0.25, 0.3)
+		tremor(alvo, 0.5)
+		hit(e, dmgFinal, root.Position, forca)
+	end
+end
+
 -- BYAKUGAN ----------------------------------------------------
 P.byaku_punho = function(plr, char, root, dmg)
 	task.wait(0.12)
 	local look = flatLook(root)
+	-- com um inimigo na frente, as palmas conectam nele (8 toques + empurrão final)
+	local alvo = nearestEnemy(root.Position, look, 11)
+	if alvo then
+		combo(root, alvo, 8, 0.07, dmg * 0.4, dmg * 0.9, CHAKRA_BLUE, 55)
+		return
+	end
 	for _ = 1, 6 do
 		local alvos = inCone(root.Position, look, 9, 50)
 		local pos = root.Position + look * 3 + Vector3.new(math.random() * 2 - 1, math.random() * 2, math.random() * 2 - 1)
@@ -852,6 +894,12 @@ P.shiro_presa = function(plr, char, root, dmg)
 	light(slash, WHITE, 12, 3)
 	TweenService:Create(slash, TweenInfo.new(0.2), { CFrame = slash.CFrame * CFrame.new(0, 0, -3), Size = Vector3.new(12, 0.2, 0.6) }):Play()
 	fadeOut(slash, 0.25)
+	-- com um inimigo na frente, três cortes conectam nele antes do golpe final
+	local alvo = nearestEnemy(root.Position, look, 10)
+	if alvo then
+		combo(root, alvo, 3, 0.09, dmg * 0.5, dmg * 1.3, WHITE, 35)
+		return
+	end
 	local set = {}
 	for _, e in ipairs(inCone(root.Position, look, 10, 60)) do
 		hitOnce(set, e, dmg * 2.6, root.Position, 30)

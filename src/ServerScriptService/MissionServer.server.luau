@@ -56,6 +56,19 @@ local function dados(player)
 	if type(data.Rank) == "string" and data.Rank ~= "Estudante" then m.Historia = MissionData.TotalHistoria end
 	if type(m.Cool) ~= "table" then m.Cool = {} end
 	if type(m.Feitas) ~= "table" then m.Feitas = {} end -- missões únicas já feitas
+	-- o 1º jutsu do clã passou a vir do mestre do clã (C1_<Clã>): quem já tinha aprendido na história continua com ele
+	if (tonumber(m.V) or 0) < 4 then
+		local clan = data.Cla and data.Cla.Id
+		if clan and m.Historia >= ClanPowers.HIST_PRIMEIRO then m.Feitas["C1_" .. clan] = true end
+		m.V = 4
+	end
+	-- quadro de missões: Of = ofertas atuais, Rec = últimas concluídas, H = início da hora, N = concluídas nesta hora
+	if type(m.Q) ~= "table" then m.Q = {} end
+	local q = m.Q
+	if type(q.Of) ~= "table" then q.Of = {} end
+	if type(q.Rec) ~= "table" then q.Rec = {} end
+	q.N = tonumber(q.N) or 0
+	if os.time() - (tonumber(q.H) or 0) >= 3600 then q.H, q.N = os.time(), 0 end
 	ClanPowers.Sincronizar(data) -- trocou de clã: missões do clã antigo somem
 	if type(m.Ativa) ~= "table" or not MissionData.Get(m.Ativa.Id) then m.Ativa = nil end
 	if type(m.Lado) ~= "table" or not MissionData.Get(m.Lado.Id) then m.Lado = nil end
@@ -68,8 +81,68 @@ local function dados(player)
 	return data, m
 end
 
+-- Quadro: completa as ofertas do jogador com missões do rank dele, sem repetir as últimas concluídas
+-- nem dois pedidos iguais (mesmo tipo e lugar) ao mesmo tempo.
+local rngQuadro = Random.new()
+local function encherQuadro(data, m)
+	local q = m.Q
+	local ranks = MissionData.QuadroRank[data.Rank] or MissionData.QuadroRank.Estudante
+	-- tira ofertas que não existem mais ou saíram do rank do jogador
+	for i = #q.Of, 1, -1 do
+		local missao = MissionData.Get(q.Of[i])
+		if not (missao and missao.Quadro and table.find(ranks, missao.Rank)) then table.remove(q.Of, i) end
+	end
+	local function pedido(x) return x.Tipo .. "/" .. tostring(x.Alvo) end
+	local usados = {}
+	for _, id in ipairs(q.Of) do usados[pedido(MissionData.Get(id))] = true end
+	for _, esp in ipairs({ "Ativa", "Lado" }) do
+		local x = m[esp] and MissionData.Get(m[esp].Id)
+		if x and x.Quadro then usados[pedido(x)] = true end
+	end
+	local candidatas = {}
+	for _, missao in ipairs(MissionData.Missoes) do
+		if missao.Quadro and table.find(ranks, missao.Rank) and not table.find(q.Of, missao.Id) and not table.find(q.Rec, missao.Id)
+			and not (m.Lado and m.Lado.Id == missao.Id) then
+			table.insert(candidatas, missao)
+		end
+	end
+	-- duas passadas: primeiro sem pedidos repetidos; se faltar, aceita repetir o tipo
+	for passada = 1, 2 do
+		while #q.Of < MissionData.QUADRO_OFERTAS and #candidatas > 0 do
+			local escolhida
+			local ordem = {}
+			for i = 1, #candidatas do ordem[i] = i end
+			for i = #ordem, 2, -1 do
+				local j = rngQuadro:NextInteger(1, i)
+				ordem[i], ordem[j] = ordem[j], ordem[i]
+			end
+			for _, i in ipairs(ordem) do
+				if passada == 2 or not usados[pedido(candidatas[i])] then escolhida = i break end
+			end
+			if not escolhida then break end
+			local missao = table.remove(candidatas, escolhida)
+			usados[pedido(missao)] = true
+			table.insert(q.Of, missao.Id)
+		end
+	end
+	-- rank com poucas missões: se ainda faltar, voltam as concluídas há mais tempo
+	for _, id in ipairs(q.Rec) do
+		if #q.Of >= MissionData.QUADRO_OFERTAS then break end
+		local missao = MissionData.Get(id)
+		if missao and missao.Quadro and table.find(ranks, missao.Rank) and not table.find(q.Of, id) and not (m.Lado and m.Lado.Id == id) then
+			table.insert(q.Of, id)
+		end
+	end
+end
+
 local function disponivel(data, m, missao)
 	if (m.Ativa and m.Ativa.Id == missao.Id) or (m.Lado and m.Lado.Id == missao.Id) then return false end
+	if missao.Quadro then
+		if m.Q.N >= MissionData.QUADRO_POR_HORA then
+			return false, ("Board limit reached. New missions in %d min"):format(math.max(1, math.ceil((m.Q.H + 3600 - os.time()) / 60)))
+		end
+		return table.find(m.Q.Of, missao.Id) ~= nil
+	end
 	if missao.Historia and m.Historia ~= missao.Historia - 1 then return false end -- história: só o próximo passo aparece
 	if missao.Cla and not (data.Cla and data.Cla.Id == missao.Cla) then return false end
 	if missao.Unica and m.Feitas[missao.Id] then return false end
@@ -93,7 +166,7 @@ local function estado(player)
 	if not data then return nil end
 	local disp = {}
 	for _, missao in ipairs(MissionData.Missoes) do
-		if disponivel(data, m, missao) then
+		if not missao.Quadro and disponivel(data, m, missao) then
 			disp[missao.Npc] = true
 		end
 	end
@@ -101,6 +174,12 @@ local function estado(player)
 		if not e then return nil end
 		local missao = MissionData.Get(e.Id)
 		return { Id = missao.Id, P = e.P, N = missao.N }
+	end
+	-- a atendente do balcão mostra o aviso enquanto ainda dá para pegar missão do quadro
+	if m.Q.N < MissionData.QUADRO_POR_HORA then
+		for key, info in pairs(MissionData.NPCs) do
+			if info.Quadro then disp[key] = true end
+		end
 	end
 	return { Ativa = resumo(m.Ativa), Lado = resumo(m.Lado), Rank = data.Rank, NpcsComMissao = disp, Historia = m.Historia }
 end
@@ -144,6 +223,36 @@ local function atualizarRank(player)
 	player:SetAttribute("Rank", data.Rank)
 end
 
+-- rank ninja em cima da cabeça do jogador (todos veem); muda de cor a cada rank
+local COR_RANK = { Estudante = Color3.fromRGB(200, 200, 205), Genin = Color3.fromRGB(110, 220, 130), Chunin = Color3.fromRGB(90, 170, 255),
+	Jonin = Color3.fromRGB(190, 120, 255), Elite = Color3.fromRGB(255, 170, 60), Kage = Color3.fromRGB(255, 80, 80) }
+local function placaRank(player)
+	local char = player.Character
+	local head = char and char:FindFirstChild("Head")
+	if not head then return end
+	local rank = player:GetAttribute("Rank") or "Estudante"
+	local b = head:FindFirstChild("PlacaRank")
+	if not b then
+		b = Instance.new("BillboardGui")
+		b.Name = "PlacaRank"
+		b.Size = UDim2.fromOffset(180, 22)
+		b.StudsOffset = Vector3.new(0, 2.9, 0)
+		b.MaxDistance = 70
+		b.LightInfluence = 0
+		local t = Instance.new("TextLabel")
+		t.Name = "Texto"
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.Font = Enum.Font.GothamBlack
+		t.TextSize = 15
+		t.TextStrokeTransparency = 0.25
+		t.Parent = b
+		b.Parent = head
+	end
+	b.Texto.Text = "[ " .. string.upper(MissionData.RankName(rank)) .. " ]"
+	b.Texto.TextColor3 = COR_RANK[rank] or COR_RANK.Estudante
+end
+
 ---------------------------------------------------------------
 -- Concluir e progredir
 ---------------------------------------------------------------
@@ -155,6 +264,17 @@ local function concluir(player, esp)
 	m[esp] = nil
 	if missao.Historia then
 		m.Historia = math.max(m.Historia, missao.Historia)
+	elseif missao.Quadro then
+		-- sai das ofertas, entra na memória (não repete tão cedo) e conta no limite da hora
+		local q = m.Q
+		local i = table.find(q.Of, missao.Id)
+		if i then table.remove(q.Of, i) end
+		table.insert(q.Rec, missao.Id)
+		while #q.Rec > MissionData.QUADRO_MEMORIA do table.remove(q.Rec, 1) end
+		q.N += 1
+		encherQuadro(data, m)
+		local resta = MissionData.QUADRO_POR_HORA - q.N
+		aviso(player, resta > 0 and ("Board missions left this hour: %d"):format(resta) or "Board limit reached for this hour. Story and master missions are still open.", resta > 0)
 	elseif missao.Unica then
 		m.Feitas[missao.Id] = true
 	else
@@ -201,6 +321,13 @@ local function concluir(player, esp)
 	if r.Jutsu or r.NovaNatureza then
 		local an = ServerStorage:FindFirstChild("AtualizarNatureza")
 		if an then an:Fire(player) end
+	end
+	if missao.Id == "H6" then
+		-- depois de provar os punhos, o Sensei manda o jogador para o mestre do clã
+		local clan = ClanPowers.Sincronizar(data)
+		local mestre = clan and ClanPowers.Mestres[clan]
+		local info = mestre and MissionData.NPCs[mestre.Npc]
+		if info then aviso(player, ("Your clan master is %s, %s. Go learn your first jutsu!"):format(info.Name, info.Onde or "in the village"), true) end
 	end
 	if r.PrimeiroJutsu or missao.Historia then
 		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
@@ -302,7 +429,7 @@ action.OnServerInvoke = function(player, acao, id)
 		local missao = MissionData.Get(id)
 		if not missao then return { ok = false, erro = "Unknown mission." } end
 		local de = ultimoNpc[player]
-		if de ~= "Quadro" and de ~= missao.Npc then
+		if de ~= missao.Npc then
 			return { ok = false, erro = "Talk to the right person first." }
 		end
 		local esp = espacoDe(missao)
@@ -354,8 +481,9 @@ end
 local function ofertasDe(player, npcKey)
 	local data, m = dados(player)
 	local lista = {}
+	if npcKey == "Quadro" then encherQuadro(data, m) end
 	for _, missao in ipairs(MissionData.Missoes) do
-		if npcKey == "Quadro" or missao.Npc == npcKey then
+		if missao.Npc == npcKey and (npcKey ~= "Quadro" or table.find(m.Q.Of, missao.Id)) then
 			local ok, porque = disponivel(data, m, missao)
 			local bloqueio = nil
 			if not ok then
@@ -365,13 +493,13 @@ local function ofertasDe(player, npcKey)
 					bloqueio = ("Available again in %d min"):format(math.ceil((m.Cool[missao.Id] - os.time()) / 60))
 				end
 			end
-			if ok or (bloqueio and npcKey ~= "Quadro") then
+			if ok or bloqueio then
 				local giver = MissionData.NPCs[missao.Npc]
 				table.insert(lista, {
 					Id = missao.Id, Name = missao.Name, Rank = missao.Rank, Desc = missao.Desc,
 					Recompensa = missao.Recompensa, Bloqueio = bloqueio,
 					Conversa = (ok and missao.Tipo ~= "falar") and missao.Conversa or nil,
-					De = giver and giver.Name or "?",
+					De = giver and giver.Name or nil,
 				})
 			end
 		end
@@ -416,8 +544,10 @@ conversar = function(player, npcKey, modelo)
 	end
 	evento:FireClient(player, {
 		tipo = "dialogo", npc = npcKey, nome = npcKey == "Quadro" and (atendente and atendente.Name or "Mission Board") or info.Name,
-		titulo = npcKey == "Quadro" and "All available missions" or info.Titulo,
-		fala = npcKey == "Quadro" and (atendente and atendente.Fala or "Pick a mission. You can only do one at a time.") or fala,
+		titulo = npcKey == "Quadro" and ("Rank missions  ·  %d/%d this hour"):format(m.Q.N, MissionData.QUADRO_POR_HORA) or info.Titulo,
+		fala = npcKey == "Quadro" and (m.Q.N >= MissionData.QUADRO_POR_HORA
+			and ("You did every mission I had for this hour. Come back in %d min."):format(math.max(1, math.ceil((m.Q.H + 3600 - os.time()) / 60)))
+			or "These are the missions of your rank. New ones come in when you finish one.") or fala,
 		ofertas = ofertas, temAtiva = m.Ativa ~= nil, modelo = modelo,
 	})
 end
@@ -428,10 +558,10 @@ local function prepararNpc(modelo)
 	local info = MissionData.NPCs[modelo.Name] or MissionData.NPCs.StarterCharacter
 	local p = Instance.new("ProximityPrompt")
 	p.Name = "ConversaPrompt"
-	p.ActionText = info.Quadro and "Missions" or "Talk"
+	p.ActionText = info.Quadro and "Missions" or info.Rezar and "Pray" or "Talk"
 	p.ObjectText = info.Name
 	p.KeyboardKeyCode = Enum.KeyCode.E
-	p.MaxActivationDistance = 10
+	p.MaxActivationDistance = info.Alcance or 10
 	p.RequiresLineOfSight = false
 	p.Parent = root
 	p.Triggered:Connect(function(player)
@@ -474,6 +604,7 @@ end
 for _, mdl in ipairs(CollectionService:GetTagged("NPC")) do prepararNpc(mdl) end
 CollectionService:GetInstanceAddedSignal("NPC"):Connect(prepararNpc)
 for _, mdl in ipairs(CollectionService:GetTagged("NPCParado")) do prepararNpc(mdl) end
+CollectionService:GetInstanceAddedSignal("NPCParado"):Connect(prepararNpc) -- mestres criados pelo script MundoExtras
 
 -- quadro de missões no balcão QUESTS da praça
 task.spawn(function()
@@ -621,38 +752,56 @@ local function montarAcampamento()
 	end
 end
 
+-- Nukenin (ninja renegado): usa a aparência guardada em ServerStorage.Aparencias.Nukenin (capuz azul, máscara,
+-- chifres vermelhos e espada). Se ela não existir, monta um boneco simples.
 local modeloBase
 local function bandidoBase()
 	if modeloBase then return modeloBase end
+	local ap = ServerStorage:FindFirstChild("Aparencias")
+	local skin = ap and ap:FindFirstChild("Nukenin")
+	if skin and skin:FindFirstChildOfClass("Humanoid") and skin:FindFirstChild("HumanoidRootPart") then
+		local m = skin:Clone()
+		for _, d in ipairs(m:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = false
+				d.CanTouch = false
+				if d.Name ~= "HumanoidRootPart" and d.Name ~= "Torso" and d.Name ~= "Head" and not d.Name:find("Leg") then d.CanCollide = false end
+			elseif d:IsA("LuaSourceContainer") then
+				d:Destroy()
+			end
+		end
+		modeloBase = m
+		return m
+	end
 	local ok, m = pcall(function()
 		local d = Instance.new("HumanoidDescription")
 		d.HeadColor = Color3.fromRGB(215, 170, 130)
-		d.TorsoColor = Color3.fromRGB(70, 60, 55)
-		d.LeftArmColor, d.RightArmColor = d.HeadColor, d.HeadColor
-		d.LeftLegColor, d.RightLegColor = Color3.fromRGB(45, 40, 38), Color3.fromRGB(45, 40, 38)
+		d.TorsoColor = Color3.fromRGB(35, 45, 80)
+		d.LeftArmColor, d.RightArmColor = d.TorsoColor, d.TorsoColor
+		d.LeftLegColor, d.RightLegColor = Color3.fromRGB(25, 28, 45), Color3.fromRGB(25, 28, 45)
 		return Players:CreateHumanoidModelFromDescription(d, Enum.HumanoidRigType.R15)
 	end)
 	if ok and m then
 		modeloBase = m
-		-- lenço vermelho no rosto
-		local head = m:FindFirstChild("Head")
-		if head then
-			local l = Instance.new("Part")
-			l.Name = "Lenco"
-			l.Size = Vector3.new(head.Size.X * 1.05, head.Size.Y * 0.35, head.Size.Z * 1.05)
-			l.CFrame = head.CFrame * CFrame.new(0, -head.Size.Y * 0.2, 0)
-			l.Color = Color3.fromRGB(170, 40, 40)
-			l.Material = Enum.Material.Fabric
-			l.CanCollide, l.Massless = false, true
-			local w = Instance.new("WeldConstraint")
-			w.Part0, w.Part1 = head, l
-			w.Parent = l
-			l.Parent = m
-		end
 	else
-		warn("[MissionServer] Não deu para criar o bandido: " .. tostring(m))
+		warn("[MissionServer] Não deu para criar o nukenin: " .. tostring(m))
 	end
 	return modeloBase
+end
+
+-- tipos de nukenin: o comum, o batedor (rápido e fraco) e o bruto (grande, lento e forte)
+local TIPOS_NUKENIN = {
+	{ Nome = "Rogue Ninja", Peso = 60, Vida = 70, Vel = 12, Dano = 6, Escala = 1 },
+	{ Nome = "Rogue Scout", Peso = 25, Vida = 50, Vel = 16, Dano = 5, Escala = 0.9 },
+	{ Nome = "Rogue Brute", Peso = 15, Vida = 130, Vel = 10, Dano = 10, Escala = 1.25 },
+}
+local function tipoNukenin()
+	local r = rng:NextNumber(0, 100)
+	for _, t in ipairs(TIPOS_NUKENIN) do
+		if r < t.Peso then return t end
+		r -= t.Peso
+	end
+	return TIPOS_NUKENIN[1]
 end
 
 local function creditar(posicao)
@@ -668,21 +817,28 @@ end
 local function novoBandido(e)
 	local base = bandidoBase()
 	if not base then return end
+	local tipo = tipoNukenin()
 	local m = base:Clone()
 	m.Name = "Bandit"
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local root = m:FindFirstChild("HumanoidRootPart")
-	hum.MaxHealth = 70
-	hum.Health = 70
-	hum.WalkSpeed = 12
-	hum.DisplayName = "Bandit"
+	hum.MaxHealth = tipo.Vida
+	hum.Health = tipo.Vida
+	hum.WalkSpeed = tipo.Vel
+	hum.DisplayName = tipo.Nome
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+	hum.NameDisplayDistance = 60
+	hum.HealthDisplayDistance = 50
 	m:SetAttribute("Raio", 0)
 	m:SetAttribute("Esconderijo", e.Name)
 	local casa = e.Saida or e.Pos
 	local ang = rng:NextNumber(0, math.pi * 2)
 	local pos = casa + Vector3.new(math.cos(ang), 0, math.sin(ang)) * rng:NextNumber(1, 6)
-	m:PivotTo(CFrame.new(pos.X, 3.5, pos.Z))
 	m.Parent = pastaCamp
+	-- escala depois de estar no mundo (antes disso as peças soltas da roupa crescem duas vezes)
+	if tipo.Escala ~= 1 then pcall(function() m:ScaleTo(tipo.Escala) end) end
+	m:PivotTo(CFrame.new(pos.X, 3.5 * tipo.Escala, pos.Z))
+	pcall(function() root:SetNetworkOwner(nil) end)
 	CollectionService:AddTag(m, "Inimigo")
 	local morto = false
 	hum.Died:Connect(function()
@@ -705,12 +861,16 @@ local function novoBandido(e)
 					if d < dist then alvo, dist = h, d end
 				end
 			end
-			if alvo then
+			if (m:GetAttribute("Atordoado") or 0) > os.clock() then
+				-- levou um golpe: fica travado e não revida enquanto o combo conecta
+				hum:MoveTo(root.Position)
+				ultimoGolpe = math.max(ultimoGolpe, os.clock() - 0.8)
+			elseif alvo then
 				local r = alvo.Parent.HumanoidRootPart
 				hum:MoveTo(r.Position)
-				if dist < 5 and os.clock() - ultimoGolpe > 1.3 then
+				if dist < 5 * tipo.Escala and os.clock() - ultimoGolpe > 1.3 then
 					ultimoGolpe = os.clock()
-					alvo:TakeDamage(6)
+					alvo:TakeDamage(tipo.Dano)
 				end
 			elseif (root.Position - casa).Magnitude > 16 then
 				hum:MoveTo(casa)
@@ -784,7 +944,7 @@ local function novaErva()
 				local _, missao = nil, nil
 				if data then _, missao = acharAtiva(m, function(x) return x.Tipo == "coletar" end) end
 				if not missao then
-					aviso(player, "Someone needs these herbs. Take a mission first (Hana or the Stranger).", false)
+					aviso(player, "Someone needs these herbs. Take a herb mission first (QUESTS board).", false)
 					return
 				end
 				if not e.Parent then return end
@@ -868,6 +1028,12 @@ local function setup(player)
 		end
 		atualizarRank(player)
 		enviarEstado(player)
+		placaRank(player)
+		player.CharacterAdded:Connect(function(char)
+			char:WaitForChild("Head", 10)
+			placaRank(player)
+		end)
+		player:GetAttributeChangedSignal("Rank"):Connect(function() placaRank(player) end)
 		local ls = player:WaitForChild("leaderstats", 10)
 		local lv = ls and ls:WaitForChild("Level", 10)
 		if lv then

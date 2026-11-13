@@ -272,6 +272,10 @@ local function hit(e, amount, from, force, up)
 	end
 	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.hum:TakeDamage(amount)
+	-- o golpe "conecta": inimigo comum fica travado um instante e não revida no meio do combo (chefes não)
+	if e.raio <= 2 then
+		e.model:SetAttribute("Atordoado", math.max(e.model:GetAttribute("Atordoado") or 0, os.clock() + 0.7))
+	end
 	if force and force > 0 and not e.root.Anchored then
 		if e.raio > 2 then
 			force *= 0.2 -- o boss quase não é empurrado

@@ -41,7 +41,7 @@ NatureData.Tipos = {
 			{ Id = "nat_terra1", Name = "Rock Pillars", Cooldown = 8, Chakra = 18, Desc = "Stone pillars rise in front of you and launch enemies." },
 			{ Id = "nat_terra2", Name = "Earth Quake", Cooldown = 17, Chakra = 38, Desc = "The ground cracks around you, hurting and holding enemies." },
 		} },
-	Agua = { Name = "Water", Color = Color3.fromRGB(70, 150, 255), Mestre = "Sakura (Naruto Shippuden)",
+	Agua = { Name = "Water", Color = Color3.fromRGB(70, 150, 255), Mestre = "Kakashi",
 		Jutsus = {
 			{ Id = "nat_agua1", Name = "Water Bullet", Cooldown = 6, Chakra = 16, Desc = "A fast ball of water that splashes on hit." },
 			{ Id = "nat_agua2", Name = "Great Wave", Cooldown = 16, Chakra = 38, Desc = "A wave rolls forward, dragging enemies with it." },

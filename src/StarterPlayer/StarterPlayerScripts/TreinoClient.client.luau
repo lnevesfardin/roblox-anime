@@ -1,8 +1,10 @@
 -- Treino da Academia (Sensei Kaito): minigame de tempo nos alvos de madeira.
 -- Treino de chakra: vira uma cutscene (barras de cinema, câmera em volta do personagem) com o minigame dentro das barras.
 -- Acerte 10 socos quando o marcador estiver na faixa verde. A faixa diminui e o marcador acelera; 3 erros = falhou.
--- Modo "teclas" (Coach Gaien, estações que não são alvo de madeira): 4 séries de exercícios; em cada uma
--- aparece uma sequência de teclas W A S D para apertar na ordem antes do tempo acabar. 3 erros = falhou.
+-- Modo "teclas" (Coach Gaien, estações que não são alvo de madeira): 8 níveis; em cada um aparece uma
+-- sequência curta de teclas W A S D para apertar na ordem. Tecla errada não tira vida: só perde vida (5)
+-- quando o tempo do nível acaba.
+-- A mesma cena de cutscene serve para a prática das naturezas (cena = "natureza", com a cor da natureza).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -14,7 +16,8 @@ local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 local minigame = ReplicatedStorage:WaitForChild("TreinoMinigame")
 
-local VIDAS = 3
+local VIDAS = 3        -- minigame de socos
+local VIDAS_TECLAS = 5 -- minigame de teclas
 local function lerp(a, b, t) return a + (b - a) * t end
 
 local function new(classe, props, filhos)
@@ -124,9 +127,10 @@ end
 
 -- Treino de chakra (estação de atributo "Chakra"): o personagem se ajoelha em meditação com as mãos em selo,
 -- um círculo de chakra aparece no chão e uma aura sobe dele, crescendo a cada série. No fim, o chakra explode.
-local CHAKRA_COR = Color3.fromRGB(90, 180, 255)
-local SERIES_CHAKRA = { "GATHER CHAKRA", "HAND SIGNS", "FOCUS", "RELEASE!" }
-local DESCE = 1.35 -- quanto o corpo desce para ficar ajoelhado
+local COR_PADRAO = Color3.fromRGB(90, 180, 255)
+local CHAKRA_COR = COR_PADRAO -- muda para a cor da natureza na prática de natureza
+local SERIES_CHAKRA = { "GATHER CHAKRA", "BUILD IT UP", "HOLD IT", "RELEASE!" }
+local DESCE = 0.3 -- quanto o corpo desce na base de força (pernas abertas e joelhos dobrados)
 local cena = nil
 local cinema = nil -- modo cinema (cutscene) do treino de chakra, mais abaixo
 
@@ -155,16 +159,18 @@ local function iniciarCena()
 	local chaoY = root.Position.Y - hum.HipHeight - root.Size.Y / 2
 	local r = math.rad
 	if hum.RigType == Enum.HumanoidRigType.R15 then
-		-- mãos juntas na frente do peito (selo)
-		girarJunta(char, "RightUpperArm", "RightShoulder", CFrame.Angles(r(80), 0, r(-32)))
-		girarJunta(char, "LeftUpperArm", "LeftShoulder", CFrame.Angles(r(80), 0, r(32)))
-		girarJunta(char, "RightLowerArm", "RightElbow", CFrame.Angles(r(70), 0, 0))
-		girarJunta(char, "LeftLowerArm", "LeftElbow", CFrame.Angles(r(70), 0, 0))
-		-- ajoelhado (coxas para a frente, canelas para trás)
-		girarJunta(char, "RightUpperLeg", "RightHip", CFrame.Angles(r(85), 0, 0))
-		girarJunta(char, "LeftUpperLeg", "LeftHip", CFrame.Angles(r(85), 0, 0))
-		girarJunta(char, "RightLowerLeg", "RightKnee", CFrame.Angles(r(-150), 0, 0))
-		girarJunta(char, "LeftLowerLeg", "LeftKnee", CFrame.Angles(r(-150), 0, 0))
+		-- fazendo força: braços abertos ao lado do corpo, cotovelos dobrados e punhos fechados para cima
+		girarJunta(char, "RightUpperArm", "RightShoulder", CFrame.Angles(r(8), 0, r(24)))
+		girarJunta(char, "LeftUpperArm", "LeftShoulder", CFrame.Angles(r(8), 0, r(-24)))
+		girarJunta(char, "RightLowerArm", "RightElbow", CFrame.Angles(r(100), 0, 0))
+		girarJunta(char, "LeftLowerArm", "LeftElbow", CFrame.Angles(r(100), 0, 0))
+		-- base firme: pernas abertas e joelhos dobrados, tronco inclinado e cabeça baixa de esforço
+		girarJunta(char, "RightUpperLeg", "RightHip", CFrame.Angles(r(16), 0, r(14)))
+		girarJunta(char, "LeftUpperLeg", "LeftHip", CFrame.Angles(r(16), 0, r(-14)))
+		girarJunta(char, "RightLowerLeg", "RightKnee", CFrame.Angles(r(-30), 0, 0))
+		girarJunta(char, "LeftLowerLeg", "LeftKnee", CFrame.Angles(r(-30), 0, 0))
+		girarJunta(char, "UpperTorso", "Waist", CFrame.Angles(r(-9), 0, 0))
+		girarJunta(char, "Head", "Neck", CFrame.Angles(r(-10), 0, 0))
 		root.CFrame = root.CFrame - Vector3.new(0, DESCE, 0)
 		cena.desceu = DESCE
 	else
@@ -179,8 +185,12 @@ local function iniciarCena()
 		end
 	end
 	cena.pose = RunService.Stepped:Connect(function()
+		-- o corpo treme de esforço, cada vez mais forte conforme o chakra sobe
+		local amp = 0.012 + 0.045 * (cinema and cinema.nivel or 0)
 		for j, cf in pairs(cena and cena.juntas or {}) do
-			if j.Parent then j.Transform = cf end
+			if j.Parent then
+				j.Transform = cf * CFrame.Angles((math.random() - 0.5) * amp, (math.random() - 0.5) * amp, (math.random() - 0.5) * amp)
+			end
 		end
 	end)
 	-- círculo de chakra no chão
@@ -296,8 +306,9 @@ local barraTopo = new("Frame", { Name = "BarraTopo", AnchorPoint = Vector2.new(0
 local barraBaixo = new("Frame", { Name = "BarraBaixo", AnchorPoint = Vector2.new(0, 0), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, FAIXA),
 	BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Visible = false, Parent = gui })
 -- fio de chakra na borda das barras
+local fiosBarra = {}
 for _, b in ipairs({ barraTopo, barraBaixo }) do
-	new("Frame", { AnchorPoint = Vector2.new(0, b == barraTopo and 1 or 0), Position = UDim2.fromScale(0, b == barraTopo and 1 or 0), Size = UDim2.new(1, 0, 0, 2),
+	fiosBarra[#fiosBarra + 1] = new("Frame", { AnchorPoint = Vector2.new(0, b == barraTopo and 1 or 0), Position = UDim2.fromScale(0, b == barraTopo and 1 or 0), Size = UDim2.new(1, 0, 0, 2),
 		BackgroundColor3 = CHAKRA_COR, BackgroundTransparency = 0.3, BorderSizePixel = 0, Parent = b })
 end
 
@@ -334,11 +345,12 @@ local function cameraCinema(root)
 		-- entra afastada e chega perto; depois balança devagar de um lado para o outro na frente do personagem
 		local entrada = 1 - (1 - math.min(t / 1.4, 1)) ^ 3
 		local nivel = cinema and cinema.nivel or 0
-		local dist = 15 - (6.5 + 1.5 * nivel) * entrada
-		local ang = math.sin(t * 0.35) * 0.55 + 0.35
+		-- termina bem perto, focada no personagem (do peito para cima cabe entre as barras)
+		local dist = 14 - (7 + 1.5 * nivel) * entrada
+		local ang = math.sin(t * 0.35) * 0.5 + 0.3
 		local dir = CFrame.Angles(0, ang, 0):VectorToWorldSpace(frente)
-		local foco = root.Position + Vector3.new(0, 0.6, 0)
-		local pos = foco + dir * dist + Vector3.new(0, 1.6 - 0.6 * entrada + math.sin(t * 0.6) * 0.15, 0)
+		local foco = root.Position + Vector3.new(0, 0.9, 0)
+		local pos = foco + dir * dist + Vector3.new(0, 1.4 - 1.0 * entrada + math.sin(t * 0.6) * 0.12, 0)
 		local tremor = cinema and cinema.tremor or 0
 		if tremor > 0 then
 			pos += Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * tremor
@@ -375,6 +387,7 @@ local function ligarCinema()
 		o.Parent = item[2]
 	end
 	painel.Visible = false
+	for _, f in ipairs(fiosBarra) do f.BackgroundColor3 = CHAKRA_COR end
 	barraTopo.Visible, barraBaixo.Visible = true, true
 	barraTopo.Position, barraBaixo.Position = UDim2.fromScale(0, 0), UDim2.fromScale(0, 1)
 	barraTopo.AnchorPoint, barraBaixo.AnchorPoint = Vector2.new(0, 1), Vector2.new(0, 0)
@@ -406,9 +419,9 @@ end
 
 local teclaApertada
 local function novaSerie()
-	local n = 4 + estado.acertos -- 4, 5, 6 e 7 teclas
+	local n = 3 + math.floor(estado.acertos / 2) -- 3, 3, 4, 4, 5, 5, 6 e 6 teclas
 	estado.seq, estado.idx = {}, 1
-	estado.limite = 1.6 + n * 0.75
+	estado.limite = 2.6 + n * 0.9
 	estado.resta = estado.limite
 	for _, c in ipairs(caixas) do c:Destroy() end
 	caixas = {}
@@ -419,11 +432,11 @@ local function novaSerie()
 			TextSize = 22, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = i, Parent = fileira }, { canto(8), new("UIStroke", { Color = Color3.fromRGB(170, 120, 70), Thickness = 2 }) })
 	end
 	caixas[1].BackgroundColor3 = Color3.fromRGB(230, 120, 40)
-	local nomes = estado.chakra and SERIES_CHAKRA or SERIES
-	titulo.Text = estado.cabecalho .. "  ·  " .. nomes[math.min(estado.acertos + 1, #nomes)]
+	local nomes = estado.chakra and (estado.series or SERIES_CHAKRA) or SERIES
+	titulo.Text = estado.cabecalho .. "  ·  " .. nomes[math.min(math.floor(estado.acertos * #nomes / estado.total) + 1, #nomes)]
 	if estado.chakra then nivelCena(estado.acertos / estado.total) end
 	placar.Text = ("SETS  %d / %d"):format(estado.acertos, estado.total)
-	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
+	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", estado.maxVidas - estado.vidas)
 end
 
 local function novaRodada()
@@ -441,7 +454,7 @@ local function novaRodada()
 	zona.Size = UDim2.fromScale(estado.largura, 1)
 	zona.Position = UDim2.fromScale(c, 0)
 	placar.Text = ("HITS  %d / %d"):format(estado.acertos, estado.total)
-	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
+	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", estado.maxVidas - estado.vidas)
 end
 
 local function terminar(resultado)
@@ -480,7 +493,7 @@ local function errou()
 	estado.vidas -= 1
 	if estado.chakra then falhaCena() end
 	mostrar("MISS!", Color3.fromRGB(240, 80, 80))
-	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
+	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", estado.maxVidas - estado.vidas)
 	if estado.vidas <= 0 then terminar("falhou") return true end
 	return false
 end
@@ -517,11 +530,11 @@ teclaApertada = function(t)
 			caixas[estado.idx].BackgroundColor3 = Color3.fromRGB(230, 120, 40)
 		end
 	else
+		-- tecla errada: só pisca vermelho (não tira vida; quem tira vida é o tempo acabando)
 		caixa.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 		task.delay(0.2, function()
 			if caixa.Parent and caixas[estado.idx] == caixa then caixa.BackgroundColor3 = Color3.fromRGB(230, 120, 40) end
 		end)
-		errou()
 	end
 end
 for i, t in ipairs(TECLAS) do
@@ -551,7 +564,7 @@ local function golpe()
 		mostrar("MISS!", Color3.fromRGB(240, 80, 80))
 		barra.BackgroundColor3 = Color3.fromRGB(140, 40, 40)
 		TweenService:Create(barra, TweenInfo.new(0.3), { BackgroundColor3 = Color3.fromRGB(70, 55, 45) }):Play()
-		vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
+		vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", estado.maxVidas - estado.vidas)
 		if estado.vidas <= 0 then terminar("falhou") end
 	end
 end
@@ -586,12 +599,17 @@ minigame.OnClientEvent:Connect(function(info)
 	if info.acao ~= "comecar" or ativo then return end
 	local teclas = info.modo == "teclas"
 	local hum0 = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	estado = { total = info.acertos or 10, acertos = 0, vidas = VIDAS, pos = 0, dir = 1, tempo = 0, travaAte = 0, alvo = info.alvo,
+	local maxVidas = teclas and VIDAS_TECLAS or VIDAS
+	estado = { total = info.acertos or 10, acertos = 0, vidas = maxVidas, maxVidas = maxVidas, pos = 0, dir = 1, tempo = 0, travaAte = 0, alvo = info.alvo,
 		modo = teclas and "teclas" or "socos", hip = hum0 and hum0.HipHeight }
-	estado.chakra = teclas and (info.cena == "chakra" or info.id == "Chakra")
-	estado.cabecalho = (estado.chakra and "CHAKRA TRAINING") or (info.titulo or (teclas and "COACH GAIEN'S DRILL" or "SENSEI KAITO'S TRAINING")) .. "  ·  " .. string.upper(info.nome or "")
+	estado.chakra = teclas and (info.cena == "chakra" or info.cena == "natureza" or info.id == "Chakra")
+	-- prática de natureza: a cena usa a cor e o nome da natureza
+	CHAKRA_COR = (info.cena == "natureza" and info.cor) or COR_PADRAO
+	estado.series = info.cena == "natureza" and info.series or nil
+	estado.cabecalho = (info.cena == "natureza" and string.upper(info.nome or "NATURE") .. " PRACTICE") or (estado.chakra and "CHAKRA TRAINING") or (info.titulo or (teclas and "COACH GAIEN'S DRILL" or "SENSEI KAITO'S TRAINING")) .. "  ·  " .. string.upper(info.nome or "")
 	titulo.Text = estado.cabecalho
-	dica.Text = (estado.chakra and "Focus! Press the keys in order to gather chakra.  [W A S D]")
+	dica.Text = (info.cena == "natureza" and (info.dica or "Press the keys in order.") .. "  [W A S D]")
+		or (estado.chakra and "Focus! Press the keys in order to gather chakra.  [W A S D]")
 		or teclas and "Press the keys in order before the time runs out!  [W A S D]"
 		or ((info.dica or "Punch when the marker is inside the green zone!") .. "  [SPACE / CLICK HIT]")
 	barra.Visible, bHit.Visible = not teclas, not teclas

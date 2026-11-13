@@ -28,6 +28,7 @@ feedbackEvent.Name = "AbilityFeedback"
 feedbackEvent.Parent = ReplicatedStorage
 
 local cooldowns = {} -- [player] = { [idDoPoder] = horaLiberada }
+local conjurar -- efeito ao soltar um jutsu (definido antes da lista de poderes)
 
 ---------------------------------------------------------------
 -- Auxiliares
@@ -59,12 +60,74 @@ local function light(part, color, range, brightness)
 	return l
 end
 
+---------------------------------------------------------------
+-- Camada de efeitos (usada por todos os jutsus): partículas, clarão de luz, tremor de tela, rastros
+---------------------------------------------------------------
+local TEX = {
+	faisca = "rbxasset://textures/particles/sparkles_main.dds",
+	fumaca = "rbxasset://textures/particles/smoke_main.dds",
+	fogo = "rbxasset://textures/particles/fire_main.dds",
+}
+local tremorEv = Instance.new("RemoteEvent")
+tremorEv.Name = "TremerTela"
+tremorEv.Parent = ReplicatedStorage
+
+-- solta uma rajada de partículas num ponto. o = { tex, tam, vida, vel, drag, acel, luz, cor2, spread }
+local function emitir(pos, cor, qtd, o)
+	o = o or {}
+	local base = fx({ size = Vector3.one * 0.2, color = cor, trans = 1, cf = CFrame.new(pos) })
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = TEX[o.tex or "faisca"]
+	pe.Color = ColorSequence.new(cor, o.cor2 or cor)
+	pe.LightEmission = o.luz or 1
+	local tam = o.tam or 0.8
+	pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, tam), NumberSequenceKeypoint.new(1, o.cresce and tam * 2.5 or 0) })
+	pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, o.tex == "fumaca" and 0.4 or 0), NumberSequenceKeypoint.new(1, 1) })
+	local vida = o.vida or 0.4
+	pe.Lifetime = NumberRange.new(vida * 0.6, vida * 1.4)
+	local vel = o.vel or 14
+	pe.Speed = NumberRange.new(vel * 0.5, vel * 1.3)
+	local spread = o.spread or 180
+	pe.SpreadAngle = Vector2.new(spread, spread)
+	pe.Drag = o.drag or 5
+	pe.Acceleration = o.acel or Vector3.zero
+	pe.Rotation = NumberRange.new(0, 360)
+	pe.RotSpeed = NumberRange.new(-200, 200)
+	pe.Rate = 0
+	pe.Parent = base
+	pe:Emit(math.clamp(math.floor(qtd), 1, 80))
+	Debris:AddItem(base, vida * 1.5 + 0.3)
+end
+
+-- clarão de luz rápido
+local function clarao(pos, cor, alcance, brilho)
+	local p = fx({ size = Vector3.one * 0.2, color = cor, trans = 1, cf = CFrame.new(pos) })
+	local l = light(p, cor, alcance or 18, brilho or 6)
+	TweenService:Create(l, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Brightness = 0 }):Play()
+	Debris:AddItem(p, 0.4)
+end
+
+-- tremor de tela para quem está perto (o cliente faz o efeito)
+local function tremor(pos, forca)
+	tremorEv:FireAllClients(pos, math.clamp(forca or 0.5, 0.1, 2))
+end
+
 local function burst(pos, diameter, color, time, trans)
 	time = time or 0.4
 	local b = fx({ shape = Enum.PartType.Ball, size = Vector3.one, color = color, cf = CFrame.new(pos), trans = trans or 0.2 })
 	TweenService:Create(b, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Size = Vector3.one * diameter, Transparency = 1 }):Play()
 	Debris:AddItem(b, time + 0.1)
+	-- núcleo branco que some rápido, faíscas e luz
+	local nucleo = fx({ shape = Enum.PartType.Ball, size = Vector3.one * diameter * 0.35, color = Color3.new(1, 1, 1), cf = CFrame.new(pos), trans = 0.1 })
+	TweenService:Create(nucleo, TweenInfo.new(time * 0.5, Enum.EasingStyle.Quad), { Size = Vector3.one * 0.2, Transparency = 1 }):Play()
+	Debris:AddItem(nucleo, time * 0.5 + 0.1)
+	emitir(pos, color, diameter * 1.4, { vel = diameter * 1.6, tam = math.clamp(diameter * 0.08, 0.35, 1.4), vida = 0.45, cor2 = Color3.new(1, 1, 1) })
+	clarao(pos, color, diameter * 1.6, 5)
+	if diameter >= 14 then
+		emitir(pos, Color3.fromRGB(120, 115, 110), diameter * 0.5, { tex = "fumaca", vel = diameter * 0.5, tam = diameter * 0.12, vida = 0.9, luz = 0, cresce = true, drag = 3 })
+		tremor(pos, diameter / 22)
+	end
 end
 
 local function fadeOut(part, time)
@@ -153,10 +216,49 @@ local function hit(e, amount, from, force)
 	hl.OutlineTransparency = 1
 	hl.Parent = e.model
 	Debris:AddItem(hl, 0.12)
+	-- faíscas de impacto
+	emitir(e.root.Position + Vector3.new(0, 0.5, 0), Color3.fromRGB(255, 235, 170), 8, { vel = 22, tam = 0.35, vida = 0.25, drag = 8 })
 end
 
 -- move peças ou um modelo em linha reta até bater num inimigo ou acabar o alcance
+local function rastro(part, cor, largura)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, largura / 2, 0)
+	a0.Parent = part
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -largura / 2, 0)
+	a1.Parent = part
+	local t = Instance.new("Trail")
+	t.Attachment0, t.Attachment1 = a0, a1
+	t.Color = ColorSequence.new(Color3.new(1, 1, 1), cor)
+	t.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+	t.Lifetime = 0.25
+	t.LightEmission = 1
+	t.FaceCamera = true
+	t.Parent = part
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = TEX.faisca
+	pe.Color = ColorSequence.new(cor)
+	pe.LightEmission = 1
+	pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, largura * 0.4), NumberSequenceKeypoint.new(1, 0) })
+	pe.Lifetime = NumberRange.new(0.2, 0.4)
+	pe.Speed = NumberRange.new(1, 4)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Rate = 45
+	pe.Parent = part
+end
+
 local function projectile(o)
+	if o.parts then
+		for _, p in ipairs(o.parts) do
+			if p:IsA("BasePart") and p.Transparency < 0.9 then
+				rastro(p, p.Color, math.max(p.Size.X, p.Size.Y) * 0.8)
+				break
+			end
+		end
+	elseif o.model and o.model.PrimaryPart then
+		rastro(o.model.PrimaryPart, o.model.PrimaryPart.Color, 2)
+	end
 	task.spawn(function()
 		local pos, travelled, ang = o.start, 0, 0
 		while travelled < o.range do
@@ -201,10 +303,15 @@ local function zap(a, b, color, width, jitter, life)
 		local p0, p1 = pts[i], pts[i + 1]
 		local len = (p1 - p0).Magnitude
 		if len > 0.05 then
-			local part = fx({ size = Vector3.new(width, width, len), color = color, cf = CFrame.lookAt((p0 + p1) / 2, p1) })
+			local cf = CFrame.lookAt((p0 + p1) / 2, p1)
+			local part = fx({ size = Vector3.new(width * 0.6, width * 0.6, len), color = Color3.new(1, 1, 1), cf = cf })
 			fadeOut(part, life or 0.25)
+			local brilho = fx({ size = Vector3.new(width * 2.4, width * 2.4, len), color = color, trans = 0.55, cf = cf })
+			fadeOut(brilho, (life or 0.25) * 0.8)
 		end
 	end
+	emitir(b, color, 10, { vel = 18, tam = width * 0.5, vida = 0.3, cor2 = Color3.new(1, 1, 1) })
+	clarao(b, color, 16, 4)
 end
 
 -- esfera escura no ar com linhas que são sugadas para o centro (ou saem dele, se outward)
@@ -415,6 +522,7 @@ local function ring(pos, diameter, color, time)
 	TweenService:Create(r, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Size = Vector3.new(0.3, diameter, diameter), Transparency = 1 }):Play()
 	Debris:AddItem(r, time + 0.1)
+	emitir(pos + Vector3.new(0, 0.6, 0), Color3.fromRGB(150, 140, 125), diameter * 0.7, { tex = "fumaca", vel = diameter * 0.6, tam = math.clamp(diameter * 0.07, 0.6, 2.5), vida = 0.7, luz = 0, cresce = true, drag = 4, spread = 80 })
 end
 
 local function chao(root)
@@ -444,6 +552,27 @@ end
 ---------------------------------------------------------------
 -- Poderes (função por id; recebem plr, char, root, dmg)
 ---------------------------------------------------------------
+
+-- efeito ao soltar qualquer jutsu: selo de chakra girando no chão e brilho nas mãos
+conjurar = function(char, root, cor)
+	local base = root.Position - Vector3.new(0, 2.9, 0)
+	local selo = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.15, 3, 3), color = cor, trans = 0.25,
+		cf = CFrame.new(base) * CFrame.Angles(0, 0, math.rad(90)) })
+	local miolo = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.18, 2.2, 2.2), color = Color3.new(0.08, 0.08, 0.1), trans = 0.3,
+		cf = CFrame.new(base + Vector3.new(0, 0.02, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+	TweenService:Create(selo, TweenInfo.new(0.45, Enum.EasingStyle.Quad), { Size = Vector3.new(0.15, 9, 9), Transparency = 1 }):Play()
+	TweenService:Create(miolo, TweenInfo.new(0.45, Enum.EasingStyle.Quad), { Size = Vector3.new(0.18, 7.6, 7.6), Transparency = 1 }):Play()
+	Debris:AddItem(selo, 0.5)
+	Debris:AddItem(miolo, 0.5)
+	for _, nome in ipairs({ "RightHand", "LeftHand", "Right Arm", "Left Arm" }) do
+		local m = char:FindFirstChild(nome)
+		if m then
+			emitir(m.Position, cor, 7, { vel = 6, tam = 0.45, vida = 0.35, cor2 = Color3.new(1, 1, 1) })
+		end
+	end
+	emitir(base + Vector3.new(0, 0.3, 0), cor, 14, { vel = 9, tam = 0.4, vida = 0.5, acel = Vector3.new(0, 18, 0), spread = 25 })
+	clarao(root.Position, cor, 14, 3)
+end
 
 local P = {}
 
@@ -1176,25 +1305,73 @@ P.nat_vento2 = function(plr, char, root, dmg)
 	end
 end
 
+-- Lightning Bolt: carrega na mão, um raio grosso cai do céu (no inimigo mais próximo ou à frente)
 P.nat_raio1 = function(plr, char, root, dmg)
-	local e = nearestEnemy(root.Position, flatLook(root), 45)
-	if not e then return false end
-	local alvo = e.root.Position
-	zap(alvo + Vector3.new(0, 45, 0), alvo, LIGHTNING, 0.9, 2.5, 0.3)
-	zap(handPos(char, root), alvo, WHITE, 0.4, 1.2, 0.2)
-	burst(alvo, 9, LIGHTNING, 0.3, 0.2)
-	hit(e, dmg * 2.6, nil, 0)
-	prender(e, 1.2)
+	local look = flatLook(root)
+	local e = nearestEnemy(root.Position, look, 45)
+	local alvo = e and e.root.Position or (chao(root) + look * 20 + Vector3.new(0, 2.6, 0))
+	local chaoAlvo = Vector3.new(alvo.X, chao(root).Y, alvo.Z)
+	-- carga: faíscas na mão
+	local mao = handPos(char, root)
+	for _ = 1, 3 do
+		zap(mao, mao + Vector3.new(math.random() * 3 - 1.5, math.random() * 3, math.random() * 3 - 1.5), LIGHTNING, 0.18, 0.6, 0.12)
+		task.wait(0.04)
+	end
+	-- aviso no chão
+	local marca = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.12, 2, 2), color = LIGHTNING, trans = 0.3,
+		cf = CFrame.new(chaoAlvo + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+	TweenService:Create(marca, TweenInfo.new(0.12), { Size = Vector3.new(0.12, 9, 9) }):Play()
+	task.wait(0.12)
+	marca:Destroy()
+	-- o raio: tronco grosso + 3 ramos
+	local topo = chaoAlvo + Vector3.new(math.random(-4, 4), 60, math.random(-4, 4))
+	zap(topo, chaoAlvo, LIGHTNING, 1.5, 3, 0.35)
+	for _ = 1, 3 do
+		local meio = topo:Lerp(chaoAlvo, 0.35 + math.random() * 0.4)
+		zap(meio, meio + Vector3.new(math.random(-9, 9), -math.random(6, 14), math.random(-9, 9)), LIGHTNING, 0.5, 1.5, 0.25)
+	end
+	zap(mao, alvo, WHITE, 0.35, 1.2, 0.18)
+	burst(chaoAlvo + Vector3.new(0, 1, 0), 14, LIGHTNING, 0.35, 0.15)
+	ring(chaoAlvo + Vector3.new(0, 0.2, 0), 22, WHITE, 0.4)
+	clarao(chaoAlvo + Vector3.new(0, 6, 0), LIGHTNING, 60, 12)
+	tremor(chaoAlvo, 0.9)
+	-- marca queimada no chão
+	local queimado = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.1, 7, 7), color = Color3.fromRGB(25, 25, 30), trans = 0.2,
+		mat = Enum.Material.Slate, cf = CFrame.new(chaoAlvo + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+	task.delay(2.5, function() fadeOut(queimado, 1) end)
+	-- dano: alvo principal forte e respingo em volta
+	local set = {}
+	if e then
+		hitOnce(set, e, dmg * 2.6, nil, 0)
+		prender(e, 1.2)
+	end
+	for _, o in ipairs(inRadius(chaoAlvo, 7)) do
+		hitOnce(set, o, dmg * 1.3, chaoAlvo, 25)
+	end
 end
 
+-- Thunder Chain: corrente de raios que pula entre até 5 inimigos (sem alvo, um raio corre à frente)
 P.nat_raio2 = function(plr, char, root, dmg)
-	local atual = nearestEnemy(root.Position, flatLook(root), 40)
-	if not atual then return false end
+	local look = flatLook(root)
+	local atual = nearestEnemy(root.Position, look, 40)
 	local set = {}
 	local de = handPos(char, root)
+	clarao(de, LIGHTNING, 20, 6)
+	if not atual then
+		local fim = de + look * 32
+		zap(de, fim, LIGHTNING, 0.9, 2, 0.3)
+		zap(de, fim, WHITE, 0.4, 1.2, 0.2)
+		burst(fim, 9, LIGHTNING, 0.3, 0.2)
+		for _, e in ipairs(inLine(root.Position, look, 32, 6)) do
+			hitOnce(set, e, dmg * 2.2, nil, 0)
+			prender(e, 0.8)
+		end
+		return
+	end
 	for _ = 1, 5 do
-		zap(de, atual.root.Position, LIGHTNING, 0.6, 1.6, 0.3)
-		burst(atual.root.Position, 6, WHITE, 0.25, 0.3)
+		zap(de, atual.root.Position, LIGHTNING, 0.8, 1.8, 0.3)
+		zap(de, atual.root.Position, WHITE, 0.3, 1, 0.2)
+		burst(atual.root.Position, 7, LIGHTNING, 0.25, 0.3)
 		hitOnce(set, atual, dmg * 2.2, nil, 0)
 		prender(atual, 0.8)
 		de = atual.root.Position
@@ -1207,6 +1384,7 @@ P.nat_raio2 = function(plr, char, root, dmg)
 		atual = prox
 		task.wait(0.09)
 	end
+	tremor(de, 0.5)
 end
 
 P.nat_terra1 = function(plr, char, root, dmg)
@@ -1428,6 +1606,18 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 	feedback(plr, { slot = slot, cooldown = info.Cooldown })
 	local dmg = PlayerData.GetCombatStats(plr).PowerDamage * (1 + (plr:GetAttribute("BuffDano") or 0))
 	if afinidade then dmg *= NatureData.AFIN_DANO end
+	-- cor do jutsu para o efeito de conjurar
+	local cor
+	if info.Natureza then
+		cor = NatureData.Tipos[info.Natureza].Color
+	elseif slot == 4 then
+		local k = KekkeiData.DoSave(data)
+		cor = k and KekkeiData.Tipos[k].Color
+	else
+		local c = ClanPowers.Clans[info.Clan or ""]
+		cor = c and c.Color
+	end
+	conjurar(char, root, cor or CHAKRA_BLUE)
 	task.spawn(function()
 		local okRun, res = pcall(P[info.Id], plr, char, root, dmg)
 		if not okRun then

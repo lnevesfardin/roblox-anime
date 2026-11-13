@@ -121,6 +121,166 @@ local function bater(perfeito)
 	end
 end
 
+-- Treino de chakra (estação de atributo "Chakra"): o personagem se ajoelha em meditação com as mãos em selo,
+-- um círculo de chakra aparece no chão e uma aura sobe dele, crescendo a cada série. No fim, o chakra explode.
+local CHAKRA_COR = Color3.fromRGB(90, 180, 255)
+local SERIES_CHAKRA = { "GATHER CHAKRA", "HAND SIGNS", "FOCUS", "RELEASE!" }
+local DESCE = 1.35 -- quanto o corpo desce para ficar ajoelhado
+local cena = nil
+
+-- a pose vai no Transform das juntas a cada quadro, depois da animação (o C0 do personagem não pode ser mudado)
+local function girarJunta(char, parte, nome, cf)
+	local p = char:FindFirstChild(parte)
+	local j = p and p:FindFirstChild(nome)
+	if j and j:IsA("Motor6D") then
+		cena.juntas[j] = cf
+	end
+end
+
+local function emissor(pai, props)
+	local pe = Instance.new("ParticleEmitter")
+	for k, v in pairs(props) do pe[k] = v end
+	pe.Parent = pai
+	return pe
+end
+
+local function iniciarCena()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then return end
+	cena = { juntas = {}, objetos = {}, root = root }
+	local chaoY = root.Position.Y - hum.HipHeight - root.Size.Y / 2
+	local r = math.rad
+	if hum.RigType == Enum.HumanoidRigType.R15 then
+		-- mãos juntas na frente do peito (selo)
+		girarJunta(char, "RightUpperArm", "RightShoulder", CFrame.Angles(r(80), 0, r(-32)))
+		girarJunta(char, "LeftUpperArm", "LeftShoulder", CFrame.Angles(r(80), 0, r(32)))
+		girarJunta(char, "RightLowerArm", "RightElbow", CFrame.Angles(r(70), 0, 0))
+		girarJunta(char, "LeftLowerArm", "LeftElbow", CFrame.Angles(r(70), 0, 0))
+		-- ajoelhado (coxas para a frente, canelas para trás)
+		girarJunta(char, "RightUpperLeg", "RightHip", CFrame.Angles(r(85), 0, 0))
+		girarJunta(char, "LeftUpperLeg", "LeftHip", CFrame.Angles(r(85), 0, 0))
+		girarJunta(char, "RightLowerLeg", "RightKnee", CFrame.Angles(r(-150), 0, 0))
+		girarJunta(char, "LeftLowerLeg", "LeftKnee", CFrame.Angles(r(-150), 0, 0))
+		root.CFrame = root.CFrame - Vector3.new(0, DESCE, 0)
+		cena.desceu = DESCE
+	else
+		local torso = char:FindFirstChild("Torso")
+		if torso then
+			local function g(nome, cf)
+				local j = torso:FindFirstChild(nome)
+				if j and j:IsA("Motor6D") then cena.juntas[j] = cf end
+			end
+			g("Right Shoulder", CFrame.Angles(0, 0, r(80)))
+			g("Left Shoulder", CFrame.Angles(0, 0, r(-80)))
+		end
+	end
+	cena.pose = RunService.Stepped:Connect(function()
+		for j, cf in pairs(cena and cena.juntas or {}) do
+			if j.Parent then j.Transform = cf end
+		end
+	end)
+	-- círculo de chakra no chão
+	local anel = Instance.new("Part")
+	anel.Shape = Enum.PartType.Cylinder
+	anel.Anchored, anel.CanCollide, anel.CanQuery, anel.CanTouch, anel.CastShadow = true, false, false, false, false
+	anel.Material = Enum.Material.Neon
+	anel.Color = CHAKRA_COR
+	anel.Transparency = 0.45
+	anel.Size = Vector3.new(0.12, 5, 5)
+	anel.CFrame = CFrame.new(root.Position.X, chaoY + 0.08, root.Position.Z) * CFrame.Angles(0, 0, r(90))
+	anel.Parent = workspace
+	local miolo = anel:Clone()
+	miolo.Color = Color3.fromRGB(15, 25, 45)
+	miolo.Transparency = 0.35
+	miolo.Size = Vector3.new(0.14, 4.2, 4.2)
+	miolo.Parent = workspace
+	cena.anel, cena.miolo = anel, miolo
+	table.insert(cena.objetos, anel)
+	table.insert(cena.objetos, miolo)
+	-- aura subindo do corpo
+	local at = Instance.new("Attachment")
+	at.Position = Vector3.new(0, -1, 0)
+	at.Parent = root
+	table.insert(cena.objetos, at)
+	cena.aura = emissor(at, { Texture = "rbxasset://textures/particles/sparkles_main.dds", Color = ColorSequence.new(CHAKRA_COR, Color3.new(1, 1, 1)),
+		LightEmission = 1, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 0) }),
+		Lifetime = NumberRange.new(0.7, 1.2), Speed = NumberRange.new(2, 4), Acceleration = Vector3.new(0, 7, 0),
+		SpreadAngle = Vector2.new(35, 35), Rate = 15, EmissionDirection = Enum.NormalId.Top, Rotation = NumberRange.new(0, 360) })
+	cena.chama = emissor(at, { Texture = "rbxasset://textures/particles/fire_main.dds", Color = ColorSequence.new(CHAKRA_COR),
+		LightEmission = 1, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.2), NumberSequenceKeypoint.new(1, 0.4) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.75), NumberSequenceKeypoint.new(1, 1) }),
+		Lifetime = NumberRange.new(0.5, 0.8), Speed = NumberRange.new(3, 5), SpreadAngle = Vector2.new(15, 15), Rate = 8,
+		EmissionDirection = Enum.NormalId.Top })
+	cena.luz = Instance.new("PointLight")
+	cena.luz.Color = CHAKRA_COR
+	cena.luz.Range = 10
+	cena.luz.Brightness = 1
+	cena.luz.Parent = root
+	table.insert(cena.objetos, cena.luz)
+	cena.contorno = Instance.new("Highlight")
+	cena.contorno.FillTransparency = 1
+	cena.contorno.OutlineColor = CHAKRA_COR
+	cena.contorno.OutlineTransparency = 0.7
+	cena.contorno.Parent = char
+	table.insert(cena.objetos, cena.contorno)
+end
+
+-- a aura cresce conforme as séries (k de 0 a 1)
+local function nivelCena(k)
+	if not cena or not cena.aura then return end
+	cena.aura.Rate = 15 + 70 * k
+	cena.chama.Rate = 8 + 30 * k
+	cena.luz.Brightness = 1 + 3 * k
+	cena.luz.Range = 10 + 10 * k
+	cena.contorno.OutlineTransparency = 0.7 - 0.6 * k
+	local d = 5 + 5 * k
+	TweenService:Create(cena.anel, TweenInfo.new(0.3), { Size = Vector3.new(0.12, d, d) }):Play()
+	TweenService:Create(cena.miolo, TweenInfo.new(0.3), { Size = Vector3.new(0.14, d - 0.8, d - 0.8) }):Play()
+end
+
+local function pulsoCena()
+	if not cena or not cena.aura then return end
+	cena.aura:Emit(8)
+	local b = cena.luz.Brightness
+	cena.luz.Brightness = b + 3
+	TweenService:Create(cena.luz, TweenInfo.new(0.25), { Brightness = b }):Play()
+end
+
+local function falhaCena()
+	if not cena or not cena.aura then return end
+	cena.aura.Enabled, cena.chama.Enabled = false, false
+	task.delay(0.25, function()
+		if cena and cena.aura then cena.aura.Enabled, cena.chama.Enabled = true, true end
+	end)
+end
+
+local function fimCena(ok)
+	if not cena then return end
+	local c = cena
+	cena = nil
+	if c.pose then c.pose:Disconnect() end
+	if c.desceu and c.root.Parent then
+		c.root.CFrame = c.root.CFrame + Vector3.new(0, c.desceu, 0)
+	end
+	if ok and c.aura then
+		-- o chakra explode para fora
+		c.aura.Speed = NumberRange.new(18, 30)
+		c.aura.SpreadAngle = Vector2.new(180, 180)
+		c.aura.Acceleration = Vector3.zero
+		c.aura:Emit(70)
+		TweenService:Create(c.anel, TweenInfo.new(0.5), { Size = Vector3.new(0.12, 18, 18), Transparency = 1 }):Play()
+		TweenService:Create(c.luz, TweenInfo.new(0.5), { Brightness = 8, Range = 24 }):Play()
+	end
+	if c.aura then c.aura.Rate, c.chama.Rate = 0, 0 end
+	task.delay(ok and 0.9 or 0.2, function()
+		for _, o in ipairs(c.objetos) do
+			if o.Parent then o:Destroy() end
+		end
+	end)
+end
+
 local teclaApertada
 local function novaSerie()
 	local n = 4 + estado.acertos -- 4, 5, 6 e 7 teclas
@@ -136,7 +296,9 @@ local function novaSerie()
 			TextSize = 22, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = i, Parent = fileira }, { canto(8), new("UIStroke", { Color = Color3.fromRGB(170, 120, 70), Thickness = 2 }) })
 	end
 	caixas[1].BackgroundColor3 = Color3.fromRGB(230, 120, 40)
-	titulo.Text = estado.cabecalho .. "  ·  " .. SERIES[math.min(estado.acertos + 1, #SERIES)]
+	local nomes = estado.chakra and SERIES_CHAKRA or SERIES
+	titulo.Text = estado.cabecalho .. "  ·  " .. nomes[math.min(estado.acertos + 1, #nomes)]
+	if estado.chakra then nivelCena(estado.acertos / estado.total) end
 	placar.Text = ("SETS  %d / %d"):format(estado.acertos, estado.total)
 	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
 end
@@ -164,6 +326,7 @@ local function terminar(resultado)
 	ativo = false
 	ContextActionService:UnbindAction("TreinoHit")
 	ContextActionService:UnbindAction("TreinoTeclas")
+	fimCena(resultado == "ok")
 	controles(true)
 	minigame:FireServer(resultado, estado.acertos)
 	feedback.Text = resultado == "ok" and "COMPLETE!" or "FAILED"
@@ -182,6 +345,7 @@ end
 
 local function errou()
 	estado.vidas -= 1
+	if estado.chakra then falhaCena() end
 	mostrar("MISS!", Color3.fromRGB(240, 80, 80))
 	vidasTxt.Text = string.rep("♥ ", estado.vidas) .. string.rep("♡ ", VIDAS - estado.vidas)
 	if estado.vidas <= 0 then terminar("falhou") return true end
@@ -203,7 +367,7 @@ teclaApertada = function(t)
 	local caixa = caixas[estado.idx]
 	if estado.seq[estado.idx] == t then
 		som()
-		pulinho()
+		if estado.chakra then pulsoCena() else pulinho() end
 		caixa.BackgroundColor3 = Color3.fromRGB(70, 200, 90)
 		estado.idx += 1
 		if estado.idx > #estado.seq then
@@ -291,9 +455,11 @@ minigame.OnClientEvent:Connect(function(info)
 	local hum0 = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	estado = { total = info.acertos or 10, acertos = 0, vidas = VIDAS, pos = 0, dir = 1, tempo = 0, travaAte = 0, alvo = info.alvo,
 		modo = teclas and "teclas" or "socos", hip = hum0 and hum0.HipHeight }
-	estado.cabecalho = (info.titulo or (teclas and "COACH GAIEN'S DRILL" or "SENSEI KAITO'S TRAINING")) .. "  ·  " .. string.upper(info.nome or "")
+	estado.chakra = teclas and (info.cena == "chakra" or info.id == "Chakra")
+	estado.cabecalho = (estado.chakra and "CHAKRA TRAINING") or (info.titulo or (teclas and "COACH GAIEN'S DRILL" or "SENSEI KAITO'S TRAINING")) .. "  ·  " .. string.upper(info.nome or "")
 	titulo.Text = estado.cabecalho
-	dica.Text = teclas and "Press the keys in order before the time runs out!  [W A S D]"
+	dica.Text = (estado.chakra and "Focus! Press the keys in order to gather chakra.  [W A S D]")
+		or teclas and "Press the keys in order before the time runs out!  [W A S D]"
 		or ((info.dica or "Punch when the marker is inside the green zone!") .. "  [SPACE / CLICK HIT]")
 	barra.Visible, bHit.Visible = not teclas, not teclas
 	fileira.Visible, tempoFundo.Visible, botoesTecla.Visible = teclas, teclas, teclas
@@ -309,6 +475,10 @@ minigame.OnClientEvent:Connect(function(info)
 		root.CFrame = CFrame.lookAt(root.Position, alvoPos)
 	end
 	controles(false)
+	if estado.chakra then
+		iniciarCena()
+		nivelCena(0)
+	end
 	ContextActionService:BindActionAtPriority("TreinoHit", function(_, st)
 		if st == Enum.UserInputState.Begin then golpe() end
 		return Enum.ContextActionResult.Sink

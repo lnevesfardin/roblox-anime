@@ -623,7 +623,7 @@ local function bossSummon(e, cfg, floorY, centro)
 		local z = math.clamp(p.Z, centro.Position.Z - 46, centro.Position.Z + 46)
 		if cfg.Minion then
 			local mn = cfg.Minion
-			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health * difAtual.Vida, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed)
+			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health * difAtual.Vida, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed, nil, nil, mn.Skin)
 			if ent then
 				ent.isMinion = true
 			end
@@ -789,7 +789,8 @@ local function runMap(mapId)
 
 	if victory then
 		print("[WaveServer] Boss: " .. cfg.BossName)
-		broadcast({ text = ("Wave %d/%d: BOSS %s!"):format(total, total, cfg.BossName) })
+		local duelo = #cfg.Waves == 0 -- sem ondas: é um duelo (Exame Ninja)
+		broadcast({ text = duelo and ("DUEL: %s!"):format(cfg.BossName) or ("Wave %d/%d: BOSS %s!"):format(total, total, cfg.BossName) })
 		task.wait(3)
 		local boss = spawnEnemy(cfg.BossName, cfg.BossColor, cfg.BossScale or 2.5, cfg.BossHealth * hpScale, cfg.BossDamage,
 			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss, nil, cfg.BossSkin)
@@ -799,7 +800,7 @@ local function runMap(mapId)
 			boss.nextSummon = os.clock() + 4
 			while enemyAlive(boss) and aliveParticipants() > 0 do
 				broadcast({
-					text = (os.clock() < avisoAte) and avisoTexto or ("Wave %d/%d: Defeat %s"):format(total, total, cfg.BossName),
+					text = (os.clock() < avisoAte) and avisoTexto or (duelo and ("DUEL: Defeat %s"):format(cfg.BossName) or ("Wave %d/%d: Defeat %s"):format(total, total, cfg.BossName)),
 					boss = { name = cfg.BossName, hp = boss.hum.Health, max = boss.hum.MaxHealth },
 				})
 				task.wait(0.4)

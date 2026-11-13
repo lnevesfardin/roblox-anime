@@ -133,7 +133,7 @@ MissionData.Missoes = {
 		Desc = "Now use what you learned. Defeat 4 bandits in the forest outside the village.",
 		Tipo = "derrotar", Alvo = "Acampamento", N = 4, Recompensa = { XP = 1200, Coins = 250, Pontos = 2 } },
 	{ Id = "H8", Npc = "Kakashi", Historia = 8, Rank = "C", Name = "The Ninja Exam", Nivel = 10,
-		Desc = "Pass the Ninja Exam to become a Genin.",
+		Desc = "The Ninja Exam is a duel: defeat Sensei Kaito to become a Genin.",
 		Tipo = "exame", Mapa = "ExameNinja", N = 1, Recompensa = { XP = 1500, Coins = 500, Pontos = 3 }, Promove = "Genin" },
 	-- (Chunin e Jonin: continuação do caminho, a definir)
 

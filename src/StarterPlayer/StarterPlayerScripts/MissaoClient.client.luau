@@ -84,9 +84,22 @@ end
 local tObj = label(tracker, "", 12, COR.fraco, { Position = UDim2.fromOffset(10, 39), Size = UDim2.new(1, -20, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
 local tDrop = botao(tracker, "X", COR.card, UDim2.fromOffset(22, 18), UDim2.new(1, -28, 0, 4))
 tDrop.TextSize = 11
+tDrop.Visible = false -- a missão principal não pode ser abandonada
+
+-- missão lateral: quadro logo abaixo da principal
+local lado = new("Frame", { AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(240, 60), BackgroundColor3 = COR.painel, BackgroundTransparency = 0.1, Visible = false, Parent = gui })
+corner(lado, 10)
+new("UIStroke", { Color = COR.linha, Thickness = 1.5, Parent = lado })
+label(lado, "SIDE MISSION", 10, COR.fraco, { Position = UDim2.fromOffset(10, 4), Size = UDim2.new(1, -40, 0, 12), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+local lNome = label(lado, "", 13, COR.texto, { Position = UDim2.fromOffset(10, 17), Size = UDim2.new(1, -20, 0, 17), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+local lObj = label(lado, "", 11, COR.fraco, { Position = UDim2.fromOffset(10, 35), Size = UDim2.new(1, -20, 0, 22), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+local lDrop = botao(lado, "X", COR.card, UDim2.fromOffset(22, 18), UDim2.new(1, -28, 0, 4))
+lDrop.TextSize = 11
+
 local function posicionarTracker()
 	-- lado direito, abaixo da lista de jogadores do Roblox
 	tracker.Position = UDim2.new(1, -12, 0.3, 0)
+	lado.Position = UDim2.new(1, -12, 0.3, 80)
 end
 posicionarTracker()
 
@@ -159,22 +172,24 @@ CollectionService:GetInstanceAddedSignal("NPC"):Connect(placaNpc)
 ---------------------------------------------------------------
 -- Atualizar tela com o estado
 ---------------------------------------------------------------
+local missaoMarcada = nil
 local function atualizar()
 	tRank.Text = "RANK · " .. string.upper(MissionData.RankName(estado.Rank or "Estudante"))
 	local missao = estado.Ativa and MissionData.Get(estado.Ativa.Id)
+	local missaoLado = estado.Lado and MissionData.Get(estado.Lado.Id)
 	local proxima = nil
+	-- quadro da missão lateral
+	lado.Visible = missaoLado ~= nil
+	if missaoLado then
+		lNome.Text = ("[%s] %s"):format(missaoLado.Rank, missaoLado.Name)
+		lNome.TextColor3 = RANK_COR[missaoLado.Rank] or COR.texto
+		lObj.Text = objetivo(missaoLado, estado.Lado.P)
+	end
 	if missao then
-		if missao.Historia then
-			nomeComSelo(true)
-			tNome.Text = missao.Name
-			tNome.TextColor3 = Color3.fromRGB(255, 105, 105)
-		else
-			nomeComSelo(false)
-			tNome.Text = ("[%s] %s"):format(missao.Rank, missao.Name)
-			tNome.TextColor3 = RANK_COR[missao.Rank] or COR.texto
-		end
+		nomeComSelo(true)
+		tNome.Text = missao.Name
+		tNome.TextColor3 = Color3.fromRGB(255, 105, 105)
 		tObj.Text = objetivo(missao, estado.Ativa.P)
-		tDrop.Visible = not missao.Historia
 	else
 		-- sem missão: mostra o próximo passo do caminho (história)
 		proxima = MissionData.DaHistoria((estado.Historia or 0) + 1)
@@ -188,12 +203,13 @@ local function atualizar()
 			tNome.TextColor3 = COR.texto
 			tObj.Text = "Talk to people with a  !  or use the QUESTS board in the square."
 		end
-		tDrop.Visible = false
 	end
 	for m, pl in pairs(placas) do
-		pl.ex.Visible = estado.NpcsComMissao[m.Name] == true and not estado.Ativa
+		pl.ex.Visible = estado.NpcsComMissao[m.Name] == true and not (estado.Ativa and estado.Lado)
 	end
-	local pos = alvoMarcador(missao)
+	-- o marcador aponta para a principal; sem ela, para a lateral
+	missaoMarcada = missao or missaoLado
+	local pos = alvoMarcador(missaoMarcada)
 	if not pos and proxima then
 		local quem = npcModelo(proxima.Npc)
 		pos = quem and quem:GetPivot().Position
@@ -211,7 +227,7 @@ task.spawn(function()
 		task.wait(0.25)
 		if marca.Enabled then
 			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			local missao = estado.Ativa and MissionData.Get(estado.Ativa.Id)
+			local missao = missaoMarcada
 			if missao and (missao.Tipo == "falar" or missao.Tipo == "exame") then
 				local pos = alvoMarcador(missao)
 				if pos then ancora.Position = pos end
@@ -223,7 +239,7 @@ task.spawn(function()
 	end
 end)
 
-tDrop.MouseButton1Click:Connect(function()
+lDrop.MouseButton1Click:Connect(function()
 	local r = action:InvokeServer("desistir")
 	if r and r.estado then estado = r.estado end
 	atualizar()

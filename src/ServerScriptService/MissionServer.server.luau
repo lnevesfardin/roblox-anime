@@ -1,6 +1,8 @@
 -- Script: ServerScriptService > MissionServer
 -- Fase 3: missões, NPCs que conversam, ranks ninja e o Exame Ninja.
 -- MissionAction (RemoteFunction): "estado" | "aceitar", idDaMissao | "desistir" | "conversou", { escolhas }
+-- Duas missões ao mesmo tempo: m.Ativa = missão principal (história) e m.Lado = missão lateral (as outras).
+-- Só a lateral pode ser abandonada.
 -- MissionEvent  (RemoteEvent, servidor -> cliente): { tipo = "dialogo" | "concluida" | "aviso" | "estado" ... }
 -- Outros scripts avisam progresso pelo BindableEvent ServerStorage.MissaoProgresso: Fire(player, tipo, quantidade)
 -- A partida do Exame começa pelo BindableEvent ServerStorage.IniciarPartida (WaveServer) e
@@ -56,12 +58,18 @@ local function dados(player)
 	if type(m.Feitas) ~= "table" then m.Feitas = {} end -- missões únicas já feitas
 	ClanPowers.Sincronizar(data) -- trocou de clã: missões do clã antigo somem
 	if type(m.Ativa) ~= "table" or not MissionData.Get(m.Ativa.Id) then m.Ativa = nil end
+	if type(m.Lado) ~= "table" or not MissionData.Get(m.Lado.Id) then m.Lado = nil end
+	-- saves antigos: missão que não é da história ia no espaço único; passa para o lado
+	if m.Ativa and not MissionData.Get(m.Ativa.Id).Historia then
+		if not m.Lado then m.Lado = m.Ativa end
+		m.Ativa = nil
+	end
 	if type(data.Rank) ~= "string" then data.Rank = "Estudante" end
 	return data, m
 end
 
 local function disponivel(data, m, missao)
-	if m.Ativa and m.Ativa.Id == missao.Id then return false end
+	if (m.Ativa and m.Ativa.Id == missao.Id) or (m.Lado and m.Lado.Id == missao.Id) then return false end
 	if missao.Historia and m.Historia ~= missao.Historia - 1 then return false end -- história: só o próximo passo aparece
 	if missao.Cla and not (data.Cla and data.Cla.Id == missao.Cla) then return false end
 	if missao.Unica and m.Feitas[missao.Id] then return false end
@@ -89,12 +97,26 @@ local function estado(player)
 			disp[missao.Npc] = true
 		end
 	end
-	local ativa
-	if m.Ativa then
-		local missao = MissionData.Get(m.Ativa.Id)
-		ativa = { Id = missao.Id, P = m.Ativa.P, N = missao.N }
+	local function resumo(e)
+		if not e then return nil end
+		local missao = MissionData.Get(e.Id)
+		return { Id = missao.Id, P = e.P, N = missao.N }
 	end
-	return { Ativa = ativa, Rank = data.Rank, NpcsComMissao = disp, Historia = m.Historia }
+	return { Ativa = resumo(m.Ativa), Lado = resumo(m.Lado), Rank = data.Rank, NpcsComMissao = disp, Historia = m.Historia }
+end
+
+local ESPACOS = { "Ativa", "Lado" }
+local function espacoDe(missao)
+	return missao.Historia and "Ativa" or "Lado"
+end
+-- primeira missão ativa (principal ou lateral) que passa no teste. Devolve espaço, missão
+local function acharAtiva(m, teste)
+	for _, esp in ipairs(ESPACOS) do
+		local e = m[esp]
+		local missao = e and MissionData.Get(e.Id)
+		if missao and teste(missao) then return esp, missao end
+	end
+	return nil
 end
 
 local function enviarEstado(player)
@@ -125,11 +147,12 @@ end
 ---------------------------------------------------------------
 -- Concluir e progredir
 ---------------------------------------------------------------
-local function concluir(player)
+local function concluir(player, esp)
 	local data, m = dados(player)
-	if not data or not m.Ativa then return end
-	local missao = MissionData.Get(m.Ativa.Id)
-	m.Ativa = nil
+	esp = esp or "Ativa"
+	if not data or not m[esp] then return end
+	local missao = MissionData.Get(m[esp].Id)
+	m[esp] = nil
 	if missao.Historia then
 		m.Historia = math.max(m.Historia, missao.Historia)
 	elseif missao.Unica then
@@ -209,18 +232,25 @@ local function concluir(player)
 	enviarEstado(player)
 end
 
-local function progredir(player, tipo, qtd, alvo)
+-- conta progresso nas duas missões (principal e lateral) que forem desse tipo
+local function progredir(player, tipo, qtd, alvo, soEspaco)
 	local data, m = dados(player)
-	if not data or not m.Ativa then return end
-	local missao = MissionData.Get(m.Ativa.Id)
-	if missao.Tipo ~= tipo then return end
-	if alvo ~= nil and missao.Alvo ~= nil and missao.Alvo ~= alvo then return end
-	m.Ativa.P = math.min(missao.N, m.Ativa.P + (qtd or 1))
-	if m.Ativa.P >= missao.N then
-		concluir(player)
-	else
-		enviarEstado(player)
+	if not data then return end
+	local mudou = false
+	for _, esp in ipairs(ESPACOS) do
+		local e = m[esp]
+		local missao = e and MissionData.Get(e.Id)
+		if missao and missao.Tipo == tipo and (not soEspaco or soEspaco == esp)
+			and not (alvo ~= nil and missao.Alvo ~= nil and missao.Alvo ~= alvo) then
+			e.P = math.min(missao.N, e.P + (qtd or 1))
+			if e.P >= missao.N then
+				concluir(player, esp)
+			else
+				mudou = true
+			end
+		end
 	end
+	if mudou then enviarEstado(player) end
 end
 progressoEv.Event:Connect(progredir)
 
@@ -233,7 +263,7 @@ local function iniciarExame(player, missao)
 		aviso(player, "The exam is not available right now.", false)
 		return
 	end
-	aviso(player, "The Ninja Exam begins! Survive the waves and defeat the boss.", true)
+	aviso(player, "The Ninja Exam begins! Defeat Sensei Kaito in a duel.", true)
 	ini:Fire(player, missao.Mapa)
 end
 task.spawn(function()
@@ -241,9 +271,8 @@ task.spawn(function()
 	if venc then
 		venc.Event:Connect(function(player, mapId)
 			local data, m = dados(player)
-			if not data or not m.Ativa then return end
-			local missao = MissionData.Get(m.Ativa.Id)
-			if missao.Tipo == "exame" and missao.Mapa == mapId then
+			if not data then return end
+			if acharAtiva(m, function(x) return x.Tipo == "exame" and x.Mapa == mapId end) then
 				progredir(player, "exame", 1)
 			end
 		end)
@@ -263,8 +292,8 @@ action.OnServerInvoke = function(player, acao, id)
 	if not data then return { ok = false, erro = "Loading..." } end
 	if acao == "aceitar" then
 		if id == "__exame" then
-			local missao = m.Ativa and MissionData.Get(m.Ativa.Id)
-			if missao and missao.Tipo == "exame" then
+			local _, missao = acharAtiva(m, function(x) return x.Tipo == "exame" end)
+			if missao then
 				iniciarExame(player, missao)
 				return { ok = true, estado = estado(player) }
 			end
@@ -276,10 +305,13 @@ action.OnServerInvoke = function(player, acao, id)
 		if de ~= "Quadro" and de ~= missao.Npc then
 			return { ok = false, erro = "Talk to the right person first." }
 		end
-		if m.Ativa then return { ok = false, erro = "Finish or drop your current mission first." } end
+		local esp = espacoDe(missao)
+		if m[esp] then
+			return { ok = false, erro = esp == "Ativa" and "Finish your main mission first." or "Finish or drop your side mission first." }
+		end
 		local ok, porque = disponivel(data, m, missao)
 		if not ok then return { ok = false, erro = porque or "Not available now." } end
-		m.Ativa = { Id = missao.Id, P = 0 }
+		m[esp] = { Id = missao.Id, P = 0 }
 		enviarEstado(player)
 		if missao.Tipo == "exame" then
 			iniciarExame(player, missao)
@@ -289,8 +321,8 @@ action.OnServerInvoke = function(player, acao, id)
 		-- terminou a conversa com opções: conclui a missão "falar" e dá o bônus das respostas boas
 		local c = conversaDe[player]
 		conversaDe[player] = nil
-		local missao = m.Ativa and MissionData.Get(m.Ativa.Id)
-		if not c or not missao or missao.Id ~= c.Id or missao.Tipo ~= "falar" or not missao.Conversa then
+		local espConversa, missao = acharAtiva(m, function(x) return c ~= nil and x.Id == c.Id end)
+		if not c or not missao or missao.Tipo ~= "falar" or not missao.Conversa then
 			return { ok = false, erro = "No conversation." }
 		end
 		local boas = 0
@@ -304,12 +336,12 @@ action.OnServerInvoke = function(player, acao, id)
 			PlayerData.AddXP(player, boas * BONUS_RESPOSTA)
 			aviso(player, ("Good answers!  +%d XP"):format(boas * BONUS_RESPOSTA), true)
 		end
-		progredir(player, "falar", 1)
+		progredir(player, "falar", 1, nil, espConversa)
 		-- o NPC já mostra o que tem a oferecer (o próximo passo do caminho)
 		task.defer(conversar, player, c.Npc, c.Modelo)
 		return { ok = true, estado = estado(player) }
 	elseif acao == "desistir" then
-		m.Ativa = nil
+		m.Lado = nil -- só a missão lateral pode ser abandonada
 		enviarEstado(player)
 		return { ok = true, estado = estado(player) }
 	end
@@ -352,10 +384,13 @@ conversar = function(player, npcKey, modelo)
 	if not data then return end
 	ultimoNpc[player] = npcKey
 	conversaDe[player] = nil
-	-- missão "falar com" este NPC
-	if m.Ativa then
-		local missao = MissionData.Get(m.Ativa.Id)
-		if missao.Tipo == "falar" and (missao.Alvo == npcKey or (modelo and missao.Alvo == modelo.Name)) then
+	-- missão "falar com" este NPC (principal ou lateral)
+	local espFalar, missaoFalar = acharAtiva(m, function(x)
+		return x.Tipo == "falar" and (x.Alvo == npcKey or (modelo ~= nil and x.Alvo == modelo.Name))
+	end)
+	if missaoFalar then
+		local missao = missaoFalar
+		do
 			if missao.Conversa then
 				-- conversa com opções: a missão só conclui quando o jogador terminar de conversar
 				local quem = MissionData.NPCs[missao.Alvo] or MissionData.NPCs.StarterCharacter
@@ -364,7 +399,7 @@ conversar = function(player, npcKey, modelo)
 					fala = "", ofertas = {}, conversa = missao.Conversa, modelo = modelo })
 				return
 			end
-			progredir(player, "falar", 1)
+			progredir(player, "falar", 1, nil, espFalar)
 		end
 	end
 	local info = MissionData.NPCs[npcKey] or MissionData.NPCs.StarterCharacter
@@ -375,8 +410,8 @@ conversar = function(player, npcKey, modelo)
 	if m.Ativa then
 		local missao = MissionData.Get(m.Ativa.Id)
 		if missao.Tipo == "exame" and missao.Npc == npcKey then
-			table.insert(ofertas, 1, { Id = "__exame", Name = "Start the Ninja Exam", Rank = missao.Rank, Desc = "Survive the waves and defeat the boss.", Recompensa = missao.Recompensa })
-			fala = "Are you ready? The exam will test everything you learned."
+			table.insert(ofertas, 1, { Id = "__exame", Name = "Start the Ninja Exam", Rank = missao.Rank, Desc = "A duel against me. Defeat me to become a Genin.", Recompensa = missao.Recompensa })
+			fala = "The exam is simple: fight me. Show me everything you learned."
 		end
 	end
 	evento:FireClient(player, {
@@ -473,14 +508,16 @@ task.spawn(function()
 		task.wait(0.5)
 		for _, player in ipairs(Players:GetPlayers()) do
 			local data, m = dados(player)
-			if data and m.Ativa then
-				local missao = MissionData.Get(m.Ativa.Id)
-				local lugar = missao.Tipo == "ir" and MissionData.Lugares[missao.Alvo]
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				if lugar and root and not root.Anchored then
-					local d = (root.Position - lugar.Pos) * Vector3.new(1, 0, 1)
-					if d.Magnitude <= lugar.Raio then
-						progredir(player, "ir", 1)
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if data and root and not root.Anchored then
+				for _, esp in ipairs(ESPACOS) do
+					local missao = m[esp] and MissionData.Get(m[esp].Id)
+					local lugar = missao and missao.Tipo == "ir" and MissionData.Lugares[missao.Alvo]
+					if lugar then
+						local d = (root.Position - lugar.Pos) * Vector3.new(1, 0, 1)
+						if d.Magnitude <= lugar.Raio then
+							progredir(player, "ir", 1, missao.Alvo, esp)
+						end
 					end
 				end
 			end
@@ -744,8 +781,9 @@ local function novaErva()
 			p.Parent = e
 			p.Triggered:Connect(function(player)
 				local data, m = dados(player)
-				local missao = data and m.Ativa and MissionData.Get(m.Ativa.Id)
-				if not missao or missao.Tipo ~= "coletar" then
+				local _, missao = nil, nil
+				if data then _, missao = acharAtiva(m, function(x) return x.Tipo == "coletar" end) end
+				if not missao then
 					aviso(player, "Someone needs these herbs. Take a mission first (Hana or the Stranger).", false)
 					return
 				end
@@ -788,6 +826,18 @@ if game:GetService("RunService"):IsStudio() then
 			player:SetAttribute("Rank", valor)
 		elseif acao == "feita" then
 			m.Feitas[valor] = true
+		elseif acao == "jutsu" then
+			-- dá o jutsu de natureza (e a natureza dele) e equipa na tecla G
+			local j = NatureData.Jutsu(valor)
+			local n = NatureData.Garantir(data)
+			if j then
+				if not table.find(n.Lista, j.Natureza) then table.insert(n.Lista, j.Natureza) end
+				n.Rolou = true
+				n.Jutsus[j.Id] = true
+				n.Equip[1] = j.Id
+				local an = ServerStorage:FindFirstChild("AtualizarNatureza")
+				if an then an:Fire(player) end
+			end
 		elseif acao == "estilo" then
 			local e = require(ReplicatedStorage:WaitForChild("FightStyles")).Garantir(data)
 			e.Liberados[valor] = true
@@ -799,6 +849,7 @@ if game:GetService("RunService"):IsStudio() then
 		if atualizar then atualizar:Fire(player) end
 		return {
 			Historia = m.Historia, Ativa = m.Ativa and (m.Ativa.Id .. " " .. m.Ativa.P) or "-",
+			Lado = m.Lado and (m.Lado.Id .. " " .. m.Lado.P) or "-",
 			Rank = data.Rank, Level = data.Level, XP = data.XP, Coins = data.Coins,
 			Pontos = data.Atributos and data.Atributos.Pontos,
 		}

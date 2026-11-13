@@ -154,7 +154,9 @@ local function iniciarTreino(player, id, alvo, modo)
 	end
 	local teclas = modo == "teclas"
 	sessoes[player] = { id = id, inicio = os.clock(), alvo = alvo, acertos = teclas and SERIES or ACERTOS, minimo = teclas and TEMPO_MINIMO_TECLAS or TEMPO_MINIMO }
-	minigame:FireClient(player, { acao = "comecar", id = id, nome = info.Name, acertos = sessoes[player].acertos, alvo = alvo, modo = teclas and "teclas" or "socos",
+	-- treino de chakra (atributo Chakra ou estação com Meditar = true): cena de meditação no cliente
+	local cena = (id == "Chakra" or (alvo and alvo:GetAttribute("Meditar") == true)) and "chakra" or nil
+	minigame:FireClient(player, { acao = "comecar", id = id, nome = info.Name, acertos = sessoes[player].acertos, alvo = alvo, modo = teclas and "teclas" or "socos", cena = cena,
 		titulo = alvo and alvo:GetAttribute("Titulo"), dica = alvo and alvo:GetAttribute("Dica") })
 end
 
@@ -186,7 +188,9 @@ local function estacao(inst)
 	p.ObjectText = info.Name .. "  (" .. AttributeData.TRAIN_COST .. " coins)"
 	-- alvos de madeira (PosteTreino) usam o minigame de socos; as outras estações usam o de teclas (W A S D)
 	-- treinos na natureza (mundo aberto) marcam o atributo Minigame = true e usam o minigame de socos
-	local alvoMadeira = inst.Name == "PosteTreino" or inst:GetAttribute("Minigame") == true
+	-- treinos de chakra (atributo Chakra ou Meditar = true) sempre usam a cena de meditação com teclas
+	local meditar = id == "Chakra" or inst:GetAttribute("Meditar") == true
+	local alvoMadeira = (inst.Name == "PosteTreino" or inst:GetAttribute("Minigame") == true) and not meditar
 	p.HoldDuration = 0
 	p.MaxActivationDistance = 9
 	p.RequiresLineOfSight = false

@@ -140,7 +140,7 @@ end
 
 -- XP necessário para subir do nível informado para o próximo
 function CharacterData.XPForLevel(level)
-	return math.floor(80 * level ^ 1.6)
+	return math.floor(160 * level ^ 1.6) -- (era 80: evolução 2x mais lenta)
 end
 
 -- Vida e dano finais de um personagem para um dado nível do jogador

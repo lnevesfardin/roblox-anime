@@ -108,8 +108,13 @@ function InimigoGolpe.Tentar(estado, model, root, alvoHum, dano, opts)
 	if agora - estado.ultimo > 1.6 then estado.n = 0 end -- ficou um tempo sem bater: combo recomeça
 	estado.ultimo = agora
 	estado.n += 1
-	local passo = InimigoGolpe.COMBO[estado.n]
-	local final = estado.n >= #InimigoGolpe.COMBO
+	local idx = estado.n
+	local passo = InimigoGolpe.COMBO[idx]
+	local final = idx >= #InimigoGolpe.COMBO
+	if model then -- o cliente (InimigoAnim) usa isso para animar o soco
+		model:SetAttribute("GolpeN", idx)
+		model:SetAttribute("GolpeT", workspace:GetServerTimeNow())
+	end
 	estado.proximo = agora + passo.wait
 	if final then estado.n = 0 end
 

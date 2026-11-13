@@ -11,7 +11,22 @@
 
 local FightStyles = {}
 
-FightStyles.Order = { "Basico", "Boxe", "Karate", "MuayThai", "JiuJitsu" }
+-- Só o Básico e o estilo Lee aparecem no jogo. Boxe, Karatê, Muay Thai e Jiu-Jitsu continuam definidos abaixo
+-- (guardados, fora da lista Order e sem missão) caso queiramos trazê-los de volta.
+FightStyles.Order = { "Basico", "Lee" }
+
+-- 8 Portões Internos (estilo Lee): tecla Z abre o próximo portão. Cada portão soma dano e velocidade, mas gasta
+-- chakra e vida por segundo. A maestria libera mais portões: Mastery 1..5 = 2, 3, 5, 6 e 8 portões.
+FightStyles.PORTOES = {
+	MAX_POR_MAESTRIA = { 2, 3, 5, 6, 8 },
+	DANO = 0.12,      -- +12% de dano por portão aberto
+	VELOCIDADE = 1.6, -- +1,6 studs/s por portão
+	CHAKRA_SEG = 1.2, -- chakra por segundo = 1,2 x portões
+	VIDA_SEG = 0.005, -- vida por segundo = 0,5% da vida máxima x portões (nunca mata: para em 1 de vida)
+	CHAKRA_ABRIR = 8, -- chakra para abrir cada portão
+	CANSACO = 4,      -- segundos de cansaço (lento) depois de fechar o 8º portão
+	NOMES = { "Gate of Opening", "Gate of Healing", "Gate of Life", "Gate of Pain", "Gate of Limit", "Gate of View", "Gate of Wonder", "Gate of Death" },
+}
 FightStyles.MAESTRIA = { 0, 150, 400, 800, 1500 } -- golpes acertados para chegar a cada nível
 FightStyles.BONUS_MAESTRIA = 0.06 -- dano extra por nível de maestria acima do 1
 FightStyles.COMBO_RESET = 1.1
@@ -54,6 +69,19 @@ FightStyles.Styles = {
 		X = { Name = "Seiken", Tipo = "carregado", Cd = 3, Chakra = 8, Base = 2.6, Extra = 5.4, Range = 12, RangeExtra = 6, Force = 45, ForceExtra = 65 },
 		Y = { Name = "Flying Kick", Tipo = "aereo", Cd = 3, Chakra = 8, Mult = 2.8, Range = 14 },
 		C = { Name = "Rush Palm", Cd = 4, Chakra = 8, Mult = 2.4, Speed = 85, Time = 0.3 },
+	},
+	Lee = {
+		Name = "Lee", Color = Color3.fromRGB(60, 200, 90),
+		Mestre = "Coach Gaien", Req = "Lv 25 + 30 trainings + defeat 100 enemies with taijutsu only",
+		Combo = {
+			{ mult = 0.9, range = 9, force = 10, wait = 0.2, kick = true },
+			{ mult = 0.9, range = 9, force = 10, wait = 0.2, kick = true },
+			{ mult = 1.2, range = 9, force = 18, wait = 0.24 },
+			{ mult = 2.6, range = 11, force = 60, wait = 0.55, kick = true, up = 35 },
+		},
+		X = { Name = "Leaf Whirlwind", Tipo = "carregado", Cd = 3.5, Chakra = 8, Base = 2.6, Extra = 5.0, Range = 11, RangeExtra = 5, Force = 50, ForceExtra = 60 },
+		Y = { Name = "Front Lotus", Tipo = "uppercut", Cd = 3.5, Chakra = 9, Mult = 3.0, Range = 9 },
+		C = { Name = "Leaf Rush", Cd = 3.5, Chakra = 7, Mult = 2.2, Speed = 100, Time = 0.25 },
 	},
 	MuayThai = {
 		Name = "Muay Thai", Color = Color3.fromRGB(255, 170, 60),
@@ -102,8 +130,9 @@ function FightStyles.Garantir(data)
 	local e = data.Estilos
 	if type(e.Liberados) ~= "table" then e.Liberados = {} end
 	if type(e.XP) ~= "table" then e.XP = {} end
+	e.Treinos = tonumber(e.Treinos) or 0 -- treinos feitos na Academia (requisito do estilo Lee)
 	e.Liberados.Basico = true
-	if not FightStyles.Styles[e.Equipado or ""] or not e.Liberados[e.Equipado] then
+	if not FightStyles.Styles[e.Equipado or ""] or not e.Liberados[e.Equipado] or not table.find(FightStyles.Order, e.Equipado) then
 		e.Equipado = "Basico"
 	end
 	return e

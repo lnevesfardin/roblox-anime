@@ -158,6 +158,10 @@ local function disponivel(data, m, missao)
 	if missao.HistoriaMin and m.Historia < missao.HistoriaMin then return false end
 	if missao.Kekkei and not KekkeiData.DoSave(data) then return false end
 	if missao.Nivel and data.Level < missao.Nivel then return false, "Requires level " .. missao.Nivel end
+	if missao.Treinos then
+		local feitos = require(ReplicatedStorage:WaitForChild("FightStyles")).Garantir(data).Treinos
+		if feitos < missao.Treinos then return false, ("Requires %d trainings at the Academy (%d done)"):format(missao.Treinos, feitos) end
+	end
 	if missao.RankMin and MissionData.RankIndex(data.Rank) < MissionData.RankIndex(missao.RankMin) then
 		return false, "Requires rank " .. MissionData.RankName(missao.RankMin)
 	end
@@ -368,6 +372,10 @@ end
 local function progredir(player, tipo, qtd, alvo, soEspaco)
 	local data, m = dados(player)
 	if not data then return end
+	if tipo == "treinar" then -- conta todos os treinos da Academia (requisito do estilo Lee)
+		local e = require(ReplicatedStorage:WaitForChild("FightStyles")).Garantir(data)
+		e.Treinos += qtd or 1
+	end
 	local mudou = false
 	for _, esp in ipairs(ESPACOS) do
 		local e = m[esp]

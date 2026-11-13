@@ -272,6 +272,12 @@ local function hit(e, amount, from, force, up)
 	end
 	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.hum:TakeDamage(amount)
+	-- kill só com taijutsu (soco/chute, sem nenhum dano de jutsu nesse inimigo) conta para a missão do estilo Lee
+	if e.hum.Health <= 0 and atacanteAtual and e.model:GetAttribute("DanoJutsu") ~= true then
+		local autor = Players:GetPlayerByUserId(atacanteAtual)
+		local prog = autor and ServerStorage:FindFirstChild("MissaoProgresso")
+		if prog then prog:Fire(autor, "taijutsu", 1) end
+	end
 	-- o golpe "conecta": inimigo comum fica travado um instante e não revida no meio do combo (chefes não)
 	if e.raio <= 2 then
 		e.model:SetAttribute("Atordoado", math.max(e.model:GetAttribute("Atordoado") or 0, os.clock() + 0.7))
@@ -478,6 +484,7 @@ attackEvent.OnServerEvent:Connect(function(plr, kind, extra)
 	local st = getState(plr)
 	local id, est, nivel = estiloDe(plr)
 	dmg *= 1 + (nivel - 1) * FightStyles.BONUS_MAESTRIA
+	if id == "Lee" then dmg *= 1 + (plr:GetAttribute("PortaoLee") or 0) * FightStyles.PORTOES.DANO end
 	if kind == "charged" then
 		onX(plr, st, hum, root, dmg, id, est, extra)
 	elseif kind == "air" then
@@ -489,6 +496,90 @@ attackEvent.OnServerEvent:Connect(function(plr, kind, extra)
 	end
 end)
 
+---------------------------------------------------------------
+-- 8 Portões Internos (estilo Lee): RemoteEvent "PortaoLee" (tecla Z) abre o próximo portão.
+-- Atributos do jogador: PortaoLee (portões abertos) e PortaoVel (bônus de velocidade, lido pelo Corrida).
+---------------------------------------------------------------
+local portaoEv = Instance.new("RemoteEvent")
+portaoEv.Name = "PortaoLee"
+portaoEv.Parent = ReplicatedStorage
+local PORT = FightStyles.PORTOES
+local portaoLoop = {} -- [plr] = true enquanto o loop de custo roda
+local portaoUlt = {}
+
+local function fecharPortoes(plr, cansaco)
+	plr:SetAttribute("PortaoLee", 0)
+	plr:SetAttribute("PortaoVel", cansaco and -9 or 0)
+	if cansaco then
+		task.delay(PORT.CANSACO, function()
+			if plr.Parent and (plr:GetAttribute("PortaoLee") or 0) == 0 then plr:SetAttribute("PortaoVel", 0) end
+		end)
+	end
+end
+
+local function loopPortoes(plr)
+	if portaoLoop[plr] then return end
+	portaoLoop[plr] = true
+	task.spawn(function()
+		local aberto8 = 0
+		local esgotou = false
+		while plr.Parent and (plr:GetAttribute("PortaoLee") or 0) > 0 do
+			task.wait(0.5)
+			local n = plr:GetAttribute("PortaoLee") or 0
+			local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+			local chakra = plr:GetAttribute("Chakra")
+			local id = estiloDe(plr)
+			if not hum or hum.Health <= 0 or id ~= "Lee" or n <= 0 then break end
+			if chakra then
+				chakra -= PORT.CHAKRA_SEG * n * 0.5
+				if chakra <= 0 then plr:SetAttribute("Chakra", 0) break end
+				plr:SetAttribute("Chakra", chakra)
+			end
+			-- a vida cai, mas nunca mata
+			hum.Health = math.max(1, hum.Health - hum.MaxHealth * PORT.VIDA_SEG * n * 0.5)
+			if n >= 8 then
+				aberto8 += 0.5
+				if aberto8 >= 12 then esgotou = true break end -- o 8º portão só dura 12 s
+			else
+				aberto8 = 0
+			end
+		end
+		portaoLoop[plr] = nil
+		if plr.Parent then fecharPortoes(plr, esgotou) end
+	end)
+end
+
+portaoEv.OnServerEvent:Connect(function(plr)
+	local now = os.clock()
+	if now - (portaoUlt[plr] or 0) < 0.6 then return end
+	portaoUlt[plr] = now
+	local id, _, nivel = estiloDe(plr)
+	local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+	if id ~= "Lee" or not hum or hum.Health <= 0 then return end
+	local n = plr:GetAttribute("PortaoLee") or 0
+	local maxN = PORT.MAX_POR_MAESTRIA[math.clamp(nivel, 1, #PORT.MAX_POR_MAESTRIA)]
+	if n >= maxN then
+		if aviso then
+			local prox = 0
+			for m, v in ipairs(PORT.MAX_POR_MAESTRIA) do if v > n then prox = m break end end
+			aviso:FireClient(plr, { msg = prox > 0 and ("Gate %d unlocks at Lee mastery %d."):format(n + 1, prox) or "All gates are open!" })
+		end
+		return
+	end
+	if hum.Health < hum.MaxHealth * 0.2 then
+		if aviso then aviso:FireClient(plr, { msg = "Too hurt to open another gate." }) end
+		return
+	end
+	if not pagar(plr, PORT.CHAKRA_ABRIR) then return end
+	n += 1
+	plr:SetAttribute("PortaoLee", n)
+	plr:SetAttribute("PortaoVel", n * PORT.VELOCIDADE)
+	if aviso then aviso:FireClient(plr, { msg = ("%s opened!  (%d/8)"):format(PORT.NOMES[n], n) }) end
+	loopPortoes(plr)
+end)
+
 Players.PlayerRemoving:Connect(function(plr)
 	state[plr] = nil
+	portaoLoop[plr] = nil
+	portaoUlt[plr] = nil
 end)

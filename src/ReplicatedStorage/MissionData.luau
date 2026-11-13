@@ -274,18 +274,27 @@ do
 end
 
 -- Missões dos mestres (Fase 5): ensinam um estilo de luta (Recompensa.Estilo). Feitas uma vez.
-table.insert(MissionData.Missoes, { Id = "E_Boxe", Npc = "Might guy", Rank = "D", Unica = true, Nivel = 5,
+-- Estilos guardados (sem missão, não aparecem no jogo): Boxe, Karatê, Muay Thai e Jiu-Jitsu.
+MissionData.Desativadas = {}
+table.insert(MissionData.Desativadas, { Id = "E_Boxe", Npc = "Might guy", Rank = "D", Unica = true, Nivel = 5,
 	Name = "Boxing Lessons", Desc = "Coach Gaien will teach you Boxing. Train 5 times at the Ninja Academy.",
 	Tipo = "treinar", N = 5, Recompensa = { XP = 500, Coins = 100, Estilo = "Boxe" } })
-table.insert(MissionData.Missoes, { Id = "E_Karate", Npc = "Kakashi", Rank = "C", Unica = true, Nivel = 10,
+table.insert(MissionData.Desativadas, { Id = "E_Karate", Npc = "Kakashi", Rank = "C", Unica = true, Nivel = 10,
 	Name = "Karate Discipline", Desc = "Sensei Kaito teaches Karate to the disciplined. Defeat 10 rogue ninjas at the hideouts.",
 	Tipo = "derrotar", Alvo = "Acampamento", N = 10, Recompensa = { XP = 900, Coins = 150, Estilo = "Karate" } })
-table.insert(MissionData.Missoes, { Id = "E_MuayThai", Npc = "Sasuke", Rank = "C", Unica = true, Nivel = 15, RankMin = "Genin",
+table.insert(MissionData.Desativadas, { Id = "E_MuayThai", Npc = "Sasuke", Rank = "C", Unica = true, Nivel = 15, RankMin = "Genin",
 	Name = "Art of Eight Limbs", Desc = "Ryo only trains Genin. Defeat 12 rogue ninjas and he will teach you Muay Thai.",
 	Tipo = "derrotar", Alvo = "Acampamento", N = 12, Recompensa = { XP = 1300, Coins = 200, Estilo = "MuayThai" } })
-table.insert(MissionData.Missoes, { Id = "E_JiuJitsu", Npc = "Ino (PTS)", Rank = "B", Unica = true, Nivel = 20,
+table.insert(MissionData.Desativadas, { Id = "E_JiuJitsu", Npc = "Ino (PTS)", Rank = "B", Unica = true, Nivel = 20,
 	Name = "The Gentle Art", Desc = "The Stranger wants 8 glowing herbs from the forest before teaching Jiu-Jitsu.",
 	Tipo = "coletar", Alvo = "Floresta", N = 8, Recompensa = { XP = 1800, Coins = 250, Estilo = "JiuJitsu" } })
+
+-- Único estilo extra no jogo: Lee (Coach Gaien). Exige nível, treinos na Academia e kills só com taijutsu
+-- (golpes de punho/chute; sem jutsu). "Treinos" é conferido em MissionServer (data.Estilos.Treinos).
+table.insert(MissionData.Missoes, { Id = "E_Lee", Npc = "Might guy", Rank = "C", Unica = true, Nivel = 25, Treinos = 30,
+	Name = "Path of the Green Beast",
+	Desc = "Coach Gaien will teach you the Lee style and the Eight Inner Gates. Train 30 times at the Academy first, then defeat 100 enemies using only taijutsu: no jutsu!",
+	Tipo = "taijutsu", N = 100, Recompensa = { XP = 3000, Coins = 500, Estilo = "Lee" } })
 
 -- Missões de natureza: o mestre de cada natureza ensina os jutsus (Recompensa.Jutsu). Só aparecem para quem
 -- tem aquela natureza (Natureza) e já aprendeu o 1º jutsu do clã (HistoriaMin). Feitas uma vez.

@@ -510,7 +510,61 @@ local function acaoInvestida(_, estado)
 	return Enum.ContextActionResult.Sink
 end
 
+-- 8 Portões Internos (estilo Lee): Z abre o próximo portão (o servidor confere maestria, chakra e vida)
+local portaoEv = ReplicatedStorage:WaitForChild("PortaoLee")
+local function acaoPortao(_, estado)
+	if estado ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
+	if player:GetAttribute("Estilo") == "Lee" then portaoEv:FireServer() end
+	return Enum.ContextActionResult.Sink
+end
+
+-- indicador: 8 círculos que acendem a cada portão aberto (só aparece com o estilo Lee)
+local portoes = Instance.new("Frame")
+portoes.Name = "Portoes"
+portoes.AnchorPoint = Vector2.new(0.5, 1)
+portoes.Position = UDim2.new(0.5, 0, 1, -118)
+portoes.Size = UDim2.fromOffset(8 * 30, 30)
+portoes.BackgroundTransparency = 1
+portoes.Visible = false
+portoes.Parent = gui
+local lp = Instance.new("UIListLayout", portoes)
+lp.FillDirection = Enum.FillDirection.Horizontal
+lp.HorizontalAlignment = Enum.HorizontalAlignment.Center
+lp.Padding = UDim.new(0, 4)
+local luzes = {}
+for i = 1, 8 do
+	local c = Instance.new("Frame")
+	c.Size = UDim2.fromOffset(26, 26)
+	c.BackgroundColor3 = Color3.fromRGB(40, 45, 50)
+	c.LayoutOrder = i
+	c.Parent = portoes
+	Instance.new("UICorner", c).CornerRadius = UDim.new(1, 0)
+	local borda = Instance.new("UIStroke", c)
+	borda.Color = Color3.fromRGB(90, 200, 110)
+	borda.Thickness = 2
+	local n = Instance.new("TextLabel")
+	n.Size = UDim2.fromScale(1, 1)
+	n.BackgroundTransparency = 1
+	n.Font = Enum.Font.GothamBlack
+	n.TextSize = 16
+	n.TextColor3 = Color3.new(1, 1, 1)
+	n.Text = tostring(i)
+	n.Parent = c
+	luzes[i] = c
+end
+local function atualizarPortoes()
+	portoes.Visible = player:GetAttribute("Estilo") == "Lee"
+	local aberto = player:GetAttribute("PortaoLee") or 0
+	for i, c in ipairs(luzes) do
+		c.BackgroundColor3 = i <= aberto and Color3.fromRGB(80, 230, 110) or Color3.fromRGB(40, 45, 50)
+	end
+end
+player:GetAttributeChangedSignal("Estilo"):Connect(atualizarPortoes)
+player:GetAttributeChangedSignal("PortaoLee"):Connect(atualizarPortoes)
+atualizarPortoes()
+
 local acoes = {
+	{ "PortaoLee", acaoPortao, Enum.KeyCode.Z, "Gates", UDim2.new(1, -75, 1, -350) },
 	{ "SocoCarregado", acaoCarregado, Enum.KeyCode.X, "X", UDim2.new(1, -75, 1, -110) },
 	{ "SocoAereo", acaoAereo, Enum.KeyCode.Y, "Y", UDim2.new(1, -75, 1, -190) },
 	{ "SocoInvestida", acaoInvestida, Enum.KeyCode.C, "C", UDim2.new(1, -75, 1, -270) },

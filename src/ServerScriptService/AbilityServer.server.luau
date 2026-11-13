@@ -199,6 +199,7 @@ local function hit(e, amount, from, force)
 		return
 	end
 	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
+	e.model:SetAttribute("DanoJutsu", true) -- este inimigo já levou jutsu: a kill não vale como "só taijutsu"
 	e.hum:TakeDamage(amount)
 	-- o golpe "conecta": inimigo comum fica travado um instante e não revida no meio do combo (chefes não)
 	if e.raio <= 2 then

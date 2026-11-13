@@ -48,3 +48,18 @@
 
 ## Treino dos postes (Vitality, Strength, Agility)
 - Minigame de socos: 6 acertos (antes 10), faixa 0,32 -> 0,15 da barra, marcador mais lento e 5 vidas (antes 3).
+
+## Animação dos inimigos (`InimigoAnim`)
+- LocalScript que anima por código os modelos com a tag `Inimigo`: balanço de braços e pernas ao andar e soco quando o servidor
+  marca `GolpeT`/`GolpeN` (feito em `InimigoGolpe.Tentar`). Não usa animações de terceiros (R6 e R15).
+
+## Evolução
+- `CharacterData.XPForLevel` = `160 x nível^1,6` (era 80): subir de nível pede o dobro de XP.
+
+## Estilos de luta
+- Só `Basico` e `Lee` estão em `FightStyles.Order`. Boxe, Karatê, Muay Thai e Jiu-Jitsu continuam definidos (guardados) e as missões
+  deles foram para `MissionData.Desativadas`.
+- Estilo Lee (mestre: Coach Gaien, missão `E_Lee`): requisitos Nv 25, 30 treinos na Academia (`data.Estilos.Treinos`) e 100 kills só
+  com taijutsu (a kill vale se o golpe final foi soco/chute e o inimigo nunca levou jutsu: atributo `DanoJutsu`).
+- 8 Portões Internos (tecla Z, RemoteEvent `PortaoLee`): cada portão dá +12% de dano e +1,6 de velocidade, gasta chakra e vida por
+  segundo (a vida nunca chega a zero). Maestria 1..5 libera 2, 3, 5, 6 e 8 portões. O 8º dura 12 s e deixa 4 s de cansaço.

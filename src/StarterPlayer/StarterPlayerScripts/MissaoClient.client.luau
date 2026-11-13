@@ -112,6 +112,7 @@ local function objetivo(missao, p)
 	if missao.Obj and (t == "falar" or t == "ir") then return missao.Obj end -- texto próprio (entregas e achados do quadro)
 	if t == "falar" then return "Talk to " .. nomeNpc(missao.Alvo) end
 	if t == "ir" then return "Go to " .. MissionData.Lugares[missao.Alvo].Name end
+	if t == "taijutsu" then return ("Defeat enemies with taijutsu only (no jutsu)  %d/%d"):format(p, missao.N) end
 	if t == "treinar" then return ("Train at the Ninja Academy  %d/%d"):format(p, missao.N) end
 	if t == "derrotar" and missao.Alvo == "Mundo" then return ("Defeat enemies in the outer forest  %d/%d"):format(p, missao.N) end
 	if t == "derrotar" then return ("Defeat rogue ninjas at the hideouts  %d/%d"):format(p, missao.N) end

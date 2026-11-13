@@ -25,7 +25,7 @@ local function aplicar()
 	local hum = humanoid()
 	if hum then
 		-- BonusVelocidade vem do clã, BuffVelocidade dos poderes de clã (servidor)
-		hum.WalkSpeed = (correndo and RUN_SPEED or WALK_SPEED) + (player:GetAttribute("BonusVelocidade") or 0) + (player:GetAttribute("BonusAgilidade") or 0) + (player:GetAttribute("BuffVelocidade") or 0) + (player:GetAttribute("BonusVelKekkei") or 0)
+		hum.WalkSpeed = (correndo and RUN_SPEED or WALK_SPEED) + (player:GetAttribute("BonusVelocidade") or 0) + (player:GetAttribute("BonusAgilidade") or 0) + (player:GetAttribute("BuffVelocidade") or 0) + (player:GetAttribute("BonusVelKekkei") or 0) + (player:GetAttribute("PortaoVel") or 0)
 	end
 	player:SetAttribute("Correndo", correndo)
 	local cam = workspace.CurrentCamera
@@ -66,6 +66,7 @@ player:GetAttributeChangedSignal("BonusVelocidade"):Connect(aplicar)
 player:GetAttributeChangedSignal("BonusAgilidade"):Connect(aplicar)
 player:GetAttributeChangedSignal("BuffVelocidade"):Connect(aplicar)
 player:GetAttributeChangedSignal("BonusVelKekkei"):Connect(aplicar)
+player:GetAttributeChangedSignal("PortaoVel"):Connect(aplicar)
 
 -- ao renascer (ex.: depois de uma partida) volta a andar normal
 player.CharacterAdded:Connect(function(char)

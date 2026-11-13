@@ -8,6 +8,7 @@ local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 
 local ClanData = require(ReplicatedStorage:WaitForChild("ClanData"))
+local Vinheta = require(ReplicatedStorage:WaitForChild("Vinheta"))
 local action = ReplicatedStorage:WaitForChild("ClanAction")
 local player = Players.LocalPlayer
 
@@ -238,6 +239,11 @@ girarBtn.MouseButton1Click:Connect(function()
 		grande.Size = UDim2.fromOffset(230, 230)
 		TweenService:Create(grande, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(250, 250) }):Play()
 		render(r.clan)
+		-- vinheta de revelação do clã
+		local c = ClanData.Clans[r.clan]
+		if c then
+			Vinheta.Revelar(c.Name .. " Clan", ClanData.Rarities[c.Rarity].Name, c.Color, c.Rarity == "Legendary" or c.Rarity == "Epic")
+		end
 	else
 		render()
 		aviso.Text = (r and r.erro) or "Could not spin."
@@ -329,14 +335,38 @@ local function outras(ligar)
 	pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, ligar) end)
 	badge.Visible = ligar
 end
+-- na sala, os outros jogadores ficam invisíveis só nesta tela (todos ficam no mesmo ponto do quarto)
+local escondidos = {}
+local function esconderOutros(ligar)
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			for _, d in ipairs(p.Character:GetDescendants()) do
+				if d:IsA("BasePart") or d:IsA("Decal") then
+					d.LocalTransparencyModifier = ligar and 1 or 0
+					escondidos[d] = ligar or nil
+				end
+			end
+			local h = p.Character:FindFirstChildOfClass("Humanoid")
+			if h then h.DisplayDistanceType = ligar and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer end
+		end
+	end
+	if not ligar then
+		for d in pairs(escondidos) do
+			if d.Parent then d.LocalTransparencyModifier = 0 end
+		end
+		table.clear(escondidos)
+	end
+end
 fundo:GetPropertyChangedSignal("Visible"):Connect(function()
 	sala(fundo.Visible)
 	outras(not fundo.Visible)
+	esconderOutros(fundo.Visible)
 	if fundo.Visible then
 		-- outras telas podem ser criadas depois: esconde de novo enquanto a sala estiver aberta
 		task.spawn(function()
 			while fundo.Visible do
 				outras(false)
+				esconderOutros(true) -- pega quem entrou no servidor depois
 				task.wait(0.5)
 			end
 		end)

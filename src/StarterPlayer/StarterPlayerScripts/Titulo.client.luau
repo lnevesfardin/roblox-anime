@@ -10,6 +10,12 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local pg = player:WaitForChild("PlayerGui")
 
+-- vinheta de abertura (por cima de tudo, enquanto a tela de entrada aparece embaixo)
+task.spawn(function()
+	local ok, Vinheta = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("Vinheta", 10)) end)
+	if ok and Vinheta then Vinheta.Abertura() end
+end)
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "Titulo"
 gui.ResetOnSpawn = false

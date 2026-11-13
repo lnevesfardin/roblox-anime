@@ -11,6 +11,7 @@ local HttpService = game:GetService("HttpService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
+local Vinheta = require(ReplicatedStorage:WaitForChild("Vinheta"))
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
 local acao = ReplicatedStorage:WaitForChild("NaturezaAcao")
 local useEvent = ReplicatedStorage:WaitForChild("UseAbility")
@@ -129,6 +130,12 @@ rBotao.MouseButton1Click:Connect(function()
 		end
 		estado = r.estado
 		rolar(r.estado)
+		-- vinheta de revelação da afinidade
+		local afin = NatureData.Tipos[r.estado.Afinidade or ""]
+		if afin then
+			local n = #r.estado.Lista
+			Vinheta.Revelar(afin.Name .. " Release", n > 1 and ("Affinity  +  " .. (n - 1) .. " more nature" .. (n > 2 and "s" or "")) or "Your chakra affinity", afin.Color, n >= 2)
+		end
 		fase = "fim"
 		rBotao.Text = "CONTINUE"
 	elseif fase == "fim" then

@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
+local Vinheta = require(ReplicatedStorage:WaitForChild("Vinheta"))
 local acao = ReplicatedStorage:WaitForChild("KekkeiAcao")
 
 local player = Players.LocalPlayer
@@ -135,6 +136,13 @@ botao.MouseButton1Click:Connect(function()
 		raridade.Text = ""
 		detalhe.Text = ""
 		rolar(r.Id)
+		-- vinheta de revelação
+		local k = r.Id and KekkeiData.Tipos[r.Id]
+		if k then
+			Vinheta.Revelar(k.Name, k.Rarity .. " bloodline", k.Color, true)
+		else
+			Vinheta.Revelar("No Kekkei Genkai", "Common blood", Color3.fromRGB(175, 175, 185), false)
+		end
 		fase = "fim"
 		botao.Text = "CONTINUE"
 	elseif fase == "fim" then

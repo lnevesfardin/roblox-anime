@@ -513,7 +513,7 @@ end)
 ---------------------------------------------------------------
 -- Aba NATURE: roleta das naturezas de chakra (1 a 3 + afinidade); girar de novo custa gemas
 ---------------------------------------------------------------
-local SIMBOLO_NAT = { Fogo = "🔥", Vento = "🌪", Raio = "⚡", Terra = "🪨", Agua = "💧" }
+local SIMBOLO_NAT = { Fogo = "🔥", Vento = "🌪", Raio = "⚡", Terra = "⛰", Agua = "💧" }
 -- características de cada natureza (como ela luta)
 local CARAC = {
 	Fogo = { Estilo = "BURN  +  AREA", Texto = "Raw power. Explosive flames that hit groups and keep burning." },
@@ -619,7 +619,7 @@ local function renderNatureza()
 		nBtn.BackgroundColor3 = COR.vermelho
 	else
 		nBtn.Text = "SPIN AGAIN  (" .. NatureData.CUSTO_REGIRAR .. " gems)"
-		nBtn.BackgroundColor3 = COR.card
+		nBtn.BackgroundColor3 = Color3.fromRGB(70, 95, 175) -- cor de gemas: destaca do fundo do painel
 		nInfo.Text = "You start with no jutsu: each nature's master teaches its jutsus through missions in the village."
 	end
 	if not girando then mostrarNatureza(feito and e.Afinidade or nil, "afinidade") end

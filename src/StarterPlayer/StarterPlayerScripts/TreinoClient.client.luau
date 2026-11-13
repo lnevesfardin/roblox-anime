@@ -134,12 +134,27 @@ local DESCE = 0.3 -- quanto o corpo desce na base de força (pernas abertas e jo
 local cena = nil
 local cinema = nil -- modo cinema (cutscene) do treino de chakra, mais abaixo
 
--- a pose vai no Transform das juntas a cada quadro, depois da animação (o C0 do personagem não pode ser mudado)
-local function girarJunta(char, parte, nome, cf)
+-- a pose vai no Transform das juntas a cada quadro, depois da animação (o C0 do personagem não pode ser mudado).
+-- O personagem pode ter juntas antigas (Motor6D) ou novas (AnimationConstraint): as duas têm Transform.
+-- base = pose de esforço; extra = rotação (graus) somada quando o esforço (f) chega a 1: braços abrem e voltam, corpo arqueia
+local function ehJunta(d)
+	return d:IsA("Motor6D") or d:IsA("AnimationConstraint")
+end
+
+local function girarJunta(char, parte, nome, cf, extraGraus)
 	local p = char:FindFirstChild(parte)
 	local j = p and p:FindFirstChild(nome)
-	if j and j:IsA("Motor6D") then
-		cena.juntas[j] = cf
+	if not (j and ehJunta(j)) then
+		j = nil
+		for _, d in ipairs(char:GetDescendants()) do
+			if d.Name == nome and ehJunta(d) then
+				j = d
+				break
+			end
+		end
+	end
+	if j then
+		cena.juntas[j] = { base = cf, extra = (extraGraus or Vector3.zero) * math.pi / 180 }
 	end
 end
 
@@ -159,18 +174,19 @@ local function iniciarCena()
 	local chaoY = root.Position.Y - hum.HipHeight - root.Size.Y / 2
 	local r = math.rad
 	if hum.RigType == Enum.HumanoidRigType.R15 then
-		-- fazendo força: braços abertos ao lado do corpo, cotovelos dobrados e punhos fechados para cima
-		girarJunta(char, "RightUpperArm", "RightShoulder", CFrame.Angles(r(8), 0, r(24)))
-		girarJunta(char, "LeftUpperArm", "LeftShoulder", CFrame.Angles(r(8), 0, r(-24)))
-		girarJunta(char, "RightLowerArm", "RightElbow", CFrame.Angles(r(100), 0, 0))
-		girarJunta(char, "LeftLowerArm", "LeftElbow", CFrame.Angles(r(100), 0, 0))
+		-- fazendo força: braços abertos ao lado do corpo, cotovelos dobrados e punhos fechados para cima;
+		-- no pico do esforço os braços abrem e vão para trás, o peito estufa e a cabeça sobe
+		girarJunta(char, "RightUpperArm", "RightShoulder", CFrame.Angles(r(8), 0, r(24)), Vector3.new(-22, 0, 16))
+		girarJunta(char, "LeftUpperArm", "LeftShoulder", CFrame.Angles(r(8), 0, r(-24)), Vector3.new(-22, 0, -16))
+		girarJunta(char, "RightLowerArm", "RightElbow", CFrame.Angles(r(100), 0, 0), Vector3.new(18, 0, 0))
+		girarJunta(char, "LeftLowerArm", "LeftElbow", CFrame.Angles(r(100), 0, 0), Vector3.new(18, 0, 0))
 		-- base firme: pernas abertas e joelhos dobrados, tronco inclinado e cabeça baixa de esforço
-		girarJunta(char, "RightUpperLeg", "RightHip", CFrame.Angles(r(16), 0, r(14)))
-		girarJunta(char, "LeftUpperLeg", "LeftHip", CFrame.Angles(r(16), 0, r(-14)))
-		girarJunta(char, "RightLowerLeg", "RightKnee", CFrame.Angles(r(-30), 0, 0))
-		girarJunta(char, "LeftLowerLeg", "LeftKnee", CFrame.Angles(r(-30), 0, 0))
-		girarJunta(char, "UpperTorso", "Waist", CFrame.Angles(r(-9), 0, 0))
-		girarJunta(char, "Head", "Neck", CFrame.Angles(r(-10), 0, 0))
+		girarJunta(char, "RightUpperLeg", "RightHip", CFrame.Angles(r(16), 0, r(14)), Vector3.new(10, 0, 6))
+		girarJunta(char, "LeftUpperLeg", "LeftHip", CFrame.Angles(r(16), 0, r(-14)), Vector3.new(10, 0, -6))
+		girarJunta(char, "RightLowerLeg", "RightKnee", CFrame.Angles(r(-30), 0, 0), Vector3.new(-14, 0, 0))
+		girarJunta(char, "LeftLowerLeg", "LeftKnee", CFrame.Angles(r(-30), 0, 0), Vector3.new(-14, 0, 0))
+		girarJunta(char, "UpperTorso", "Waist", CFrame.Angles(r(-9), 0, 0), Vector3.new(-16, 0, 0))
+		girarJunta(char, "Head", "Neck", CFrame.Angles(r(-10), 0, 0), Vector3.new(24, 0, 0))
 		root.CFrame = root.CFrame - Vector3.new(0, DESCE, 0)
 		cena.desceu = DESCE
 	else
@@ -178,18 +194,28 @@ local function iniciarCena()
 		if torso then
 			local function g(nome, cf)
 				local j = torso:FindFirstChild(nome)
-				if j and j:IsA("Motor6D") then cena.juntas[j] = cf end
+				if j and j:IsA("Motor6D") then cena.juntas[j] = { base = cf, extra = Vector3.new(0, 0, 0) } end
 			end
 			g("Right Shoulder", CFrame.Angles(0, 0, r(80)))
 			g("Left Shoulder", CFrame.Angles(0, 0, r(-80)))
 		end
 	end
-	cena.pose = RunService.Stepped:Connect(function()
-		-- o corpo treme de esforço, cada vez mais forte conforme o chakra sobe
-		local amp = 0.012 + 0.045 * (cinema and cinema.nivel or 0)
-		for j, cf in pairs(cena and cena.juntas or {}) do
+	cena.puxa = 0 -- tranco de esforço: vai a 1 a cada tecla certa e volta a 0
+	-- PreSimulation roda depois do Animator do Roblox: a pose vale nas juntas antigas e nas novas (AnimationConstraint)
+	cena.pose = RunService.PreSimulation:Connect(function(dt)
+		local c = cena
+		if not c then return end
+		local nv = cinema and cinema.nivel or 0
+		c.puxa = math.max(0, c.puxa - dt * 2.4)
+		-- o esforço vai e volta como quem prende e solta o ar: mais rápido e mais forte a cada série
+		local ciclo = (math.sin(os.clock() * (3.2 + 3 * nv)) + 1) / 2
+		local f = math.clamp(0.25 + (0.35 + 0.4 * nv) * ciclo + c.puxa, 0, 1.5)
+		-- o corpo também treme de esforço
+		local amp = 0.012 + 0.045 * nv + 0.05 * c.puxa
+		for j, e in pairs(c.juntas) do
 			if j.Parent then
-				j.Transform = cf * CFrame.Angles((math.random() - 0.5) * amp, (math.random() - 0.5) * amp, (math.random() - 0.5) * amp)
+				j.Transform = e.base * CFrame.Angles(e.extra.X * f, e.extra.Y * f, e.extra.Z * f)
+					* CFrame.Angles((math.random() - 0.5) * amp, (math.random() - 0.5) * amp, (math.random() - 0.5) * amp)
 			end
 		end
 	end)
@@ -255,6 +281,7 @@ end
 
 local function pulsoCena()
 	if not cena or not cena.aura then return end
+	cena.puxa = 1 -- o corpo dá um tranco de esforço ao acertar a tecla
 	cena.aura:Emit(8)
 	local b = cena.luz.Brightness
 	cena.luz.Brightness = b + 3

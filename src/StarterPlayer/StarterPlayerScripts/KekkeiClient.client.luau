@@ -151,7 +151,8 @@ botao.MouseButton1Click:Connect(function()
 end)
 
 local function precisaGirar()
-	return player:GetAttribute("KekkeiRolou") == false and player:GetAttribute("Jogando") == true
+	-- o giro agora fica na aba BLOODLINE da sala do clã (ClanClient): esta tela não abre mais sozinha
+	return false
 end
 local function checar()
 	if fase ~= "fim" and precisaGirar() then

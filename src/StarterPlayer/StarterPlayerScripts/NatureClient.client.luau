@@ -144,7 +144,8 @@ rBotao.MouseButton1Click:Connect(function()
 end)
 
 local function checarRoleta()
-	local precisa = player:GetAttribute("NaturezaRolou") == false and player:GetAttribute("Jogando") == true
+	-- a roleta agora fica na aba NATURE da sala do clã (ClanClient): esta tela não abre mais sozinha
+	local precisa = false
 	if fase ~= "fim" and precisa then
 		roleta.Enabled = true
 	elseif fase == "girar" then

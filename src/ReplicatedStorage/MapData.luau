@@ -36,10 +36,10 @@ MapData.Maps = {
 				{ Look = "Clone", Skin = "kab", Name = "Kab Clone", Color = Color3.fromRGB(135, 145, 175), Health = 55, Damage = 6, Speed = 14, Count = 6, Extra = 2 },
 			} },
 			{ Name = "Team Taka", Enemies = {
-				{ Look = "Taka", Skin = "taka", SkinIdx = 1, Name = "Taka: Blade", Color = Color3.fromRGB(210, 80, 40), Health = 85, Damage = 8, Speed = 16, Count = 1 },
-				{ Look = "Taka", Skin = "taka", SkinIdx = 3, Name = "Taka: Brute", Color = Color3.fromRGB(150, 60, 40), Health = 170, Damage = 10, Speed = 10, Scale = 1.4, Count = 1 },
-				{ Look = "Taka", Skin = "taka", SkinIdx = 2, Name = "Taka: Tracker", Color = Color3.fromRGB(225, 130, 60), Health = 60, Damage = 6, Speed = 18, Scale = 0.95, Count = 1 },
-				{ Look = "Taka", Skin = "taka", SkinIdx = 1, Name = "Taka: Venomous", Color = Color3.fromRGB(125, 165, 60), Health = 75, Damage = 7, Speed = 14, Count = 1 },
+				{ Look = "Taka", Skin = "taka", SkinIdx = 1, Name = "Taka: Blade", Color = Color3.fromRGB(210, 80, 40), Health = 85, Damage = 8, Speed = 16, Count = 1, Kin = "Chamas", KinCada = 9 },
+				{ Look = "Taka", Skin = "taka", SkinIdx = 3, Name = "Taka: Brute", Color = Color3.fromRGB(150, 60, 40), Health = 170, Damage = 10, Speed = 10, Scale = 1.4, Count = 1, Kin = "Selo", KinCada = 10 },
+				{ Look = "Taka", Skin = "taka", SkinIdx = 2, Name = "Taka: Tracker", Color = Color3.fromRGB(225, 130, 60), Health = 60, Damage = 6, Speed = 18, Scale = 0.95, Count = 1, Kin = "Maldicao", KinCada = 9 },
+				{ Look = "Taka", Skin = "taka", SkinIdx = 1, Name = "Taka: Venomous", Color = Color3.fromRGB(125, 165, 60), Health = 75, Damage = 7, Speed = 14, Count = 1, Kin = "Veneno", KinCada = 9 },
 			} },
 		},
 
@@ -103,19 +103,19 @@ MapData.Maps = {
 
 		Waves = {
 			{ Name = "Rogue Genin", Enemies = {
-				{ Look = "Renegado", Name = "Rogue Genin", Color = Color3.fromRGB(110, 120, 95), Health = 45, Damage = 5, Speed = 13, Count = 5, Extra = 2 },
+				{ Look = "Renegado", Name = "Rogue Genin", Color = Color3.fromRGB(110, 120, 95), Health = 45, Damage = 5, Speed = 13, Count = 5, Extra = 2, Kin = "Selo", KinCada = 14 },
 			} },
 			{ Name = "Mist Assassins", Enemies = {
-				{ Look = "Nevoa", Name = "Mist Assassin", Color = Color3.fromRGB(150, 165, 185), Health = 50, Damage = 6, Speed = 18, Count = 5, Extra = 2 },
+				{ Look = "Nevoa", Name = "Mist Assassin", Color = Color3.fromRGB(150, 165, 185), Health = 50, Damage = 6, Speed = 18, Count = 5, Extra = 2, Kin = "Maldicao", KinCada = 13 },
 			} },
 			{ Name = "Puppet Squad", Enemies = {
 				{ Look = "Marionete", Name = "Battle Puppet", Color = Color3.fromRGB(160, 120, 80), Health = 65, Damage = 7, Speed = 14, Count = 6, Extra = 2 },
 			} },
 			{ Name = "Rogue Jonin", Enemies = {
-				{ Look = "Renegado", Name = "Rogue Jonin: Blade", Health = 100, Color = Color3.fromRGB(90, 100, 80), Damage = 9, Speed = 17, Count = 1 },
-				{ Look = "Nevoa", Name = "Rogue Jonin: Mist", Health = 80, Color = Color3.fromRGB(150, 165, 185), Damage = 8, Speed = 19, Scale = 0.95, Count = 1 },
-				{ Look = "Marionete", Name = "Rogue Jonin: Puppeteer", Health = 180, Color = Color3.fromRGB(160, 120, 80), Damage = 10, Speed = 10, Scale = 1.4, Count = 1 },
-				{ Look = "Renegado", Name = "Rogue Jonin: Hunter", Health = 85, Color = Color3.fromRGB(90, 100, 80), Damage = 8, Speed = 16, Count = 1 },
+				{ Look = "Renegado", Name = "Rogue Jonin: Blade", Health = 100, Color = Color3.fromRGB(90, 100, 80), Damage = 9, Speed = 17, Count = 1, Kin = "Chamas", KinCada = 9 },
+				{ Look = "Nevoa", Name = "Rogue Jonin: Mist", Health = 80, Color = Color3.fromRGB(150, 165, 185), Damage = 8, Speed = 19, Scale = 0.95, Count = 1, Kin = "Maldicao", KinCada = 9 },
+				{ Look = "Marionete", Name = "Rogue Jonin: Puppeteer", Health = 180, Color = Color3.fromRGB(160, 120, 80), Damage = 10, Speed = 10, Scale = 1.4, Count = 1, Kin = "Selo", KinCada = 10 },
+				{ Look = "Renegado", Name = "Rogue Jonin: Hunter", Health = 85, Color = Color3.fromRGB(90, 100, 80), Damage = 8, Speed = 16, Count = 1, Kin = "Veneno", KinCada = 9 },
 			} },
 		},
 

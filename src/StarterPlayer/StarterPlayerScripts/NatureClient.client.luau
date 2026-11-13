@@ -12,6 +12,7 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
 local Vinheta = require(ReplicatedStorage:WaitForChild("Vinheta"))
+local Selos = require(ReplicatedStorage:WaitForChild("SelosDeMao"))
 local MissionData = require(ReplicatedStorage:WaitForChild("MissionData"))
 local acao = ReplicatedStorage:WaitForChild("NaturezaAcao")
 local useEvent = ReplicatedStorage:WaitForChild("UseAbility")
@@ -370,14 +371,18 @@ local function usar(i)
 		painel.Visible = true
 		return
 	end
-	if os.clock() < readyAt[i] then return end
+	if os.clock() < readyAt[i] or Selos.Ativo() then return end
 	if (player:GetAttribute("Chakra") or 0) < custoDe(j) then
 		useEvent:FireServer(4 + i) -- o servidor responde "Not enough chakra."
 		return
 	end
 	readyAt[i] = os.clock() + j.Cooldown
 	total[i] = j.Cooldown
-	useEvent:FireServer(4 + i)
+	-- selos de mão antes do jutsu de natureza
+	local nat = NatureData.Tipos[j.Natureza]
+	Selos.Fazer(nat and nat.Color, function()
+		useEvent:FireServer(4 + i)
+	end)
 end
 local POS_TOQUE = { UDim2.new(1, -330, 1, -130), UDim2.new(1, -295, 1, -215) }
 for i = 1, 2 do

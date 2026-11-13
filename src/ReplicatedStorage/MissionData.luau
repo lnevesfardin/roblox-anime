@@ -16,7 +16,7 @@ local MissionData = {}
 
 MissionData.COOLDOWN = 8 * 60 -- segundos até a mesma missão repetível poder ser feita de novo
 -- Quadro de missões (balcão QUESTS)
-MissionData.QUADRO_POR_HORA = 10 -- quantas missões do quadro dá para concluir por hora
+-- (sem limite de missões do quadro por hora ou por dia: dá para fazer quantas quiser)
 MissionData.QUADRO_OFERTAS = 4   -- quantas aparecem de cada vez
 MissionData.QUADRO_MEMORIA = 8   -- as últimas N concluídas não voltam a aparecer
 -- rank da missão que cada rank ninja pode pegar
@@ -41,7 +41,7 @@ MissionData.Lugares = {
 	Floresta = { Name = "Forest", Pos = Vector3.new(63, 3, 330), Raio = 120 },
 	Escritorio = { Name = "Elder's Office", Pos = Vector3.new(45, 3, -650), Raio = 16 },
 	Trilha = { Name = "Forest Trail", Pos = Vector3.new(63, 3, 330), Raio = 22 },
-	Cemiterio = { Name = "Old Cemetery", Pos = Vector3.new(60, 3, 470), Raio = 26 },
+	Cemiterio = { Name = "Old Cemetery", Pos = Vector3.new(160, 3, 305), Raio = 26 }, -- no miolo da floresta, longe da trilha
 	-- floresta de fora (só Genin sai da vila)
 	Mundo = { Name = "Outer Forest", Pos = Vector3.new(830, 3, -520), Raio = 150 },
 	Lago = { Name = "Waterfall Lake", Pos = Vector3.new(950, 3, -450), Raio = 30 },
@@ -173,7 +173,8 @@ MissionData.Missoes = {
 -- de cada vez entre as do rank do jogador, sem repetir as últimas concluídas.
 do
 	local PREMIO = { D = { XP = 380, Coins = 60 }, C = { XP = 950, Coins = 150 }, B = { XP = 2100, Coins = 320, Pontos = 1 }, A = { XP = 4200, Coins = 650, Pontos = 2 } }
-	-- { id, rank, nome, tipo, alvo, n, descrição }
+	-- { id, rank, nome, tipo, alvo, n, descrição, objetivo (texto opcional do rastreador) }
+	-- 50 missões: levar algo a alguém ("falar" com o NPC), achar algo ("ir"/"coletar") e derrotar bandidos ("derrotar")
 	local lista = {
 		{ "Ramen", "D", "Ramen Delivery", "ir", "Mercado", 1, "A hot bowl of ramen must reach Market Street before it gets cold." },
 		{ "Gato", "D", "Lost Cat", "ir", "Oeste", 1, "A cat ran off again. It was last seen in the West District." },
@@ -202,11 +203,39 @@ do
 		{ "Queda", "A", "Fall of the Hideouts", "derrotar", "Acampamento", 26, "Wipe out the hideouts. Defeat 26 rogue ninjas." },
 		{ "Colheita", "A", "Great Harvest", "coletar", "Floresta", 18, "A whole village needs medicine. Collect 18 glowing herbs." },
 		{ "Mestre", "A", "Master Drill", "treinar", nil, 5, "Train five times at the Ninja Academy." },
+		-- levar algo a alguém (D)
+		{ "EntregaKenta", "D", "Ramen for Kenta", "falar", "Naruto", 1, "Kenta left his lunch at the stand again. Bring him a fresh bowl.", "Deliver the ramen to Kenta" },
+		{ "EntregaHana", "D", "Herb Bundle for Hana", "falar", "Sakura (Naruto Shippuden)", 1, "Hana is waiting on a bundle of dried herbs. Deliver it before she runs out.", "Deliver the herbs to Hana" },
+		{ "EntregaGaien", "D", "Gaien's Weights", "falar", "Might guy", 1, "Coach Gaien left his training weights by the gate. Carry them to him.", "Bring the weights to Coach Gaien" },
+		{ "EntregaKaito", "D", "Attendance Scroll", "falar", "Kakashi", 1, "Sensei Kaito needs the class attendance scroll signed today.", "Deliver the scroll to Sensei Kaito" },
+		{ "EntregaRyo", "D", "Letter for Ryo", "falar", "Sasuke", 1, "A sealed letter is addressed to Ryo, the lone genin. Find him and hand it over.", "Deliver the letter to Ryo" },
+		{ "EntregaTsuna", "D", "Tea for Lady Tsuna", "falar", "Tsunade", 1, "The Elder's tea is getting cold. Hurry to her office.", "Deliver the tea to Lady Tsuna" },
+		-- achar algo (D)
+		{ "AcharKunai", "D", "Lost Kunai", "ir", "Trilha", 1, "A student dropped a kunai on the forest trail. Find it.", "Find the lost kunai on the forest trail" },
+		{ "AcharBandana", "D", "Missing Headband", "ir", "Praca", 1, "Someone lost a headband in the village square. Look around and find it.", "Search the village square for the headband" },
+		{ "AcharFilhote", "D", "Lost Puppy", "ir", "Floresta", 1, "A puppy wandered into the forest. Find it before dark.", "Find the puppy in the forest" },
+		-- rank C
+		{ "EntregaKiro", "C", "Treats for Aka", "falar", "MestreInu", 1, "Kiro's dog Aka has run out of treats. Bring a bag to Kiro.", "Deliver the treats to Kiro" },
+		{ "EntregaRokuro", "C", "Weights for Rokuro", "falar", "MestreLee", 1, "Rokuro trains with heavy wrist weights and lost a pair. Bring him new ones.", "Deliver the weights to Rokuro" },
+		{ "EntregaJakou", "C", "Medicine for Master Jakou", "falar", "Mahito_Orochimaru_Verified", 1, "Master Jakou is out of medicine on top of the giant snake. Take him a case.", "Deliver the medicine to Master Jakou" },
+		{ "AcharJoia", "C", "Family Heirloom", "ir", "Cemiterio", 1, "A widow lost an heirloom while visiting the old cemetery. Search the graves.", "Find the heirloom in the old cemetery" },
+		{ "AcharCaravana", "C", "Lost Caravan", "ir", "Mundo", 1, "A merchant caravan vanished in the outer forest. Find where it went.", "Search the outer forest for the caravan" },
+		{ "Batedores", "C", "Rogue Scouts", "derrotar", "Acampamento", 7, "Rogue scouts are watching the village gates. Defeat 7 of them." },
+		-- rank B
+		{ "EntregaSeiji", "B", "Sealed Message for Seiji", "falar", "Neji", 1, "A sealed message must reach the Gentle Fist prodigy. Do not let anyone read it.", "Deliver the message to Seiji" },
+		{ "EntregaUrgente", "B", "Urgent Report", "falar", "Tsunade", 1, "A scout report says the hideouts are moving. Get it to Lady Tsuna now.", "Deliver the report to Lady Tsuna" },
+		{ "AcharEscoteiro", "B", "Missing Scout", "ir", "Santuario", 1, "A scout went silent near the Meditation Shrine. Find out what happened.", "Search the Meditation Shrine for the scout" },
+		{ "Invasao", "B", "Night Raid", "derrotar", "Acampamento", 22, "The hideouts plan a raid on the village. Defeat 22 rogue ninjas first." },
+		-- rank A
+		{ "EntregaOrdem", "A", "Sealed Order", "falar", "Tsunade", 1, "A sealed order from the capital must reach Lady Tsuna unopened.", "Deliver the sealed order to Lady Tsuna" },
+		{ "EntregaProibido", "A", "Forbidden Scroll", "falar", "Ino (PTS)", 1, "A dangerous scroll must be handed to the Wandering Grappler. Trust no one on the way.", "Deliver the scroll to the Wandering Grappler" },
+		{ "AcharArtefato", "A", "Lost Artifact", "ir", "Ruinas", 1, "An ancient artifact is hidden in the forest ruins. Recover it.", "Recover the artifact in the forest ruins" },
+		{ "Guardas", "A", "Bandit King's Guards", "derrotar", "Mundo", 34, "The Bandit King's guards roam the outer forest. Defeat 34 of them." },
 	}
 	for _, q in ipairs(lista) do
 		local pr = PREMIO[q[2]]
 		table.insert(MissionData.Missoes, { Id = "Q_" .. q[1], Npc = "Quadro", Quadro = true, Rank = q[2], Name = q[3],
-			Tipo = q[4], Alvo = q[5], N = q[6], Desc = q[7], Recompensa = { XP = pr.XP, Coins = pr.Coins, Pontos = pr.Pontos } })
+			Tipo = q[4], Alvo = q[5], N = q[6], Desc = q[7], Obj = q[8], Recompensa = { XP = pr.XP, Coins = pr.Coins, Pontos = pr.Pontos } })
 	end
 end
 

@@ -13,6 +13,7 @@ local HttpService = game:GetService("HttpService")
 
 local ClanPowers = require(ReplicatedStorage:WaitForChild("ClanPowers"))
 local FightStyles = require(ReplicatedStorage:WaitForChild("FightStyles"))
+local Selos = require(ReplicatedStorage:WaitForChild("SelosDeMao"))
 local useEvent = ReplicatedStorage:WaitForChild("UseAbility")
 local feedbackEvent = ReplicatedStorage:WaitForChild("AbilityFeedback")
 
@@ -621,7 +622,7 @@ local function usar(slot)
 			return
 		end
 	end
-	if os.clock() < readyAt[slot] then
+	if os.clock() < readyAt[slot] or Selos.Ativo() then
 		return
 	end
 	if (player:GetAttribute("Chakra") or 0) < p.Chakra then
@@ -630,12 +631,16 @@ local function usar(slot)
 	end
 	readyAt[slot] = os.clock() + p.Cooldown
 	total[slot] = p.Cooldown
-	useEvent:FireServer(slot)
-	if p.Dash then
-		investida(p.Dash)
-	elseif p.Seek then
-		irAteInimigo()
-	end
+	-- todo jutsu começa com os selos de mão; o jutsu (e a investida) só saem quando os braços se estendem
+	local cor = slot == 4 and KekkeiData.Tipos[estado.K or ""].Color or (c and c.Color)
+	Selos.Fazer(cor, function()
+		useEvent:FireServer(slot)
+		if p.Dash then
+			investida(p.Dash)
+		elseif p.Seek then
+			irAteInimigo()
+		end
+	end)
 end
 
 local POS_TOQUE = {

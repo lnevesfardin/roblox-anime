@@ -21,6 +21,9 @@ Luta do Exame Ninja: **gramado só no centro, floresta em volta**.
 Accessory usado pelo Kiro (MestreInu) em `MundoExtras.kibaEnfeites`.
 Origem: asset 524654418, "KIBA INUZUKA HAIR (NUNS)" (autor minhbelly).
 Se faltar, o código cai num fallback (bola + espetos de cabelo).
+Colocação: `Handle.CFrame = Head.CFrame * HatAttachment.CFrame * AttachmentPoint:Inverse()` (o AttachmentPoint do
+asset tem ~180° de giro em Y; sem ele o cabelo ficava virado para trás). O asset já traz a testeira de Konoha,
+então a testeira "@" feita por código só é criada no fallback.
 
 ## Workspace.MestreLee
 
@@ -30,6 +33,6 @@ descrito em `MissionData` como "near Market Street". O Rokuro feito de blocos fo
 
 ## Criado por script ao iniciar o servidor (não aparece no Edit)
 
-- `MundoExtras`: cemitério (36 peças + `TumuloPrimeiro` perto de (50, 0.3, 462)), Kiro e o cão Aka.
+- `MundoExtras`: cemitério (36 peças + `TumuloPrimeiro`), agora no miolo da floresta em `MissionData.Lugares.Cemiterio` = (160, 3, 305), Kiro e o cão Aka.
 - No jogo real `AnimationConstraint.C0` é somente leitura: poses estáticas são feitas por CFrame das peças
   e depois todas as peças ficam `Anchored` (ver `posar` em `kibaEnfeites`).

@@ -239,7 +239,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local a = anim
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local correndo = player:GetAttribute("Correndo") and hum and hum.MoveDirection.Magnitude > 0.1
-	local alvoCorrida = (correndo and not a) and 1 or 0
+	local alvoCorrida = (correndo and not a and not player:GetAttribute("Selos")) and 1 or 0
 	pesoCorrida += (alvoCorrida - pesoCorrida) * math.min(dt * 10, 1)
 	local fim = a and a.keys[#a.keys].t
 	local el = a and (os.clock() - a.t0)

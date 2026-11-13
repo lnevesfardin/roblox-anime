@@ -792,6 +792,119 @@ local function setAviso(texto)
 	avisoAte = os.clock() + 2.5
 end
 
+---------------------------------------------------------------
+-- Kinjutsu (jutsu proibido): bandidos e Team Taka usam nas ondas.
+-- Cada tipo de inimigo do MapData pode ter Kin = "Selo" | "Chamas" | "Maldicao" | "Veneno" e KinCada (segundos).
+-- O inimigo para, brilha em roxo e marca o chão; se for derrotado durante o preparo, o jutsu é cancelado.
+---------------------------------------------------------------
+local KIN_ROXO = Color3.fromRGB(150, 60, 210)
+local KIN_ROSA = Color3.fromRGB(255, 120, 255)
+local KIN_NOMES = {
+	Selo = "Forbidden Seal Burst",
+	Chamas = "Forbidden Flame Line",
+	Maldicao = "Cursed Mark",
+	Veneno = "Forbidden Poison Mist",
+}
+local KIN_ALCANCE = { Selo = 16, Chamas = 36, Maldicao = 45, Veneno = 45 }
+
+local function kinAura(e, dur)
+	local h = Instance.new("Highlight")
+	h.FillColor, h.OutlineColor = KIN_ROXO, KIN_ROSA
+	h.FillTransparency, h.OutlineTransparency = 0.55, 0.1
+	h.DepthMode = Enum.HighlightDepthMode.Occluded
+	h.Parent = e.model
+	Debris:AddItem(h, dur)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Color = ColorSequence.new(KIN_ROSA, KIN_ROXO)
+	pe.LightEmission = 1
+	pe.Rate = 45
+	pe.Lifetime = NumberRange.new(0.5, 0.9)
+	pe.Speed = NumberRange.new(3, 6)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 0) })
+	pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	pe.Parent = e.root
+	Debris:AddItem(pe, dur)
+end
+
+local function kinExplosao(pos, raio, cor)
+	local b = efeito({ Shape = Enum.PartType.Ball, Size = Vector3.one * 2, Color = cor, Transparency = 0.35, CFrame = CFrame.new(pos) })
+	TweenService:Create(b, TweenInfo.new(0.4, Enum.EasingStyle.Quad), { Size = Vector3.one * raio * 2, Transparency = 1 }):Play()
+	Debris:AddItem(b, 0.45)
+end
+
+local function kinjutsu(e, floorY, alvo)
+	local tipo = e.kin
+	local dur = tipo == "Chamas" and 1.2 or 1.4
+	local agora = os.clock()
+	e.castAte = agora + dur + 0.25
+	e.lastHit = math.max(e.lastHit, agora + dur - e.interval + 0.5)
+	setAviso(e.model.Name .. ": Kinjutsu - " .. (KIN_NOMES[tipo] or "Forbidden Jutsu") .. "!")
+	kinAura(e, dur + 0.2)
+
+	local base = e.damage / math.max(difAtual.Dano, 0.01) * 2.4 -- damageInRadius/damageInLine aplicam a dificuldade
+	local pos = e.root.Position
+	local alvoPos = alvo.root.Position
+	e.root.CFrame = CFrame.lookAt(pos, Vector3.new(alvoPos.X, pos.Y, alvoPos.Z))
+
+	local function marcaFutura(m)
+		TweenService:Create(m, TweenInfo.new(dur), { Transparency = 0.3 }):Play()
+	end
+
+	if tipo == "Chamas" then
+		local de = Vector3.new(pos.X, floorY, pos.Z)
+		local d = (alvoPos - de) * Vector3.new(1, 0, 1)
+		local dir = (d.Magnitude > 0.5 and d or e.root.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+		local len, larg = 30, 6
+		local faixa = efeito({ Size = Vector3.new(larg, 0.3, len), Color = KIN_ROXO, Transparency = 0.7,
+			CFrame = CFrame.lookAt(de + dir * (len / 2) + Vector3.new(0, 0.25, 0), de + dir * len + Vector3.new(0, 0.25, 0)) })
+		marcaFutura(faixa)
+		task.delay(dur, function()
+			faixa:Destroy()
+			if not enemyAlive(e) or state ~= "running" then return end
+			for k = 1, 6 do
+				local ponto = de + dir * (k * len / 6 - 2) + Vector3.new(0, 1.5, 0)
+				local f = efeito({ Shape = Enum.PartType.Ball, Size = Vector3.one * 4, Color = k % 2 == 0 and KIN_ROSA or KIN_ROXO, Transparency = 0.2, CFrame = CFrame.new(ponto) })
+				TweenService:Create(f, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Size = Vector3.new(6, 9, 6), Transparency = 1, CFrame = CFrame.new(ponto + Vector3.new(0, 3, 0)) }):Play()
+				Debris:AddItem(f, 0.55)
+			end
+			damageInLine(de, dir, len, larg, base)
+		end)
+	elseif tipo == "Selo" then
+		local raio = 13
+		local m = mark(pos, raio, floorY + 0.25, KIN_ROXO)
+		marcaFutura(m)
+		task.delay(dur, function()
+			m:Destroy()
+			if not enemyAlive(e) or state ~= "running" then return end
+			local c = e.root.Position
+			kinExplosao(Vector3.new(c.X, floorY + 2, c.Z), raio, KIN_ROXO)
+			damageInRadius(c, raio, base)
+		end)
+	else -- Maldicao (marca no jogador) e Veneno (neblina que fica no chão)
+		local raio = tipo == "Veneno" and 8 or 9
+		local c = Vector3.new(alvoPos.X, floorY, alvoPos.Z)
+		local cor = tipo == "Veneno" and Color3.fromRGB(120, 200, 70) or KIN_ROXO
+		local m = mark(c, raio, floorY + 0.25, cor)
+		marcaFutura(m)
+		task.delay(dur, function()
+			m:Destroy()
+			if not enemyAlive(e) or state ~= "running" then return end
+			if tipo == "Veneno" then
+				kinExplosao(c + Vector3.new(0, 1.5, 0), raio, cor)
+				damageInRadius(c, raio, base * 0.5)
+				venomPool(c, raio, 6, floorY)
+			else
+				local pilar = efeito({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(16, raio * 2, raio * 2), Color = KIN_ROSA, Transparency = 0.3,
+					CFrame = CFrame.new(c + Vector3.new(0, 8, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+				TweenService:Create(pilar, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				Debris:AddItem(pilar, 0.55)
+				damageInRadius(c, raio, base)
+			end
+		end)
+	end
+end
+
 local function aiLoop(cfg, floorY, centro)
 	while state == "running" do
 		local now = os.clock()
@@ -799,7 +912,10 @@ local function aiLoop(cfg, floorY, centro)
 			if enemyAlive(e) then
 				local target, dist = nearestTarget(e.root.Position)
 				if target then
-					if dist <= 5 + e.radius then
+					local conjurando = e.castAte and now < e.castAte
+					if conjurando then
+						e.hum:MoveTo(e.root.Position) -- parado, preparando o kinjutsu
+					elseif dist <= 5 + e.radius then
 						e.hum:MoveTo(e.root.Position)
 						if e.radius <= 2 and (e.model:GetAttribute("Atordoado") or 0) > os.clock() then
 							e.lastHit = math.max(e.lastHit, now - e.interval + 0.6) -- travado pelo combo: não revida já
@@ -809,6 +925,10 @@ local function aiLoop(cfg, floorY, centro)
 						end
 					else
 						e.hum:MoveTo(target.root.Position)
+					end
+					if e.kin and not e.isBoss and not conjurando and now >= e.nextKin and dist <= (KIN_ALCANCE[e.kin] or 40) then
+						e.nextKin = now + e.kinCada * (0.85 + math.random() * 0.4)
+						kinjutsu(e, floorY, target)
 					end
 					if e.isBoss then
 						if now >= e.nextSlam then
@@ -924,14 +1044,19 @@ local function runMap(mapId)
 		for _, t in ipairs(w.Enemies) do
 			local qtd = t.Count + (n - 1) * (t.Extra or 1)
 			for i = 1, qtd do
-				spawnEnemy(t.Name, t.Color, t.Scale or 1, t.Health * hpScale, t.Damage,
+				local ent = spawnEnemy(t.Name, t.Color, t.Scale or 1, t.Health * hpScale, t.Damage,
 					randomSpawnPos(centro, spawnPart, floorY, arena:GetAttribute("RaioSpawn") or 40), false, t.Speed, nil, t.Look,
 					t.Skin, t.SkinIdx or i)
+				if ent and t.Kin then -- kinjutsu: o primeiro vem entre 0.5x e 1.5x do intervalo
+					ent.kin = t.Kin
+					ent.kinCada = t.KinCada or 10
+					ent.nextKin = os.clock() + ent.kinCada * (0.5 + math.random())
+				end
 			end
 		end
 
 		while aliveEnemyCount() > 0 and aliveParticipants() > 0 do
-			broadcast({ text = ("Wave %d/%d: %s   |   Enemies: %d"):format(wave, total, w.Name, aliveEnemyCount()) })
+			broadcast({ text = (os.clock() < avisoAte) and avisoTexto or ("Wave %d/%d: %s   |   Enemies: %d"):format(wave, total, w.Name, aliveEnemyCount()) })
 			task.wait(0.5)
 		end
 

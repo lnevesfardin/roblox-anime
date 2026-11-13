@@ -280,14 +280,18 @@ local function kibaEnfeites(m, colar, head)
 	-- cabelo: a peça da loja guardada em ServerStorage.PecasNPC.KibaHair (se faltar, monta com pontas)
 	local molde = PecasNPC and PecasNPC:FindFirstChild("KibaHair")
 	local fio = molde and molde:FindFirstChild("Handle")
+	local usouAsset = false -- o cabelo da loja já traz a testeira de Konoha (placa com a folha)
 	if fio then
+		usouAsset = true
 		local h = fio:Clone()
 		for _, c in ipairs(h:GetChildren()) do
 			if c:IsA("Attachment") or c:IsA("TouchTransmitter") then c:Destroy() end
 		end
 		h.Name = "Cabelo"
 		h.Anchored, h.CanCollide, h.CanQuery, h.CanTouch, h.Massless = false, false, false, false, true
-		h.CFrame = head.CFrame * CFrame.new(0, hy * 0.36, hz * 0.34) * CFrame.Angles(math.rad(-6), 0, 0)
+		-- posição de vestir do acessório: o AttachmentPoint dele já traz a rotação de ~180° (sem ela o cabelo fica virado para trás)
+		local hat = head:FindFirstChild("HatAttachment")
+		h.CFrame = head.CFrame * (hat and hat.CFrame or CFrame.new(0, hy * 0.5, 0)) * molde.AttachmentPoint:Inverse()
 		local w = Instance.new("WeldConstraint")
 		w.Part0, w.Part1 = head, h
 		w.Parent = h
@@ -301,9 +305,11 @@ local function kibaEnfeites(m, colar, head)
 		end
 	end
 	-- testeira de Konoha: faixa azul-escura com a placa de metal e o símbolo da folha
-	colar("Testeira", Vector3.new(hx * 1.07, hy * 0.24, hz * 1.07), CFrame.new(0, hy * 0.27, 0), Color3.fromRGB(26, 32, 58), nil, Enum.Material.Fabric)
-	local placa = colar("TesteiraPlaca", Vector3.new(hx * 0.64, hy * 0.22, 0.1), CFrame.new(0, hy * 0.27, -hz * 0.55), Color3.fromRGB(190, 195, 205), nil, Enum.Material.Metal)
-	glifo(placa, "@", Color3.fromRGB(40, 45, 60))
+	if not usouAsset then -- sem a peça da loja, monta a testeira à mão
+		colar("Testeira", Vector3.new(hx * 1.07, hy * 0.24, hz * 1.07), CFrame.new(0, hy * 0.27, 0), Color3.fromRGB(26, 32, 58), nil, Enum.Material.Fabric)
+		local placa = colar("TesteiraPlaca", Vector3.new(hx * 0.64, hy * 0.22, 0.1), CFrame.new(0, hy * 0.27, -hz * 0.55), Color3.fromRGB(190, 195, 205), nil, Enum.Material.Metal)
+		glifo(placa, "@", Color3.fromRGB(40, 45, 60))
+	end
 	-- as marcas vermelhas das presas (triângulos para baixo) nas bochechas
 	for _, x in ipairs({ -1, 1 }) do
 		local mk = colar("Marca", Vector3.new(hx * 0.26, hy * 0.32, 0.04), CFrame.new(x * hx * 0.3, -hy * 0.1, -hz * 0.505), Color3.fromRGB(200, 35, 40))

@@ -68,7 +68,6 @@ local function dados(player)
 	if type(q.Of) ~= "table" then q.Of = {} end
 	if type(q.Rec) ~= "table" then q.Rec = {} end
 	q.N = tonumber(q.N) or 0
-	if os.time() - (tonumber(q.H) or 0) >= 3600 then q.H, q.N = os.time(), 0 end
 	ClanPowers.Sincronizar(data) -- trocou de clã: missões do clã antigo somem
 	if type(m.Ativa) ~= "table" or not MissionData.Get(m.Ativa.Id) then m.Ativa = nil end
 	if type(m.Lado) ~= "table" or not MissionData.Get(m.Lado.Id) then m.Lado = nil end
@@ -138,9 +137,6 @@ end
 local function disponivel(data, m, missao)
 	if (m.Ativa and m.Ativa.Id == missao.Id) or (m.Lado and m.Lado.Id == missao.Id) then return false end
 	if missao.Quadro then
-		if m.Q.N >= MissionData.QUADRO_POR_HORA then
-			return false, ("Board limit reached. New missions in %d min"):format(math.max(1, math.ceil((m.Q.H + 3600 - os.time()) / 60)))
-		end
 		return table.find(m.Q.Of, missao.Id) ~= nil
 	end
 	if missao.Historia and m.Historia ~= missao.Historia - 1 then return false end -- história: só o próximo passo aparece
@@ -175,11 +171,9 @@ local function estado(player)
 		local missao = MissionData.Get(e.Id)
 		return { Id = missao.Id, P = e.P, N = missao.N }
 	end
-	-- a atendente do balcão mostra o aviso enquanto ainda dá para pegar missão do quadro
-	if m.Q.N < MissionData.QUADRO_POR_HORA then
-		for key, info in pairs(MissionData.NPCs) do
-			if info.Quadro then disp[key] = true end
-		end
+	-- a atendente do balcão sempre mostra o aviso: o quadro não tem limite de missões
+	for key, info in pairs(MissionData.NPCs) do
+		if info.Quadro then disp[key] = true end
 	end
 	return { Ativa = resumo(m.Ativa), Lado = resumo(m.Lado), Rank = data.Rank, NpcsComMissao = disp, Historia = m.Historia }
 end
@@ -265,7 +259,7 @@ local function concluir(player, esp)
 	if missao.Historia then
 		m.Historia = math.max(m.Historia, missao.Historia)
 	elseif missao.Quadro then
-		-- sai das ofertas, entra na memória (não repete tão cedo) e conta no limite da hora
+		-- sai das ofertas e entra na memória (não repete tão cedo); q.N só conta quantas já foram feitas
 		local q = m.Q
 		local i = table.find(q.Of, missao.Id)
 		if i then table.remove(q.Of, i) end
@@ -273,8 +267,7 @@ local function concluir(player, esp)
 		while #q.Rec > MissionData.QUADRO_MEMORIA do table.remove(q.Rec, 1) end
 		q.N += 1
 		encherQuadro(data, m)
-		local resta = MissionData.QUADRO_POR_HORA - q.N
-		aviso(player, resta > 0 and ("Board missions left this hour: %d"):format(resta) or "Board limit reached for this hour. Story and master missions are still open.", resta > 0)
+		aviso(player, "Board mission complete! New missions are waiting at the board.", true)
 	elseif missao.Unica then
 		m.Feitas[missao.Id] = true
 	else
@@ -551,10 +544,8 @@ conversar = function(player, npcKey, modelo)
 	end
 	evento:FireClient(player, {
 		tipo = "dialogo", npc = npcKey, nome = npcKey == "Quadro" and (atendente and atendente.Name or "Mission Board") or info.Name,
-		titulo = npcKey == "Quadro" and ("Rank missions  ·  %d/%d this hour"):format(m.Q.N, MissionData.QUADRO_POR_HORA) or info.Titulo,
-		fala = npcKey == "Quadro" and (m.Q.N >= MissionData.QUADRO_POR_HORA
-			and ("You did every mission I had for this hour. Come back in %d min."):format(math.max(1, math.ceil((m.Q.H + 3600 - os.time()) / 60)))
-			or "These are the missions of your rank. New ones come in when you finish one.") or fala,
+		titulo = npcKey == "Quadro" and ("Rank missions  ·  %d done"):format(m.Q.N) or info.Titulo,
+		fala = npcKey == "Quadro" and "These are the missions of your rank. New ones come in when you finish one." or fala,
 		ofertas = ofertas, temAtiva = m.Ativa ~= nil, modelo = modelo,
 	})
 end

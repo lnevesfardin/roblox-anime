@@ -109,6 +109,7 @@ local function nomeNpc(key)
 end
 local function objetivo(missao, p)
 	local t = missao.Tipo
+	if missao.Obj and (t == "falar" or t == "ir") then return missao.Obj end -- texto próprio (entregas e achados do quadro)
 	if t == "falar" then return "Talk to " .. nomeNpc(missao.Alvo) end
 	if t == "ir" then return "Go to " .. MissionData.Lugares[missao.Alvo].Name end
 	if t == "treinar" then return ("Train at the Ninja Academy  %d/%d"):format(p, missao.N) end

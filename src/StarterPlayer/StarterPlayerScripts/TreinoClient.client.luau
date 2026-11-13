@@ -1,4 +1,5 @@
 -- Treino da Academia (Sensei Kaito): minigame de tempo nos alvos de madeira.
+-- Treino de chakra: vira uma cutscene (barras de cinema, câmera em volta do personagem) com o minigame dentro das barras.
 -- Acerte 10 socos quando o marcador estiver na faixa verde. A faixa diminui e o marcador acelera; 3 erros = falhou.
 -- Modo "teclas" (Coach Gaien, estações que não são alvo de madeira): 4 séries de exercícios; em cada uma
 -- aparece uma sequência de teclas W A S D para apertar na ordem antes do tempo acabar. 3 erros = falhou.
@@ -27,7 +28,7 @@ local function new(classe, props, filhos)
 end
 local function canto(r) return new("UICorner", { CornerRadius = UDim.new(0, r or 8) }) end
 
-local gui = new("ScreenGui", { Name = "TreinoUI", ResetOnSpawn = false, DisplayOrder = 14, Enabled = false, Parent = player:WaitForChild("PlayerGui") })
+local gui = new("ScreenGui", { Name = "TreinoUI", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 14, Enabled = false, Parent = player:WaitForChild("PlayerGui") })
 local painel = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -120), Size = UDim2.fromOffset(540, 178),
 	BackgroundColor3 = Color3.fromRGB(30, 24, 20), BackgroundTransparency = 0.05, Parent = gui },
 	{ canto(14), new("UIStroke", { Color = Color3.fromRGB(170, 120, 70), Thickness = 2 }) })
@@ -127,6 +128,7 @@ local CHAKRA_COR = Color3.fromRGB(90, 180, 255)
 local SERIES_CHAKRA = { "GATHER CHAKRA", "HAND SIGNS", "FOCUS", "RELEASE!" }
 local DESCE = 1.35 -- quanto o corpo desce para ficar ajoelhado
 local cena = nil
+local cinema = nil -- modo cinema (cutscene) do treino de chakra, mais abaixo
 
 -- a pose vai no Transform das juntas a cada quadro, depois da animação (o C0 do personagem não pode ser mudado)
 local function girarJunta(char, parte, nome, cf)
@@ -229,6 +231,7 @@ end
 
 -- a aura cresce conforme as séries (k de 0 a 1)
 local function nivelCena(k)
+	if cinema then cinema.nivel = k end
 	if not cena or not cena.aura then return end
 	cena.aura.Rate = 15 + 70 * k
 	cena.chama.Rate = 8 + 30 * k
@@ -249,6 +252,7 @@ local function pulsoCena()
 end
 
 local function falhaCena()
+	if cinema then cinema.tremor = 0.35 end
 	if not cena or not cena.aura then return end
 	cena.aura.Enabled, cena.chama.Enabled = false, false
 	task.delay(0.25, function()
@@ -279,6 +283,125 @@ local function fimCena(ok)
 			if o.Parent then o:Destroy() end
 		end
 	end)
+end
+
+
+---------------------------------------------------------------
+-- Modo cinema do treino de chakra: barras pretas em cima e embaixo (11% da tela cada), câmera de cutscene
+-- girando devagar em volta do personagem e a interface do minigame DENTRO das barras, sem cobrir o boneco.
+---------------------------------------------------------------
+local FAIXA = 0.11
+local barraTopo = new("Frame", { Name = "BarraTopo", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 0), Size = UDim2.fromScale(1, FAIXA),
+	BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Visible = false, Parent = gui })
+local barraBaixo = new("Frame", { Name = "BarraBaixo", AnchorPoint = Vector2.new(0, 0), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, FAIXA),
+	BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Visible = false, Parent = gui })
+-- fio de chakra na borda das barras
+for _, b in ipairs({ barraTopo, barraBaixo }) do
+	new("Frame", { AnchorPoint = Vector2.new(0, b == barraTopo and 1 or 0), Position = UDim2.fromScale(0, b == barraTopo and 1 or 0), Size = UDim2.new(1, 0, 0, 2),
+		BackgroundColor3 = CHAKRA_COR, BackgroundTransparency = 0.3, BorderSizePixel = 0, Parent = b })
+end
+
+-- onde cada peça do painel fica no modo cinema
+local LAYOUT_CINEMA = {
+	{ "titulo", barraTopo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, -10), Size = UDim2.new(0.6, 0, 0, 26), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 22 } },
+	{ "dica", barraTopo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 14), Size = UDim2.new(0.6, 0, 0, 18), TextXAlignment = Enum.TextXAlignment.Center } },
+	{ "bSair", barraTopo, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -20, 0.5, 0) } },
+	{ "feedback", barraTopo, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -66, 0.5, 0) } },
+	{ "fileira", barraBaixo, { Position = UDim2.new(0.5, -220, 0.5, -26), Size = UDim2.fromOffset(440, 40) } },
+	{ "tempoFundo", barraBaixo, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.5, 20), Size = UDim2.fromOffset(380, 5) } },
+	{ "placar", barraBaixo, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 24, 0.5, -14), Size = UDim2.fromOffset(200, 26) } },
+	{ "vidasTxt", barraBaixo, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 24, 0.5, 14), Size = UDim2.fromOffset(200, 26) } },
+	{ "botoesTecla", barraBaixo, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -20, 0.5, 0) } },
+}
+local PECAS = { titulo = titulo, dica = dica, bSair = bSair, feedback = feedback, fileira = fileira, tempoFundo = tempoFundo,
+	placar = placar, vidasTxt = vidasTxt, botoesTecla = botoesTecla }
+local guardado = {}
+-- telas que somem durante a cutscene (voltam como estavam)
+local OUTRAS_TELAS = { "HUD", "HudOnda", "HudPoderes", "HudNatureza", "ViagemUI", "AtributosUI", "MissaoUI", "ClaUI" }
+local telasDesligadas = {}
+
+local function cameraCinema(root)
+	local cam = workspace.CurrentCamera
+	local t0 = os.clock()
+	local frente = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	if frente.Magnitude < 0.01 then frente = Vector3.new(0, 0, -1) end
+	frente = frente.Unit
+	cinema.fov = cam.FieldOfView
+	cam.CameraType = Enum.CameraType.Scriptable
+	RunService:BindToRenderStep("CameraChakra", Enum.RenderPriority.Camera.Value + 2, function()
+		if not root.Parent then return end
+		local t = os.clock() - t0
+		-- entra afastada e chega perto; depois balança devagar de um lado para o outro na frente do personagem
+		local entrada = 1 - (1 - math.min(t / 1.4, 1)) ^ 3
+		local nivel = cinema and cinema.nivel or 0
+		local dist = 15 - (6.5 + 1.5 * nivel) * entrada
+		local ang = math.sin(t * 0.35) * 0.55 + 0.35
+		local dir = CFrame.Angles(0, ang, 0):VectorToWorldSpace(frente)
+		local foco = root.Position + Vector3.new(0, 0.6, 0)
+		local pos = foco + dir * dist + Vector3.new(0, 1.6 - 0.6 * entrada + math.sin(t * 0.6) * 0.15, 0)
+		local tremor = cinema and cinema.tremor or 0
+		if tremor > 0 then
+			pos += Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * tremor
+			cinema.tremor = math.max(0, tremor - 0.03)
+		end
+		cam.CameraType = Enum.CameraType.Scriptable
+		cam.CFrame = CFrame.lookAt(pos, foco)
+		cam.FieldOfView = 60
+	end)
+end
+
+local function ligarCinema()
+	if cinema then return end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	cinema = { nivel = 0, tremor = 0 }
+	-- tira as outras telas do caminho
+	table.clear(telasDesligadas)
+	for _, n in ipairs(OUTRAS_TELAS) do
+		local g = player.PlayerGui:FindFirstChild(n)
+		if g and g:IsA("ScreenGui") and g.Enabled then
+			g.Enabled = false
+			table.insert(telasDesligadas, g)
+		end
+	end
+	-- leva as peças do painel para as barras
+	table.clear(guardado)
+	for _, item in ipairs(LAYOUT_CINEMA) do
+		local o = PECAS[item[1]]
+		local g = { Parent = o.Parent }
+		for k in pairs(item[3]) do g[k] = o[k] end
+		guardado[o] = g
+		for k, v in pairs(item[3]) do o[k] = v end
+		o.Parent = item[2]
+	end
+	painel.Visible = false
+	barraTopo.Visible, barraBaixo.Visible = true, true
+	barraTopo.Position, barraBaixo.Position = UDim2.fromScale(0, 0), UDim2.fromScale(0, 1)
+	barraTopo.AnchorPoint, barraBaixo.AnchorPoint = Vector2.new(0, 1), Vector2.new(0, 0)
+	local ti = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	TweenService:Create(barraTopo, ti, { AnchorPoint = Vector2.new(0, 0) }):Play()
+	TweenService:Create(barraBaixo, ti, { AnchorPoint = Vector2.new(0, 1) }):Play()
+	cameraCinema(root)
+end
+
+local function desligarCinema()
+	if not cinema then return end
+	local c = cinema
+	cinema = nil
+	RunService:UnbindFromRenderStep("CameraChakra")
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Custom
+	cam.FieldOfView = player:GetAttribute("FOVBase") or c.fov or 70
+	for o, g in pairs(guardado) do
+		for k, v in pairs(g) do o[k] = v end
+	end
+	table.clear(guardado)
+	painel.Visible = true
+	barraTopo.Visible, barraBaixo.Visible = false, false
+	for _, g in ipairs(telasDesligadas) do
+		if g.Parent then g.Enabled = true end
+	end
+	table.clear(telasDesligadas)
 end
 
 local teclaApertada
@@ -326,13 +449,23 @@ local function terminar(resultado)
 	ativo = false
 	ContextActionService:UnbindAction("TreinoHit")
 	ContextActionService:UnbindAction("TreinoTeclas")
+	local eraCinema = cinema ~= nil
+	if eraCinema and resultado == "ok" then cinema.tremor = 0.7 end -- o chakra explode: a câmera treme
 	fimCena(resultado == "ok")
-	controles(true)
+	-- na cutscene o personagem só volta a andar quando a câmera volta ao normal
+	if not eraCinema then controles(true) end
 	minigame:FireServer(resultado, estado.acertos)
 	feedback.Text = resultado == "ok" and "COMPLETE!" or "FAILED"
 	feedback.TextColor3 = resultado == "ok" and Color3.fromRGB(90, 230, 110) or Color3.fromRGB(240, 80, 80)
+	feedback.TextTransparency = 0
 	task.delay(1.2, function()
-		if not ativo then gui.Enabled = false end
+		if not ativo then
+			gui.Enabled = false
+			if eraCinema then
+				desligarCinema()
+				controles(true)
+			end
+		end
 	end)
 end
 
@@ -475,8 +608,10 @@ minigame.OnClientEvent:Connect(function(info)
 		root.CFrame = CFrame.lookAt(root.Position, alvoPos)
 	end
 	controles(false)
+	if cinema and not estado.chakra then desligarCinema() end -- sobrou de um treino de chakra que acabou agora
 	if estado.chakra then
 		iniciarCena()
+		ligarCinema()
 		nivelCena(0)
 	end
 	ContextActionService:BindActionAtPriority("TreinoHit", function(_, st)

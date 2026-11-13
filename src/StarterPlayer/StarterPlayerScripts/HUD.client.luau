@@ -19,7 +19,7 @@ local IconeGema = require(ReplicatedStorage:WaitForChild("IconeGema"))
 
 local R = {}
 for _, name in ipairs({ "OpenCrate", "GetCollection", "EquipCharacter", "DeleteDuplicates", "GetInventory", "UseItem",
-	"EquipCosmetic", "GetBattlePass", "ClaimBattlePass", "BuyWithGems", "PurchaseDone", "GetSettings", "SaveSettings" }) do
+	"EquipCosmetic", "GetBattlePass", "ClaimBattlePass", "BuyWithGems", "PurchaseDone", "GetSettings", "SaveSettings", "PodeResetar", "ResetarProgresso" }) do
 	R[name] = ReplicatedStorage:WaitForChild(name)
 end
 local stats = player:WaitForChild("leaderstats")
@@ -1341,6 +1341,36 @@ local l4 = linhaCfg("Field of view", "Wider view shows more of the battle")
 deslizante(l4, "FOV", 60, 90, UDim2.fromOffset(390, 27), 250, function(v) return tostring(math.floor(v + 0.5)) end)
 local l5 = linhaCfg("Low graphics", "Turns off glow, blur and shadows (faster on phones)")
 interruptor(l5, "LowGraphics", UDim2.fromOffset(290, 15))
+
+-- Reset do progresso: só aparece para as contas liberadas no servidor (RESET_PERMITIDO) e pede confirmação
+task.spawn(function()
+	if not R.PodeResetar:InvokeServer() then return end
+	local l6 = linhaCfg("Reset progress", "Starts your account from zero. Cannot be undone.")
+	local b = botao(l6, "Reset", COR.vermelho, UDim2.fromOffset(120, 36), UDim2.fromOffset(330, 14))
+	local confirmando = false
+	b.Activated:Connect(function()
+		if not confirmando then
+			confirmando = true
+			b.Text = "Confirm?"
+			task.delay(4, function()
+				if confirmando then
+					confirmando = false
+					b.Text = "Reset"
+				end
+			end)
+			return
+		end
+		confirmando = false
+		b.Text = "..."
+		local ok, motivo = R.ResetarProgresso:InvokeServer()
+		if ok then
+			aviso("Progress reset. Rejoin to start over.", COR.verde)
+		else
+			aviso(tostring(motivo), COR.vermelho)
+			b.Text = "Reset"
+		end
+	end)
+end)
 
 ---------------------------------------------------------------
 -- Música: vila no lobby, batalha durante a partida (com transição suave)

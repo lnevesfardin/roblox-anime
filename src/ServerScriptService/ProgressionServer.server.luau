@@ -77,6 +77,25 @@ saveSettings.OnServerEvent:Connect(function(player, new)
 	end
 end)
 
+local podeResetar = Instance.new("RemoteFunction")
+podeResetar.Name = "PodeResetar"
+podeResetar.Parent = ReplicatedStorage
+podeResetar.OnServerInvoke = function(player)
+	return PlayerData.PodeResetar(player)
+end
+
+local resetarProgresso = Instance.new("RemoteFunction")
+resetarProgresso.Name = "ResetarProgresso"
+resetarProgresso.Parent = ReplicatedStorage
+local resetando = {}
+resetarProgresso.OnServerInvoke = function(player)
+	if resetando[player] then return false, "Already resetting." end
+	resetando[player] = true
+	local ok, motivo = PlayerData.Resetar(player)
+	if not ok then resetando[player] = nil end
+	return ok, motivo
+end
+
 game:GetService("Players").PlayerRemoving:Connect(function(player)
 	lastSave[player] = nil
 end)

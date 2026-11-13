@@ -429,6 +429,36 @@ function PlayerData.CanSave(player)
 	return entry ~= nil and entry.CanSave
 end
 
+-- Reset do progresso (botão em Configurações). Só as contas desta lista podem usar.
+PlayerData.RESET_PERMITIDO = { "dutzboi" }
+
+function PlayerData.PodeResetar(player)
+	return table.find(PlayerData.RESET_PERMITIDO, player.Name) ~= nil
+end
+
+-- Zera o save da conta (volta ao padrão) e expulsa o jogador para ele entrar do zero.
+-- CanSave falso impede que o progresso antigo seja gravado de volta ao sair.
+function PlayerData.Resetar(player)
+	if not PlayerData.PodeResetar(player) then return false, "Not allowed." end
+	local entry = cache[player]
+	if not entry then return false, "Still loading, try again." end
+	if player:GetAttribute("InRun") then return false, "Leave the run first." end
+	entry.CanSave = false
+	local ok, err = pcall(function()
+		store:SetAsync(keyFor(player), defaultData())
+	end)
+	if not ok then
+		entry.CanSave = true
+		warn("[PlayerData] Falha ao resetar " .. player.Name .. ": " .. tostring(err))
+		return false, "Could not reset now. Try again."
+	end
+	print("[PlayerData] Progresso de " .. player.Name .. " resetado")
+	task.defer(function()
+		player:Kick("Progresso resetado. Entre de novo para começar do zero.")
+	end)
+	return true
+end
+
 -- Liga tudo. Chamado uma vez pelo script ProgressionServer.
 function PlayerData.Init()
 	Players.PlayerAdded:Connect(setupPlayer)

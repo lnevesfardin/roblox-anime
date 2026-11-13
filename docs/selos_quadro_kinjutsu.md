@@ -23,3 +23,9 @@
 - O inimigo para, brilha em roxo, marca o chão por ~1,3 s e só então causa dano (2,4x o dano dele). Matar o inimigo durante
   o preparo cancela o jutsu. O aviso "Kinjutsu - ..." aparece no texto da partida em todas as ondas.
 - Chefes (White Snake, etc.) continuam com os kits próprios.
+
+## Reset de progresso (botão em Configurações)
+- Aparece só para as contas em `PlayerData.RESET_PERMITIDO` (hoje: `dutzboi`). Os outros jogadores não veem o botão.
+- Clique em "Reset", depois em "Confirm?" em até 4 s. O servidor (`ResetarProgresso`) grava o save padrão e expulsa a conta.
+- Não funciona durante uma partida (`InRun`). `CanSave` fica falso durante a gravação para o progresso antigo não voltar ao sair.
+- Para liberar outra conta, acrescente o nome em `RESET_PERMITIDO`.

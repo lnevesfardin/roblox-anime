@@ -20,6 +20,7 @@ local feedbackEvent = ReplicatedStorage:WaitForChild("AbilityFeedback")
 local player = Players.LocalPlayer
 local KEYS = ClanPowers.KEYS
 local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
+local IconesData = require(ReplicatedStorage:WaitForChild("IconesData"))
 local readyAt = { 0, 0, 0, 0 } -- 4 = tecla V (Kekkei Genkai)
 local total = { 1, 1, 1, 1 }
 local estado = { Cla = "", Ok = { false, false, false }, Motivo = { "", "", "" } }
@@ -110,6 +111,17 @@ for i = 1, 4 do
 	tecla.ZIndex = 3
 	tecla.Parent = f
 
+	local icone = Instance.new("TextLabel") -- icone do jutsu (emoji), entre a tecla e o tempo de recarga
+	icone.Size = UDim2.fromOffset(36, 28)
+	icone.Position = UDim2.fromOffset(32, 0)
+	icone.BackgroundTransparency = 1
+	icone.Font = Enum.Font.GothamBold
+	icone.TextSize = 22
+	icone.TextColor3 = Color3.new(1, 1, 1)
+	icone.Text = ""
+	icone.ZIndex = 3
+	icone.Parent = f
+
 	local nome = Instance.new("TextLabel")
 	nome.Size = UDim2.new(1, -10, 0, 30)
 	nome.Position = UDim2.fromOffset(5, 22)
@@ -166,7 +178,7 @@ for i = 1, 4 do
 	cadeado.Visible = false
 	cadeado.Parent = f
 
-	slots[i] = { frame = f, stroke = stroke, nome = nome, custo = custo, sombra = sombra, tempo = tempo, cadeado = cadeado }
+	slots[i] = { frame = f, stroke = stroke, icone = icone, nome = nome, custo = custo, sombra = sombra, tempo = tempo, cadeado = cadeado }
 end
 
 -- painel POWERS: caminho do clã
@@ -455,6 +467,7 @@ local function atualizar()
 	if kg then
 		local s4 = slots[4]
 		s4.nome.Text = estado.KOk and kg.Poder.Name or "???"
+		s4.icone.Text = estado.KOk and IconesData.De(kg.Poder.Id) or IconesData.BLOQUEADO
 		s4.custo.Text = estado.KOk and (kg.Poder.Chakra .. " CP") or ""
 		s4.stroke.Color = estado.KOk and kg.Color or Color3.fromRGB(70, 70, 85)
 		s4.cadeado.Visible = estado.KOk ~= true
@@ -465,12 +478,13 @@ local function atualizar()
 		local s = slots[i]
 		-- jutsu que o jogador ainda não aprendeu: o nome fica escondido até a missão
 		s.nome.Text = ok and p.Name or "???"
+		s.icone.Text = ok and IconesData.De(p.Id) or IconesData.BLOQUEADO
 		s.custo.Text = ok and (p.Chakra .. " CP") or ""
 		s.stroke.Color = ok and c.Color or Color3.fromRGB(70, 70, 85)
 		s.cadeado.Visible = not ok
 		local l = linhas[i]
 		if ok then
-			l.nome.Text = p.Name .. "   ·   " .. p.Chakra .. " chakra   ·   " .. p.Cooldown .. "s"
+			l.nome.Text = IconesData.De(p.Id) .. "  " .. p.Name .. "   ·   " .. p.Chakra .. " chakra   ·   " .. p.Cooldown .. "s"
 			l.desc.Text = p.Desc
 		else
 			l.nome.Text = "???   ·   Unknown jutsu"

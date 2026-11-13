@@ -39,7 +39,7 @@ local function defaultData()
 		Equipped = nil,
 		Pity = 0,
 		Gems = 0,                         -- Gemas do Rikudou (só Robux ou Battle Pass)
-		BattlePass = { XP = 0, Claimed = {} }, -- Claimed["7"] = true
+		BattlePass = { XP = 0, Claimed = {}, ClaimedP = {}, Ver = 2 }, -- Claimed["7"] = true (gratis); ClaimedP["7"] = true (Premium)
 		Items = {},                       -- [idDoItem] = quantidade
 		Cosmetics = {},                   -- [slot] = idDoItem equipado
 		Boosts = {},                      -- [XP/Coins] = os.time() em que acaba
@@ -93,6 +93,14 @@ local function withDefaults(loaded)
 	data.BattlePass.XP = tonumber(data.BattlePass.XP) or 0
 	if type(data.BattlePass.Claimed) ~= "table" then
 		data.BattlePass.Claimed = {}
+	end
+	if type(data.BattlePass.ClaimedP) ~= "table" then
+		data.BattlePass.ClaimedP = {}
+	end
+	if (tonumber(data.BattlePass.Ver) or 1) < 2 then
+		-- o nivel passou de 400 para 1200 XP: multiplica o XP guardado para ninguem perder o nivel que ja tinha
+		data.BattlePass.XP = data.BattlePass.XP * 3
+		data.BattlePass.Ver = 2
 	end
 	data.Gems = tonumber(data.Gems) or 0
 	-- clã: Id (nil até escolher), giros grátis, opções sorteadas à espera de escolha, contadores de garantia e caminho do clã
@@ -207,6 +215,8 @@ function PlayerData.AddCoins(player, amount)
 		return
 	end
 	data.Coins += math.floor(amount)
+	local diaria = script.Parent:FindFirstChild("DiariaEvento") -- missoes diarias
+	if diaria then diaria:Fire(player, "coins", math.floor(amount)) end
 	refreshStats(player)
 end
 
@@ -230,6 +240,8 @@ function PlayerData.AddXP(player, amount)
 	local bp = EconomyData.BattlePass
 	data.BattlePass.XP = math.min(data.BattlePass.XP + math.floor(amount), bp.MaxLevel * bp.XPPerLevel)
 	data.XP += math.floor(amount)
+	local diaria = script.Parent:FindFirstChild("DiariaEvento") -- missoes diarias
+	if diaria then diaria:Fire(player, "xp", math.floor(amount)) end
 	while data.Level < CharacterData.MaxLevel do
 		local needed = CharacterData.XPForLevel(data.Level)
 		if data.XP < needed then

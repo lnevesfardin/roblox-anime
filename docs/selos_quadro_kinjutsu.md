@@ -84,3 +84,32 @@
 - Barras de habilidades (X/Y/C em `CombatClient`, poderes do clã em `AbilityClient`, naturezas em `NatureClient`): escala responsiva
   `clamp((largura/2 + 111) / 864, 0.55, 0.95)` (antes fixa em 0,75), letras de 13 a 21; botões STATS/CLAN abaixo da barra do topo (y = 80 x escala).
 - Naturezas: emoji do elemento no lugar do nome (🔥 Fogo, 💨 Vento, ⚡ Raio, 🌍 Terra, 💧 Água) nos slots, no painel e na escolha.
+
+## Battle Pass: mais difícil + trilha Premium (`EconomyData.BattlePass`, `BattlePassServer`, `HUD`)
+- `XPPerLevel` foi de 400 para 1200 (3x mais difícil). Quem já tinha XP do passe tem o XP multiplicado por 3 uma vez só (`BattlePass.Ver` < 2 em `PlayerData.withDefaults`).
+- Duas trilhas: GRÁTIS e 👑 PREMIUM (abas no painel). Premium dá o dobro de moedas e, a cada 5 níveis, 50 gemas + 1 caixa (2 nos múltiplos de 10), mais itens extras; o nível 50 premium é o prêmio grande.
+- Gamepass "Passe Premium (trilha paga)": criar no Creator Dashboard e colar o ID em `EconomyData.BattlePass.PremiumPassId`. Com ID 0 o botão mostra "coming soon" e, no Studio, o premium conta como comprado (para testar).
+- Servidor: atributo do jogador `PassePremium` (dono do gamepass), `ClaimBattlePass` aceita número (grátis), `"p<n>"` (premium, exige o passe) e `"all"`. `PromptGamePassPurchaseFinished` libera na hora.
+
+## Missões diárias e bônus de login (`DiariasData`, `DiariasServer`, `ExtrasClient`)
+- 3 missões por dia sorteadas (sem repetir; semente = data + UserId): matar inimigos ⚔, taijutsu 👊, treinar 💪, ganhar XP ⭐, ganhar moedas 💰, completar missões 📜. O dia vira à meia-noite de Brasília.
+- Recompensa por missão (moedas e XP crescem com o nível) + bônus por fazer as 3 (`DiariasData.BONUS`: 300 moedas, 5 gemas, 1 caixa).
+- Login de 7 dias em sequência (`DiariasData.LOGIN`); perder um dia volta ao dia 1. Save: `data.Diarias`, `data.Login`.
+- Eventos: `ServerStorage.DiariaEvento` (kill, xp, coins, missao) disparado por `CombatServer.hit`, `PlayerData.AddXP/AddCoins` e `MissionServer.concluir`; `MissaoProgresso` continua levando treinar/taijutsu.
+- Cliente: botão 📅 DAILY (bolinha vermelha com o número de prêmios prontos, atributo `DiariasPendentes`) abre o painel; abre sozinho uma vez por sessão (depois do clã e do tutorial).
+
+## Ranking por nível (`RankingServer`, painel RANK em `ExtrasClient`)
+- `OrderedDataStore "RankingNivel_v1"`, pontuação = nível x 1.000.000 + XP; publica a cada 90 s, ao sair e no `BindToClose`; top 50 em cache por 45 s. Sem DataStore (Studio) usa só os jogadores do servidor.
+- RemoteFunction `GetRanking` devolve a lista (posição, id, nome, nível) e a posição do próprio jogador ("50+" fora do top).
+
+## Tutorial da primeira entrada (`TutorialServer`, `TutorialClient`)
+- Servidor guarda `data.Tutorial`; atributo `TutorialPendente` vale até terminar ou pular (RemoteEvent `TutorialAcao` "fim"). Quem já jogava também vê uma vez.
+- Cliente: 9 passos com ícone, teclas desenhadas, seta que balança e foco (4 faixas escuras em volta do elemento: barra de nível, barra de jutsus, menu lateral, botões do topo). Começa depois da roleta do clã; botão ❓ HELP repete o tour.
+- Atributo local `TutorialAtivo` e `TutorialPendente` seguram a abertura automática do DAILY até o fim do tour.
+
+## Números de dano flutuantes (`DanoNumeroClient`)
+- RemoteEvent `ReplicatedStorage.DanoNumero` (criado por `CombatServer` ou `AbilityServer`, quem subir primeiro): `FireClient` só para quem bateu, com posição, valor, cor e tipo.
+- Soco = branco, jutsu = cor do elemento/clã (maior, "pop"), queimadura = menor. Máximo de 36 números ao mesmo tempo.
+
+## Ícones dos jutsus (`IconesData`)
+- Emoji por jutsu de clã e de Kekkei Genkai nos slots Q/E/R/V (entre a tecla e o tempo de recarga) e na lista do painel POWERS; bloqueado mostra ❓. Naturezas já usam o emoji do elemento.

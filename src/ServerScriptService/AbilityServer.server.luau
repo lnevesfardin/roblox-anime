@@ -191,6 +191,22 @@ local function nearestEnemy(origin, look, maxDist)
 	return best
 end
 
+-- numeros de dano flutuantes: so quem bateu ve (o cliente desenha em DanoNumeroClient); corJutsu = cor do ultimo jutsu de cada jogador
+local numeroEvent = ReplicatedStorage:FindFirstChild("DanoNumero")
+if not numeroEvent then
+	numeroEvent = Instance.new("RemoteEvent")
+	numeroEvent.Name = "DanoNumero"
+	numeroEvent.Parent = ReplicatedStorage
+end
+local function numero(e, valor, userId, cor, tipo)
+	local autor = userId and Players:GetPlayerByUserId(userId)
+	if autor and valor >= 0.5 and e.root then
+		numeroEvent:FireClient(autor, e.root.Position + Vector3.new(0, 1.5 + e.raio, 0), math.floor(valor + 0.5), cor, tipo)
+	end
+end
+
+local corJutsu = {} -- [userId] = Color3
+
 -- quem bateu por último (o chefe do mundo divide a recompensa pelo dano)
 local atacanteAtual = nil
 
@@ -201,6 +217,7 @@ local function hit(e, amount, from, force)
 	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.model:SetAttribute("DanoJutsu", true) -- este inimigo já levou jutsu: a kill não vale como "só taijutsu"
 	e.hum:TakeDamage(amount)
+	numero(e, amount, atacanteAtual, corJutsu[atacanteAtual or 0] or Color3.fromRGB(120, 190, 255), "jutsu")
 	-- o golpe "conecta": inimigo comum fica travado um instante e não revida no meio do combo (chefes não)
 	if e.raio <= 2 then
 		e.model:SetAttribute("Atordoado", math.max(e.model:GetAttribute("Atordoado") or 0, os.clock() + 0.7))
@@ -1095,6 +1112,7 @@ local function queimarPoder(e, porTick, ticks, cor)
 			task.wait(0.5)
 			if e.hum.Health <= 0 or not e.root.Parent then break end
 			e.hum:TakeDamage(porTick)
+			numero(e, porTick, e.hum:GetAttribute("UltimoAtacante"), cor, "queima")
 			burst(e.root.Position + Vector3.new(0, 1, 0), 3, cor, 0.25, 0.3)
 		end
 	end)
@@ -1781,6 +1799,7 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		local c = ClanPowers.Clans[info.Clan or ""]
 		cor = c and c.Color
 	end
+	corJutsu[plr.UserId] = cor or CHAKRA_BLUE
 	conjurar(char, root, cor or CHAKRA_BLUE)
 	task.spawn(function()
 		local okRun, res = pcall(P[info.Id], plr, char, root, dmg)
@@ -1796,4 +1815,5 @@ end)
 
 Players.PlayerRemoving:Connect(function(plr)
 	cooldowns[plr] = nil
+	corJutsu[plr.UserId] = nil
 end)

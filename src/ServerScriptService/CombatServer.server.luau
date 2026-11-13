@@ -178,6 +178,20 @@ local function lento(e, dur)
 	end)
 end
 
+-- numeros de dano flutuantes: so quem bateu ve (o cliente desenha em DanoNumeroClient)
+local numeroEvent = ReplicatedStorage:FindFirstChild("DanoNumero")
+if not numeroEvent then
+	numeroEvent = Instance.new("RemoteEvent")
+	numeroEvent.Name = "DanoNumero"
+	numeroEvent.Parent = ReplicatedStorage
+end
+local function numero(e, valor, userId, cor, tipo)
+	local autor = userId and Players:GetPlayerByUserId(userId)
+	if autor and valor >= 0.5 and e.root then
+		numeroEvent:FireClient(autor, e.root.Position + Vector3.new(0, 1.5 + e.raio, 0), math.floor(valor + 0.5), cor, tipo)
+	end
+end
+
 -- Lava: queima o inimigo por alguns segundos
 local function queimar(e, porTick, ticks)
 	if e.hum:GetAttribute("Queimando") then return end
@@ -187,6 +201,7 @@ local function queimar(e, porTick, ticks)
 			task.wait(0.6)
 			if e.hum.Health <= 0 or not e.root.Parent then break end
 			e.hum:TakeDamage(porTick)
+			numero(e, porTick, e.hum:GetAttribute("UltimoAtacante"), Color3.fromRGB(255, 140, 50), "queima")
 			burst(e.root.Position + Vector3.new(0, 1, 0), 2.5, Color3.fromRGB(255, 110, 40), 0.25)
 		end
 		if e.hum.Parent then e.hum:SetAttribute("Queimando", nil) end
@@ -272,11 +287,14 @@ local function hit(e, amount, from, force, up)
 	end
 	if atacanteAtual then e.hum:SetAttribute("UltimoAtacante", atacanteAtual) end
 	e.hum:TakeDamage(amount)
+	numero(e, amount, atacanteAtual, Color3.new(1, 1, 1), "soco")
 	-- kill só com taijutsu (soco/chute, sem nenhum dano de jutsu nesse inimigo) conta para a missão do estilo Lee
-	if e.hum.Health <= 0 and atacanteAtual and e.model:GetAttribute("DanoJutsu") ~= true then
+	if e.hum.Health <= 0 and atacanteAtual then
 		local autor = Players:GetPlayerByUserId(atacanteAtual)
-		local prog = autor and ServerStorage:FindFirstChild("MissaoProgresso")
+		local prog = autor and e.model:GetAttribute("DanoJutsu") ~= true and ServerStorage:FindFirstChild("MissaoProgresso")
 		if prog then prog:Fire(autor, "taijutsu", 1) end
+		local diaria = autor and ServerStorage:FindFirstChild("DiariaEvento") -- missoes diarias: qualquer inimigo derrotado
+		if diaria then diaria:Fire(autor, "kill", 1) end
 	end
 	-- o golpe "conecta": inimigo comum fica travado um instante e não revida no meio do combo (chefes não)
 	if e.raio <= 2 then

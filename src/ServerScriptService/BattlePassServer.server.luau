@@ -1,9 +1,13 @@
 -- Script: ServerScriptService > BattlePassServer
--- Battle Pass de 50 níveis. O XP vem das partidas (PlayerData.AddXP soma no Passe também).
--- O jogador resgata cada nível alcançado; o servidor confere tudo antes de entregar.
+-- Battle Pass de 50 niveis (1200 XP por nivel) com duas trilhas: gratis e Premium (gamepass EconomyData.BattlePass.PremiumPassId).
+-- O XP vem de PlayerData.AddXP. O jogador resgata cada nivel alcancado; o servidor confere tudo antes de entregar.
+-- Resgate: lv = numero (gratis), "p<numero>" (Premium) ou "all" (tudo que estiver liberado).
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService("RunService")
 
 local EconomyData = require(ReplicatedStorage:WaitForChild("EconomyData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
@@ -21,10 +25,30 @@ local function levelOf(data)
 	return math.min(BP.MaxLevel, math.floor(data.BattlePass.XP / BP.XPPerLevel))
 end
 
-local function snapshot(data)
-	local claimed = {}
+-- Premium: dono do gamepass (no Studio, enquanto o gamepass nao existe, fica liberado para teste)
+local function verificarPremium(player)
+	local tem = false
+	if BP.PremiumPassId ~= 0 then
+		local ok, r = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, BP.PremiumPassId) end)
+		tem = ok and r == true
+	elseif RunService:IsStudio() then
+		tem = true
+	end
+	player:SetAttribute("PassePremium", tem)
+end
+Players.PlayerAdded:Connect(function(p) task.spawn(verificarPremium, p) end)
+for _, p in ipairs(Players:GetPlayers()) do task.spawn(verificarPremium, p) end
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, comprou)
+	if comprou and BP.PremiumPassId ~= 0 and passId == BP.PremiumPassId then
+		player:SetAttribute("PassePremium", true)
+	end
+end)
+
+local function snapshot(player, data)
+	local claimed, claimedP = {}, {}
 	for lv = 1, BP.MaxLevel do
 		claimed[lv] = data.BattlePass.Claimed[tostring(lv)] == true
+		claimedP[lv] = data.BattlePass.ClaimedP[tostring(lv)] == true
 	end
 	local level = levelOf(data)
 	return {
@@ -34,6 +58,8 @@ local function snapshot(data)
 		xpInLevel = level >= BP.MaxLevel and BP.XPPerLevel or data.BattlePass.XP - level * BP.XPPerLevel,
 		perLevel = BP.XPPerLevel,
 		claimed = claimed,
+		claimedP = claimedP,
+		premium = player:GetAttribute("PassePremium") == true,
 	}
 end
 
@@ -42,12 +68,11 @@ getPass.OnServerInvoke = function(player)
 	if not data then
 		return { ok = false, reason = "Your data is still loading." }
 	end
-	return snapshot(data)
+	return snapshot(player, data)
 end
 
 local busy = {}
 
--- lv = número do nível, ou "all" para resgatar tudo o que estiver liberado
 claimLevel.OnServerInvoke = function(player, lv)
 	local data = PlayerData.Get(player)
 	if not data then
@@ -58,22 +83,34 @@ claimLevel.OnServerInvoke = function(player, lv)
 	end
 	busy[player] = true
 	local granted = {}
+	local motivo
 	local ok, err = pcall(function()
 		local reached = levelOf(data)
-		local list = {}
+		local premium = player:GetAttribute("PassePremium") == true
+		local list = {} -- { nivel, premium }
+		local function inteiro(n) return type(n) == "number" and n == math.floor(n) and n >= 1 and n <= reached end
 		if lv == "all" then
 			for i = 1, reached do
-				table.insert(list, i)
+				table.insert(list, { i, false })
+				if premium then table.insert(list, { i, true }) end
 			end
-		elseif type(lv) == "number" and lv == math.floor(lv) and lv >= 1 and lv <= reached then
-			list = { lv }
+		elseif inteiro(lv) then
+			list = { { lv, false } }
+		elseif type(lv) == "string" and lv:sub(1, 1) == "p" and inteiro(tonumber(lv:sub(2))) then
+			if premium then
+				list = { { tonumber(lv:sub(2)), true } }
+			else
+				motivo = "Premium Pass only."
+			end
 		end
-		for _, i in ipairs(list) do
-			local key = tostring(i)
-			if not data.BattlePass.Claimed[key] and BP.Rewards[i] then
-				data.BattlePass.Claimed[key] = true
-				PlayerData.GrantReward(player, BP.Rewards[i])
-				table.insert(granted, i)
+		for _, e in ipairs(list) do
+			local key = tostring(e[1])
+			local claimed = e[2] and data.BattlePass.ClaimedP or data.BattlePass.Claimed
+			local reward = e[2] and BP.PremiumRewards[e[1]] or BP.Rewards[e[1]]
+			if not claimed[key] and reward then
+				claimed[key] = true
+				PlayerData.GrantReward(player, reward)
+				table.insert(granted, e[1])
 			end
 		end
 	end)
@@ -83,13 +120,13 @@ claimLevel.OnServerInvoke = function(player, lv)
 		return { ok = false, reason = "Internal error." }
 	end
 	if #granted == 0 then
-		return { ok = false, reason = "Nothing to claim yet." }
+		return { ok = false, reason = motivo or "Nothing to claim yet." }
 	end
-	local s = snapshot(data)
+	local s = snapshot(player, data)
 	s.granted = granted
 	return s
 end
 
-game.Players.PlayerRemoving:Connect(function(player)
+Players.PlayerRemoving:Connect(function(player)
 	busy[player] = nil
 end)

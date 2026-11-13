@@ -1007,23 +1007,41 @@ end
 ---------------------------------------------------------------
 local telaPasse = novaTela("passe", "Battle Pass", "🏆", COR.ouro)
 local BP = EconomyData.BattlePass
-local passeNivel = label(telaPasse, "Level 0 / 50", 22, COR.ouro, { Size = UDim2.fromOffset(260, 30), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
-local passeBarra = new("Frame", { Position = UDim2.fromOffset(0, 36), Size = UDim2.new(1, -220, 0, 22), BackgroundColor3 = COR.fundo, Parent = telaPasse })
+local passeNivel = label(telaPasse, "Level 0 / 50", 26, COR.ouro, { Size = UDim2.fromOffset(300, 32), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+local passeBarra = new("Frame", { Position = UDim2.fromOffset(0, 38), Size = UDim2.new(1, -220, 0, 22), BackgroundColor3 = COR.fundo, Parent = telaPasse })
 corner(passeBarra, 11)
 stroke(passeBarra, COR.linha, 2)
 local passeFill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = COR.ouro, Parent = passeBarra })
 corner(passeFill, 11)
 grad(passeFill, Color3.fromRGB(255, 230, 120), COR.laranja, 90)
-local passeXP = label(passeBarra, "", 13, COR.texto, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack, ZIndex = 8 })
+local passeXP = label(passeBarra, "", 14, COR.texto, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack, ZIndex = 8 })
 local resgatarTudo = botao(telaPasse, "CLAIM ALL", COR.verde, UDim2.fromOffset(200, 50), UDim2.new(1, -200, 0, 6))
-label(telaPasse, "Earn Battle Pass XP by finishing runs (same XP as your level). Click a glowing reward to claim it.", 13, COR.fraco, { Position = UDim2.fromOffset(0, 62), Size = UDim2.new(1, -220, 0, 22), TextXAlignment = Enum.TextXAlignment.Left })
-local trilha = new("ScrollingFrame", {
-	Position = UDim2.fromOffset(0, 96), Size = UDim2.new(1, 0, 1, -96), BackgroundTransparency = 1, BorderSizePixel = 0,
-	ScrollBarThickness = 8, ScrollBarImageColor3 = COR.ouro, ScrollingDirection = Enum.ScrollingDirection.X,
-	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, Parent = telaPasse,
-})
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), VerticalAlignment = Enum.VerticalAlignment.Center, Parent = trilha })
-new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), Parent = trilha })
+-- abas: trilha grátis e trilha Premium (gamepass)
+local abaGratis = botao(telaPasse, "FREE", COR.verde, UDim2.fromOffset(150, 34), UDim2.fromOffset(0, 66))
+local abaPremium = botao(telaPasse, "👑 PREMIUM", COR.roxo, UDim2.fromOffset(190, 34), UDim2.fromOffset(160, 66))
+local comprarPremium = botao(telaPasse, "UNLOCK PREMIUM", COR.ouro, UDim2.fromOffset(230, 34), UDim2.new(1, -230, 0, 66))
+comprarPremium.TextColor3 = Color3.fromRGB(60, 30, 0)
+local function criarTrilha()
+	local t = new("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 106), Size = UDim2.new(1, 0, 1, -106), BackgroundTransparency = 1, BorderSizePixel = 0,
+		ScrollBarThickness = 8, ScrollBarImageColor3 = COR.ouro, ScrollingDirection = Enum.ScrollingDirection.X,
+		CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, Parent = telaPasse,
+	})
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), VerticalAlignment = Enum.VerticalAlignment.Center, Parent = t })
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), Parent = t })
+	return t
+end
+local trilha, trilhaP = criarTrilha(), criarTrilha()
+trilhaP.Visible = false
+local function mostrarAba(premium)
+	trilha.Visible = not premium
+	trilhaP.Visible = premium
+	abaGratis.BackgroundTransparency = premium and 0.65 or 0
+	abaPremium.BackgroundTransparency = premium and 0 or 0.65
+end
+abaGratis.Activated:Connect(function() mostrarAba(false) end)
+abaPremium.Activated:Connect(function() mostrarAba(true) end)
+mostrarAba(false)
 
 local function textoRecompensa(rw)
 	local t = {}
@@ -1065,7 +1083,7 @@ local function iconeRecompensa(parent, rw)
 	end
 end
 
-local celulas = {}
+local celulas, celulasP = {}, {}
 local estadoPasse
 local function desenharPasse(s)
 	estadoPasse = s
@@ -1074,63 +1092,91 @@ local function desenharPasse(s)
 	passeXP.Text = s.level >= BP.MaxLevel and "COMPLETE!" or ("%d / %d XP to level %d"):format(s.xpInLevel, s.perLevel, s.level + 1)
 	local pendentes = 0
 	for lv = 1, BP.MaxLevel do
-		local cel = celulas[lv]
-		local liberado = lv <= s.level
-		local pego = s.claimed[lv]
-		if liberado and not pego then pendentes += 1 end
-		cel.estado.Text = pego and "✔ CLAIMED" or (liberado and "CLAIM!" or ("🔒 " .. ((lv * s.perLevel) - s.xp) .. " XP"))
-		cel.estado.TextColor3 = pego and COR.verde or (liberado and COR.ouro or COR.fraco)
-		cel.escuro.Visible = not liberado
-		cel.borda.Color = pego and COR.verde or (liberado and COR.ouro or COR.linha)
-		cel.pronto = liberado and not pego
+		for _, info in ipairs({ { celulas, s.claimed, true }, { celulasP, s.claimedP or {}, s.premium == true } }) do
+			local cel = info[1][lv]
+			local liberado = lv <= s.level
+			local pego = info[2][lv]
+			local acesso = info[3]
+			if liberado and not pego and acesso then pendentes += 1 end
+			if acesso then
+				cel.estado.Text = pego and "✔ CLAIMED" or (liberado and "CLAIM!" or ("🔒 " .. ((lv * s.perLevel) - s.xp) .. " XP"))
+				cel.estado.TextColor3 = pego and COR.verde or (liberado and COR.ouro or COR.fraco)
+			else
+				cel.estado.Text = "👑 PREMIUM"
+				cel.estado.TextColor3 = Color3.fromRGB(200, 150, 255)
+			end
+			cel.escuro.Visible = not liberado or not acesso
+			cel.borda.Color = pego and COR.verde or ((liberado and acesso) and COR.ouro or COR.linha)
+			cel.pronto = liberado and not pego and acesso
+		end
 	end
 	marcar("passe", pendentes)
 	resgatarTudo.Visible = pendentes > 0
+	comprarPremium.Visible = s.premium ~= true
 end
 
-for lv = 1, BP.MaxLevel do
-	local rw = BP.Rewards[lv]
-	local especial = rw.Character or rw.Gems or lv == BP.MaxLevel
-	local cel = new("TextButton", { Size = UDim2.fromOffset(124, 250), BackgroundColor3 = especial and Color3.fromRGB(62, 46, 30) or COR.card, Text = "", AutoButtonColor = false, LayoutOrder = lv, Parent = trilha })
-	corner(cel, 14)
-	local borda = stroke(cel, COR.linha, 3)
-	local num = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.fromOffset(46, 30), BackgroundColor3 = especial and COR.ouro or COR.linha, Parent = cel })
-	corner(num, 10)
-	label(num, tostring(lv), 17, especial and Color3.fromRGB(60, 30, 0) or Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
-	iconeRecompensa(cel, rw)
-	label(cel, textoRecompensa(rw), 13, COR.texto, { Position = UDim2.fromOffset(6, 110), Size = UDim2.new(1, -12, 0, 90), TextYAlignment = Enum.TextYAlignment.Top })
-	local estado = label(cel, "", 13, COR.fraco, { Position = UDim2.new(0, 4, 1, -36), Size = UDim2.new(1, -8, 0, 30), Font = Enum.Font.GothamBlack, TextScaled = true })
-	local escuro = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, Parent = cel, ZIndex = 9 })
-	corner(escuro, 14)
-	estado.ZIndex = 10
-	local c = { estado = estado, escuro = escuro, borda = borda, pronto = false }
-	celulas[lv] = c
-	cel.Activated:Connect(function()
-		if not c.pronto then return end
-		som("Clique")
-		local r = R.ClaimBattlePass:InvokeServer(lv)
-		if r and r.ok then
-			som("Revelar", 1.2)
-			aviso("Claimed: " .. textoRecompensa(rw):gsub("\n", ", "), COR.ouro)
-			desenharPasse(r)
-		else
-			aviso(r and r.reason or "Error", COR.vermelho)
-		end
-	end)
-	-- pulso nas recompensas prontas
-	task.spawn(function()
-		while cel.Parent do
-			if c.pronto then
-				tween(borda, 0.5, { Thickness = 5 })
-				task.wait(0.5)
-				tween(borda, 0.5, { Thickness = 3 })
-				task.wait(0.5)
-			else
-				task.wait(0.5)
-			end
-		end
-	end)
+local function comprarPasse()
+	som("Clique")
+	if BP.PremiumPassId == 0 then
+		aviso("Premium Pass coming soon!", COR.ouro)
+		return
+	end
+	MarketplaceService:PromptGamePassPurchase(player, BP.PremiumPassId)
 end
+comprarPremium.Activated:Connect(comprarPasse)
+
+local function construirTrilha(destino, rewards, premium, tabela)
+	for lv = 1, BP.MaxLevel do
+		local rw = rewards[lv]
+		local especial = rw.Character or rw.Gems or lv == BP.MaxLevel
+		local corCelula = premium and Color3.fromRGB(52, 40, 74) or (especial and Color3.fromRGB(62, 46, 30) or COR.card)
+		local cel = new("TextButton", { Size = UDim2.fromOffset(124, 250), BackgroundColor3 = corCelula, Text = "", AutoButtonColor = false, LayoutOrder = lv, Parent = destino })
+		corner(cel, 14)
+		local borda = stroke(cel, COR.linha, 3)
+		local num = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.fromOffset(46, 30), BackgroundColor3 = premium and COR.roxo or (especial and COR.ouro or COR.linha), Parent = cel })
+		corner(num, 10)
+		label(num, tostring(lv), 18, (especial and not premium) and Color3.fromRGB(60, 30, 0) or Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
+		iconeRecompensa(cel, rw)
+		label(cel, textoRecompensa(rw), 15, COR.texto, { Position = UDim2.fromOffset(6, 108), Size = UDim2.new(1, -12, 0, 92), TextYAlignment = Enum.TextYAlignment.Top })
+		local estado = label(cel, "", 14, COR.fraco, { Position = UDim2.new(0, 4, 1, -36), Size = UDim2.new(1, -8, 0, 30), Font = Enum.Font.GothamBlack, TextScaled = true })
+		local escuro = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, Parent = cel, ZIndex = 9 })
+		corner(escuro, 14)
+		estado.ZIndex = 10
+		local c = { estado = estado, escuro = escuro, borda = borda, pronto = false }
+		tabela[lv] = c
+		cel.Activated:Connect(function()
+			if premium and not (estadoPasse and estadoPasse.premium) then
+				comprarPasse()
+				return
+			end
+			if not c.pronto then return end
+			som("Clique")
+			local r = R.ClaimBattlePass:InvokeServer(premium and ("p" .. lv) or lv)
+			if r and r.ok then
+				som("Revelar", 1.2)
+				aviso("Claimed: " .. textoRecompensa(rw):gsub("\n", ", "), COR.ouro)
+				desenharPasse(r)
+			else
+				aviso(r and r.reason or "Error", COR.vermelho)
+			end
+		end)
+		-- pulso nas recompensas prontas
+		task.spawn(function()
+			while cel.Parent do
+				if c.pronto then
+					tween(borda, 0.5, { Thickness = 5 })
+					task.wait(0.5)
+					tween(borda, 0.5, { Thickness = 3 })
+					task.wait(0.5)
+				else
+					task.wait(0.5)
+				end
+			end
+		end)
+	end
+end
+construirTrilha(trilha, BP.Rewards, false, celulas)
+construirTrilha(trilhaP, BP.PremiumRewards, true, celulasP)
 
 resgatarTudo.Activated:Connect(function()
 	local r = R.ClaimBattlePass:InvokeServer("all")
@@ -1151,11 +1197,13 @@ local function carregarPasse(rolar)
 			task.wait()
 			local alvo = math.max(0, (s.level - 2) * 134)
 			trilha.CanvasPosition = Vector2.new(alvo, 0)
+			trilhaP.CanvasPosition = Vector2.new(alvo, 0)
 		end
 	end
 end
 telas.passe.abrir = function() carregarPasse(true) end
 player:GetAttributeChangedSignal("BPXP"):Connect(function() task.spawn(carregarPasse, false) end)
+player:GetAttributeChangedSignal("PassePremium"):Connect(function() task.spawn(carregarPasse, false) end)
 
 ---------------------------------------------------------------
 -- 4) LOJA

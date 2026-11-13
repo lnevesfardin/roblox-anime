@@ -319,6 +319,8 @@ local function concluir(player, esp)
 			aviso(player, ("NEW JUTSU: %s!  Equip it in NATURES"):format(j.Name), true)
 		end
 	end
+	local diaria = ServerStorage:FindFirstChild("DiariaEvento") -- missoes diarias: "complete uma missao"
+	if diaria then diaria:Fire(player, "missao", 1) end
 	if r.Escolha then
 		-- libera a escolha entre 2 jutsus da natureza (o jogador escolhe no painel NATURES)
 		local n = NatureData.Garantir(data)

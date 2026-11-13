@@ -81,13 +81,15 @@ EconomyData.LojaKonohamaru = {
 }
 
 ---------------------------------------------------------------
--- Battle Pass: 50 níveis, 400 XP por nível. O XP do Passe sobe junto com o XP das partidas.
+-- Battle Pass: 50 níveis, 1200 XP por nível na trilha grátis e uma trilha Premium (gamepass). O XP do Passe sobe junto com o XP do jogador.
 -- Tipos de recompensa: Coins, Gems, Crates (caixas básicas grátis), Character, Item.
 ---------------------------------------------------------------
 EconomyData.BattlePass = {
 	MaxLevel = 50,
-	XPPerLevel = 400,
+	XPPerLevel = 1200,
+	PremiumPassId = 0, -- ID do gamepass "Passe Premium": crie no Creator Dashboard e cole aqui (0 = ainda nao vendido; no Studio a trilha Premium abre para teste)
 	Rewards = {},
+	PremiumRewards = {},
 }
 
 do
@@ -126,6 +128,24 @@ do
 	R[47] = { Item = "rastro_fogo" }
 	-- Nível 50: o personagem exclusivo (Madera) entra aqui quando for criado
 	R[50] = { Coins = 1000, Crates = 5, Gems = 300, Item = "aura_dourada" }
+end
+
+-- Trilha Premium: o dobro de moedas em todo nivel, gemas e caixas a cada 5 niveis e acessorios exclusivos
+do
+	local P = EconomyData.BattlePass.PremiumRewards
+	local extras = { [3] = "boost_xp_15", [8] = "rastro_raio", [13] = "boost_coins_15", [18] = "cachecol_verde", [23] = "rastro_fogo",
+		[28] = "boost_xp_30", [33] = "aura_roxa", [38] = "boost_coins_30", [43] = "boost_xp_30" }
+	for lv = 1, 50 do
+		local base = lv <= 9 and 50 or lv <= 19 and 75 or lv <= 29 and 100 or lv <= 39 and 125 or 150
+		local p = { Coins = base * 2 }
+		if lv % 5 == 0 and lv < 50 then
+			p.Gems = 50
+			p.Crates = lv % 10 == 0 and 2 or 1
+		end
+		if extras[lv] then p.Item = extras[lv] end
+		P[lv] = p
+	end
+	P[50] = { Coins = 2500, Gems = 500, Crates = 5 }
 end
 
 function EconomyData.GetPack(productId)

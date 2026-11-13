@@ -282,6 +282,7 @@ local function recompensaTexto(r)
 	if r.Pontos then table.insert(t, "+" .. r.Pontos .. " stat pts") end
 	if r.PrimeiroJutsu then table.insert(t, "+ clan jutsu") end
 	if r.Jutsu then table.insert(t, "+ new jutsu") end
+	if r.Escolha then table.insert(t, "+ choose a jutsu") end
 	if r.NovaNatureza then table.insert(t, "+ new nature") end
 	return table.concat(t, "   ")
 end

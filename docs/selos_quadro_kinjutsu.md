@@ -63,3 +63,13 @@
   com taijutsu (a kill vale se o golpe final foi soco/chute e o inimigo nunca levou jutsu: atributo `DanoJutsu`).
 - 8 Portões Internos (tecla Z, RemoteEvent `PortaoLee`): cada portão dá +12% de dano e +1,6 de velocidade, gasta chakra e vida por
   segundo (a vida nunca chega a zero). Maestria 1..5 libera 2, 3, 5, 6 e 8 portões. O 8º dura 12 s e deixa 4 s de cansaço.
+
+## Naturezas: 4 etapas, escolha 1 de 2 (`NatureData`, `NatureServer`, `NatureClient`)
+- Cada natureza (Fogo, Vento, Raio, Terra, Água) tem 4 etapas e 2 jutsus por etapa (40 no total). Em cada etapa o jogador escolhe
+  1 dos 2; o outro fica de fora para sempre. A escolha é liberada pela missão `N<etapa>_<Natureza>` do mestre
+  (`Recompensa.Escolha`), cai em `data.Natureza.Pendente` e é feita no painel NATURES (botão CHOOSE; abre sozinho uma vez).
+- Requisitos: etapa 1 (3 treinos), etapa 2 (Nv 18, 6 treinos), etapa 3 (Nv 35 + rank Chunin, 9 treinos), etapa 4 (Nv 50 + rank Jonin, 12 treinos).
+- 4 teclas de equipar: G, H, J e K (slots 5..8 do `AbilityServer`). O jutsu escolhido já vai para a primeira tecla livre.
+- Quem já tinha `nat_X1`/`nat_X2` (opção A das etapas 1 e 2) mantém o jutsu como a escolha daquela etapa.
+- Jutsus novos usam executores genéricos (`EF.proj/area/cone/line/target/rain`) descritos no campo `Ef` de cada jutsu.
+- Dano = `PowerDamage x multiplicador`; natureza de afinidade: +25% de dano e -20% de chakra.

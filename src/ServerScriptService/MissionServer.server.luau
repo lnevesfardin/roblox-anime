@@ -319,6 +319,15 @@ local function concluir(player, esp)
 			aviso(player, ("NEW JUTSU: %s!  Equip it in NATURES"):format(j.Name), true)
 		end
 	end
+	if r.Escolha then
+		-- libera a escolha entre 2 jutsus da natureza (o jogador escolhe no painel NATURES)
+		local n = NatureData.Garantir(data)
+		local e = r.Escolha
+		if not NatureData.EhPendente(n, e.Natureza, e.Tier) and not NatureData.Escolhido(n, e.Natureza, e.Tier) then
+			table.insert(n.Pendente, { Natureza = e.Natureza, Tier = e.Tier })
+		end
+		aviso(player, ("CHOOSE YOUR %s JUTSU!  Open NATURES"):format(NatureData.Tipos[e.Natureza].Name:upper()), true)
+	end
 	if r.NovaNatureza then
 		local n = NatureData.Garantir(data)
 		local nova = NatureData.Nova(data, Random.new())
@@ -327,7 +336,7 @@ local function concluir(player, esp)
 			aviso(player, ("NEW CHAKRA NATURE: %s!  Its master has something to teach you."):format(NatureData.Tipos[nova].Name), true)
 		end
 	end
-	if r.Jutsu or r.NovaNatureza then
+	if r.Jutsu or r.Escolha or r.NovaNatureza then
 		local an = ServerStorage:FindFirstChild("AtualizarNatureza")
 		if an then an:Fire(player) end
 	end

@@ -1,7 +1,7 @@
 -- Script: ServerScriptService > NatureServer
--- Naturezas de chakra: roleta do nascimento (1 a 3), girar de novo com gemas e equipar jutsus nas teclas G e H.
--- NaturezaAcao (RemoteFunction): "estado" | "girar" | "regirar" | "equipar", posicao, idDoJutsu (ou false)
--- Atributos do jogador: "NaturezaRolou" (bool) e "NaturezaEstado" (JSON: Rolou, Afinidade, Lista, Jutsus, Equip)
+-- Naturezas de chakra: roleta do nascimento (1 a 3), girar de novo com gemas e escolher 1 de 2 jutsus a cada etapa e equipar nas teclas G, H, J e K.
+-- NaturezaAcao (RemoteFunction): "estado" | "girar" | "regirar" | "equipar", posicao, idDoJutsu (ou false) | "escolher", natureza, etapa, opcao
+-- Atributos do jogador: "NaturezaRolou" (bool) e "NaturezaEstado" (JSON: Rolou, Afinidade, Lista, Jutsus, Equip, Pendente)
 -- Outros scripts pedem para reenviar o estado pelo BindableEvent ServerStorage.AtualizarNatureza.
 
 local Players = game:GetService("Players")
@@ -31,7 +31,7 @@ local function estado(player)
 	for id in pairs(n.Jutsus) do
 		if NatureData.Jutsu(id) then table.insert(jutsus, id) end
 	end
-	return { Rolou = n.Rolou == true, Afinidade = n.Afinidade or false, Lista = n.Lista, Jutsus = jutsus, Equip = { n.Equip[1] or false, n.Equip[2] or false } }
+	return { Rolou = n.Rolou == true, Afinidade = n.Afinidade or false, Lista = n.Lista, Jutsus = jutsus, Equip = { n.Equip[1] or false, n.Equip[2] or false, n.Equip[3] or false, n.Equip[4] or false }, Pendente = n.Pendente }
 end
 
 local function aplicar(player)
@@ -61,7 +61,7 @@ local function sortear(player, data, n)
 end
 
 local ocupado = {}
-acao.OnServerInvoke = function(player, pedido, a, b)
+acao.OnServerInvoke = function(player, pedido, a, b, c)
 	local data, n = dados(player)
 	if not data then return { ok = false, erro = "Loading..." } end
 	if pedido == "girar" or pedido == "regirar" then
@@ -81,7 +81,7 @@ acao.OnServerInvoke = function(player, pedido, a, b)
 		return { ok = true, estado = estado(player) }
 	elseif pedido == "equipar" then
 		local pos = tonumber(a)
-		if pos ~= 1 and pos ~= 2 then return { ok = false, erro = "Invalid slot." } end
+		if not pos or pos < 1 or pos > NatureData.SLOTS or pos % 1 ~= 0 then return { ok = false, erro = "Invalid slot." } end
 		if b == false or b == nil then
 			n.Equip[pos] = false
 		else
@@ -89,12 +89,35 @@ acao.OnServerInvoke = function(player, pedido, a, b)
 			if not j or not n.Jutsus[b] or not NatureData.Tem(data, j.Natureza) then
 				return { ok = false, erro = "You have not learned this jutsu.", estado = estado(player) }
 			end
-			local outra = pos == 1 and 2 or 1
-			if n.Equip[outra] == b then n.Equip[outra] = n.Equip[pos] or false end
+			for outra = 1, NatureData.SLOTS do
+				if outra ~= pos and n.Equip[outra] == b then n.Equip[outra] = n.Equip[pos] or false end
+			end
 			n.Equip[pos] = b
 		end
 		aplicar(player)
 		return { ok = true, estado = estado(player) }
+	end
+	if pedido == "escolher" then
+		-- a = natureza, b = etapa, c = opcao (1 ou 2): so vale para uma escolha liberada por missao
+		local tier, opcao = tonumber(b), tonumber(c)
+		local t = type(a) == "string" and NatureData.Tipos[a]
+		local par = t and tier and t.Tiers[tier]
+		local j = par and opcao and par[opcao]
+		local idx
+		for i, p in ipairs(n.Pendente) do
+			if p.Natureza == a and p.Tier == tier then idx = i break end
+		end
+		if not j or not idx or not NatureData.Tem(data, a) then
+			return { ok = false, erro = "This choice is not available.", estado = estado(player) }
+		end
+		table.remove(n.Pendente, idx)
+		n.Jutsus[j.Id] = true
+		for i = 1, NatureData.SLOTS do -- ja equipa numa tecla livre
+			if not n.Equip[i] then n.Equip[i] = j.Id break end
+		end
+		task.spawn(function() pcall(PlayerData.Save, player) end)
+		aplicar(player)
+		return { ok = true, estado = estado(player), jutsu = j.Name }
 	end
 	return { ok = true, estado = estado(player) }
 end

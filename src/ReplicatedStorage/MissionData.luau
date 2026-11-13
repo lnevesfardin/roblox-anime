@@ -313,26 +313,43 @@ do
 		local t = NatureData.Tipos[id]
 		local mestre = MissionData.NPCs[t.Mestre].Name
 		local p = prova[id]
-		table.insert(MissionData.Missoes, { Id = "N1_" .. id, Npc = t.Mestre, Rank = "C", Natureza = id, Unica = true, HistoriaMin = ClanPowers.HIST_PRIMEIRO, RankMin = "Genin",
-			Name = t.Name .. " Nature: " .. t.Jutsus[1].Name,
-			Desc = p .. " 3 times. " .. mestre .. " will teach you " .. t.Jutsus[1].Name .. ".",
-			Tipo = "praticar", Alvo = "Pratica_" .. id, N = 3, Recompensa = { XP = 700, Coins = 120, Jutsu = t.Jutsus[1].Id },
-			Conversa = {
-				{ Fala = "I can feel it. You carry the " .. t.Name .. " nature. Most people never notice their own chakra. How does it feel to you?", Opcoes = {
-					{ T = "Like something that wants to get out.", R = "Then it is awake. Good. Now it needs a shape.", Bom = true },
-					{ T = "I don't feel anything yet.", R = "You will. It always starts quiet." } } },
-				{ Fala = p .. " 3 times. Do that, and I will teach you " .. t.Jutsus[1].Name .. "." },
-			} })
-		table.insert(MissionData.Missoes, { Id = "N2_" .. id, Npc = t.Mestre, Rank = "C", Natureza = id, Unica = true, Requer = "N1_" .. id, Nivel = 18, RankMin = "Genin",
-			Name = t.Name .. " Mastery: " .. t.Jutsus[2].Name,
-			Desc = "The next technique burns far more chakra. Practice 6 more times at the same place and " .. mestre .. " will teach you " .. t.Jutsus[2].Name .. ".",
-			Tipo = "praticar", Alvo = "Pratica_" .. id, N = 6, Recompensa = { XP = 1800, Coins = 300, Jutsu = t.Jutsus[2].Id },
-			Conversa = {
-				{ Fala = "You handle " .. t.Jutsus[1].Name .. " well. The next technique burns a lot more chakra. What will you do when it runs out mid-fight?", Opcoes = {
-					{ T = "Fall back on my fists until it returns.", R = "Good. A ninja with one plan is a dead ninja.", Bom = true },
-					{ T = "It won't run out.", R = "It always runs out. Remember this talk when it does." } } },
-				{ Fala = "Go back to where you first shaped it and practice 6 more times. Then " .. t.Jutsus[2].Name .. " is yours." },
-			} })
+		-- 4 etapas por natureza; em cada uma o jogador escolhe 1 entre 2 jutsus (Recompensa.Escolha)
+		local conversa = {
+			{ { Fala = "I can feel it. You carry the " .. t.Name .. " nature. Most people never notice their own chakra. How does it feel to you?", Opcoes = {
+				{ T = "Like something that wants to get out.", R = "Then it is awake. Good. Now it needs a shape.", Bom = true },
+				{ T = "I don't feel anything yet.", R = "You will. It always starts quiet." } } },
+			  { Fala = p .. " 3 times. Do that, and you will choose your first " .. t.Name .. " technique." } },
+			{ { Fala = "You handle your first technique well. The next one burns a lot more chakra. What will you do when it runs out mid-fight?", Opcoes = {
+				{ T = "Fall back on my fists until it returns.", R = "Good. A ninja with one plan is a dead ninja.", Bom = true },
+				{ T = "It won't run out.", R = "It always runs out. Remember this talk when it does." } } },
+			  { Fala = "Go back to where you first shaped it and practice 6 more times. Then you choose your second technique." } },
+			{ { Fala = "A Chunin must know when to hold back and when to let everything out. Which one are you?", Opcoes = {
+				{ T = "I protect my team first.", R = "Then your power has a reason. That is rare.", Bom = true },
+				{ T = "I just want to win.", R = "Winning is easy to want. Surviving the next fight is harder." } } },
+			  { Fala = "Practice 9 more times. Your third technique is a powerful one: choose it well." } },
+			{ { Fala = "Few reach this point. The last technique of " .. t.Name .. " can turn a battle. It can also empty you. Are you ready?", Opcoes = {
+				{ T = "I am ready for what it costs.", R = "Then show me with 12 more practices. Only then.", Bom = true },
+				{ T = "I only want the power.", R = "Power without control destroys the one who holds it. Prove you can control it." } } },
+			  { Fala = "Practice 12 more times. Then choose the technique that will define your " .. t.Name .. "." } },
+		}
+		local titulos = { "Nature", "Mastery", "Advanced", "Ultimate" }
+		for k, tinfo in ipairs(NatureData.TIERS) do
+			local nomeA, nomeB = t.Tiers[k][1].Name, t.Tiers[k][2].Name
+			local descs = {
+				p .. " 3 times. " .. mestre .. " will let you choose: " .. nomeA .. " or " .. nomeB .. ".",
+				"The next technique burns far more chakra. Practice 6 more times and " .. mestre .. " will let you choose: " .. nomeA .. " or " .. nomeB .. ".",
+				"Only a Chunin can learn this. Practice 9 more times and choose: " .. nomeA .. " or " .. nomeB .. ".",
+				"The ultimate technique of " .. t.Name .. ". Practice 12 more times and choose: " .. nomeA .. " or " .. nomeB .. ".",
+			}
+			table.insert(MissionData.Missoes, { Id = "N" .. k .. "_" .. id, Npc = t.Mestre, Rank = "C", Natureza = id, Unica = true,
+				Requer = k > 1 and ("N" .. (k - 1) .. "_" .. id) or nil, HistoriaMin = k == 1 and ClanPowers.HIST_PRIMEIRO or nil,
+				Nivel = tinfo.Nivel > 0 and tinfo.Nivel or nil, RankMin = tinfo.Rank,
+				Name = t.Name .. " " .. titulos[k] .. ": " .. nomeA .. " / " .. nomeB,
+				Desc = descs[k],
+				Tipo = "praticar", Alvo = "Pratica_" .. id, N = tinfo.Pratica,
+				Recompensa = { XP = ({ 700, 1800, 3500, 6000 })[k], Coins = ({ 120, 300, 600, 1000 })[k], Escolha = { Natureza = id, Tier = k } },
+				Conversa = conversa[k] })
+		end
 	end
 	-- Naturezas extras: a 4ª e a 5ª (e as que faltarem até lá) só por missões raras da Lady Tsuna.
 	-- NovaNatureza = só aparece para quem ainda tem menos de NatureData.MAX naturezas.

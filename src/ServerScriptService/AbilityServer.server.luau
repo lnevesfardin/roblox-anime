@@ -1275,7 +1275,7 @@ P.kg_poeira = function(plr, char, root, dmg)
 	Debris:AddItem(cubo, 0.3)
 end
 
--- NATUREZAS DE CHAKRA (teclas G e H) ---------------------------
+-- NATUREZAS DE CHAKRA (teclas G, H, J e K) ---------------------------
 -- Aprendidos por missao com o mestre de cada natureza (NatureData / MissionData N1_ e N2_).
 local FIRE = Color3.fromRGB(255, 120, 40)
 local WIND = Color3.fromRGB(190, 245, 215)
@@ -1506,6 +1506,121 @@ P.nat_agua2 = function(plr, char, root, dmg)
 end
 
 ---------------------------------------------------------------
+-- Jutsus de natureza novos (opcoes B da etapa 1 e 2, e todas as da etapa 3 e 4): efeitos genericos descritos
+-- no campo Ef de cada jutsu em NatureData (tipos proj, area, cone, line, target e rain).
+---------------------------------------------------------------
+local function efeitoNat(cor, ef, e, set, dmg, from)
+	hitOnce(set, e, dmg * ef.mult, from, ef.force or 0)
+	if ef.burn then queimarPoder(e, dmg * ef.burn, ef.burnT or 3, cor) end
+	if ef.stun then prender(e, ef.stun) end
+end
+
+-- coluna vertical que cai do ceu (usada por target e rain)
+local function coluna(pos, cor, largura)
+	local col = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(34, largura, largura), color = cor, trans = 0.2,
+		cf = CFrame.new(pos + Vector3.new(0, 17, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+	fadeOut(col, 0.35)
+end
+
+local EF = {}
+
+EF.proj = function(cor, ef, plr, char, root, dmg)
+	local look = flatLook(root)
+	local n = ef.n or 1
+	for k = 1, n do
+		local dir = CFrame.Angles(0, math.rad((k - (n + 1) / 2) * (ef.spread or 0)), 0) * look
+		local bola = fx({ shape = Enum.PartType.Ball, size = Vector3.one * (ef.size or 2), color = cor })
+		light(bola, cor, 10, 3)
+		projectile({ start = handPos(char, root) + dir * 2, dir = dir, speed = ef.speed or 70, range = ef.range or 45, radius = ef.hit or 2.5, parts = { bola },
+			onEnd = function(pos)
+				burst(pos, (ef.blast or 5) * 1.6, cor, 0.35, 0.2)
+				local set = {}
+				for _, e in ipairs(inRadius(pos, ef.blast or 5)) do efeitoNat(cor, ef, e, set, dmg, pos) end
+			end })
+		if n > 1 then task.wait(ef.gap or 0.08) end
+	end
+end
+
+EF.area = function(cor, ef, plr, char, root, dmg)
+	local c = root.Position
+	for i = 1, 3 do
+		ring(chao(root), ef.r * 2 * (0.5 + i * 0.25), cor, 0.35 + i * 0.05)
+		task.wait(0.08)
+	end
+	burst(c, ef.r * 1.2, cor, 0.45, 0.35)
+	local set = {}
+	for _, e in ipairs(inRadius(c, ef.r)) do efeitoNat(cor, ef, e, set, dmg, c) end
+end
+
+EF.cone = function(cor, ef, plr, char, root, dmg)
+	local look = flatLook(root)
+	for i = 1, 5 do
+		burst(root.Position + look * (ef.range * i / 5), 4 + i * 2, cor, 0.35, 0.3)
+		task.wait(0.04)
+	end
+	local set = {}
+	for _, e in ipairs(inCone(root.Position, look, ef.range, ef.deg)) do efeitoNat(cor, ef, e, set, dmg, root.Position) end
+end
+
+EF.line = function(cor, ef, plr, char, root, dmg)
+	local look = flatLook(root)
+	local origem = root.Position
+	for i = 1, math.floor(ef.len / 4) do
+		local b = fx({ shape = Enum.PartType.Ball, size = Vector3.one * math.max(ef.width * 0.5, 3), color = cor, trans = 0.2, cf = CFrame.new(origem + look * (i * 4)) })
+		fadeOut(b, 0.5)
+		task.wait(0.02)
+	end
+	local set = {}
+	for _, e in ipairs(inLine(origem, look, ef.len, ef.width)) do efeitoNat(cor, ef, e, set, dmg, origem) end
+end
+
+EF.target = function(cor, ef, plr, char, root, dmg)
+	local alvos = inRadius(root.Position, ef.range)
+	if #alvos == 0 then return false end -- sem alvo: o chakra volta
+	table.sort(alvos, function(a, b) return flat(a.root.Position, root.Position) < flat(b.root.Position, root.Position) end)
+	local set = {}
+	for i = 1, math.min(ef.count, #alvos) do
+		local e = alvos[i]
+		coluna(e.root.Position, cor, 4)
+		burst(e.root.Position, 8, cor, 0.35, 0.25)
+		efeitoNat(cor, ef, e, set, dmg, root.Position)
+		task.wait(0.1)
+	end
+end
+
+EF.rain = function(cor, ef, plr, char, root, dmg)
+	local centro = root.Position + flatLook(root) * ef.ahead
+	ring(centro - Vector3.new(0, 2.6, 0), ef.r * 2, cor, ef.delay)
+	for _ = 1, ef.n do
+		local a, d = math.random() * math.pi * 2, math.sqrt(math.random()) * ef.r
+		local pos = Vector3.new(centro.X + math.cos(a) * d, root.Position.Y, centro.Z + math.sin(a) * d)
+		task.spawn(function()
+			local marca = fx({ shape = Enum.PartType.Cylinder, size = Vector3.new(0.2, ef.blast * 2, ef.blast * 2), color = cor, trans = 0.6,
+				cf = CFrame.new(pos - Vector3.new(0, 2.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+			fadeOut(marca, 0.6)
+			task.wait(0.5)
+			coluna(pos, cor, ef.blast * 0.5)
+			burst(pos, ef.blast * 1.6, cor, 0.35, 0.2)
+			local set = {}
+			for _, e in ipairs(inRadius(pos, ef.blast)) do efeitoNat(cor, ef, e, set, dmg, pos) end
+		end)
+		task.wait(ef.delay / ef.n)
+	end
+	task.wait(0.6)
+end
+
+for _, t in pairs(NatureData.Tipos) do
+	for _, j in ipairs(t.Jutsus) do
+		local ef = j.Ef
+		if ef and EF[ef.t] then
+			P[j.Id] = function(plr, char, root, dmg)
+				return EF[ef.t](ef.cor or t.Color, ef, plr, char, root, dmg)
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------
 -- Estado dos poderes e chakra
 ---------------------------------------------------------------
 
@@ -1592,7 +1707,7 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 		return
 	end
 	slot = math.floor(slot)
-	if slot < 1 or slot > 6 then
+	if slot < 1 or slot > 4 + NatureData.SLOTS then
 		return
 	end
 	local data = PlayerData.Get(plr)
@@ -1600,7 +1715,7 @@ useEvent.OnServerEvent:Connect(function(plr, slot)
 	local info
 	local afinidade = false
 	if slot >= 5 then
-		-- teclas G e H: jutsu de natureza equipado
+		-- teclas G, H, J e K: jutsu de natureza equipado
 		local n = NatureData.Garantir(data)
 		local id = n.Equip[slot - 4]
 		info = id and NatureData.Jutsu(id)

@@ -145,3 +145,8 @@
 - `HudEscala.Hud(viewport)`: barra de nível, menu da esquerda, STATS, DAILY, RANK, HELP e o chip do clã. Além da largura, limita pela altura: o menu da esquerda precisa caber abaixo da fileira de botões do topo (antes, em janelas baixas, ele subia e passava por cima dela).
 - `HudEscala.Barras(viewport)`: barras de baixo (golpes X Y C, poderes Q E R V, naturezas G H J K) e os botões dos easter eggs (M, L...).
 - Usado em: HUD, ExtrasClient, AtributosClient, ClanClient, TutorialClient, AbilityClient, CombatClient, NatureClient e SegredosClient.
+
+## Teclas do Dash e selo da Kekkei Genkai
+- **Dash em Q e em C:** `SocoInvestida` (CombatClient) agora tem `Enum.KeyCode.C` e `Enum.KeyCode.Q`. O slot da barra mostra "Q/C"; o botão de toque continua "C".
+- **Poder 1 do clã na tecla 1:** como Q virou Dash, `ClanPowers.KEYS = { "One", "E", "R" }` (KeyCode) e `ClanPowers.TEXTO = { "1", "E", "R" }` (o que aparece no slot, nos avisos "NEW POWER" e no tour). Para mudar de volta ou escolher outra tecla, é só editar essas duas listas.
+- **Selo da Kekkei (ex.: BOIL RELEASE):** fica na fileira de botões do HUD depois do HELP (x = 624 no espaço do HUD, mesma linha e mesma `HudEscala.Hud`). Antes era clone do STATS sem o `UIScale` e caía em cima de DAILY/RANK.

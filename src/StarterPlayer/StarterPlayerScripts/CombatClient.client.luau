@@ -346,7 +346,7 @@ barra.BackgroundTransparency = 1
 barra.Parent = gui
 
 local slots = {}
-for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash" } }) do
+for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash", "Q/C" } }) do
 	local f = Instance.new("Frame")
 	f.Size = UDim2.fromOffset(52, 52)
 	f.Position = UDim2.fromOffset((i - 1) * 58, 7)
@@ -369,7 +369,8 @@ for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash" } }) do
 	key.Font = Enum.Font.GothamBlack
 	key.TextSize = 21
 	key.TextColor3 = Color3.new(1, 1, 1)
-	key.Text = info[1]
+	key.Text = info[3] or info[1]
+	if #key.Text > 1 then key.TextSize = 17 end
 	key.Parent = f
 	local name = Instance.new("TextLabel")
 	name.Position = UDim2.new(0, 0, 1, -18)
@@ -573,10 +574,14 @@ local acoes = {
 	{ "PortaoLee", acaoPortao, Enum.KeyCode.Z, "Gates", UDim2.new(1, -75, 1, -350) },
 	{ "SocoCarregado", acaoCarregado, Enum.KeyCode.X, "X", UDim2.new(1, -75, 1, -110) },
 	{ "SocoAereo", acaoAereo, Enum.KeyCode.Y, "Y", UDim2.new(1, -75, 1, -190) },
-	{ "SocoInvestida", acaoInvestida, Enum.KeyCode.C, "C", UDim2.new(1, -75, 1, -270) },
+	{ "SocoInvestida", acaoInvestida, Enum.KeyCode.C, "C", UDim2.new(1, -75, 1, -270), Enum.KeyCode.Q }, -- Dash também no Q
 }
 for _, a in ipairs(acoes) do
-	ContextActionService:BindAction(a[1], a[2], true, a[3])
+	if a[6] then
+		ContextActionService:BindAction(a[1], a[2], true, a[3], a[6])
+	else
+		ContextActionService:BindAction(a[1], a[2], true, a[3])
+	end
 	ContextActionService:SetTitle(a[1], a[4])
 	ContextActionService:SetPosition(a[1], a[5])
 end

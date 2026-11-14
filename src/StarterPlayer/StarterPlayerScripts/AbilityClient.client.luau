@@ -1,5 +1,5 @@
 -- LocalScript: StarterPlayerScripts > AbilityClient
--- Poderes do clã (Fase 4): Q e E (básicos) e R (forte). No celular aparecem 3 botões.
+-- Poderes do clã (Fase 4): 1 e E (básicos) e R (forte). No celular aparecem 3 botões.
 -- Mostra os 3 poderes do clã com a recarga, o cadeado dos que ainda não foram liberados,
 -- a barra de chakra e o painel POWERS com o caminho do clã.
 -- Estado vem do servidor nos atributos "PoderesEstado" (JSON), "Chakra" e "ChakraMax".
@@ -19,6 +19,7 @@ local feedbackEvent = ReplicatedStorage:WaitForChild("AbilityFeedback")
 
 local player = Players.LocalPlayer
 local KEYS = ClanPowers.KEYS
+local TEXTO = ClanPowers.TEXTO
 local KekkeiData = require(ReplicatedStorage:WaitForChild("KekkeiData"))
 local IconesData = require(ReplicatedStorage:WaitForChild("IconesData"))
 local readyAt = { 0, 0, 0, 0 } -- 4 = tecla V (Kekkei Genkai)
@@ -107,7 +108,7 @@ for i = 1, 4 do
 	tecla.TextSize = 18
 	tecla.TextColor3 = Color3.new(1, 1, 1)
 	tecla.TextXAlignment = Enum.TextXAlignment.Left
-	tecla.Text = KEYS[i] or KekkeiData.TECLA
+	tecla.Text = TEXTO[i] or KekkeiData.TECLA
 	tecla.ZIndex = 3
 	tecla.Parent = f
 
@@ -273,7 +274,7 @@ for i = 1, 3 do
 	k.BackgroundColor3 = Color3.fromRGB(50, 50, 66)
 	k.Font = Enum.Font.GothamBlack
 	k.TextSize = 18
-	k.Text = KEYS[i]
+	k.Text = TEXTO[i]
 	k.TextColor3 = Color3.new(1, 1, 1)
 	k.Parent = l
 	Instance.new("UICorner", k).CornerRadius = UDim.new(0, 8)
@@ -689,7 +690,7 @@ for i = 1, 3 do
 		end
 		return Enum.ContextActionResult.Sink
 	end, true, Enum.KeyCode[KEYS[i]])
-	ContextActionService:SetTitle("Poder" .. i, KEYS[i])
+	ContextActionService:SetTitle("Poder" .. i, TEXTO[i])
 	ContextActionService:SetPosition("Poder" .. i, POS_TOQUE[i])
 end
 -- tecla V: poder da Kekkei Genkai

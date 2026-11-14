@@ -115,7 +115,7 @@ local PASSOS = {
 	{ "🏃", "Move around", "Walk, jump and run through the village. ALT locks the camera behind you.", { "W", "A", "S", "D", "SPACE", "SHIFT" } },
 	{ "👊", "Fight", "Punch enemies and chain your hits into combos. Every enemy you defeat gives XP.", { "F" } },
 	{ "⭐", "Level and XP", "Your level, coins and gems are up here. Leveling gets slower as you grow, so every level counts.", nil, "nivel" },
-	{ "⚡", "Jutsu hotbar", "Clan powers, your bloodline and your nature jutsu live here. They cost chakra, the blue bar.", { "Q", "E", "R", "V", "G", "H", "J", "K" }, "poderes" },
+	{ "⚡", "Jutsu hotbar", "Clan powers, your bloodline and your nature jutsu live here. They cost chakra, the blue bar.", { "1", "E", "R", "V", "G", "H", "J", "K" }, "poderes" },
 	{ "🎁", "Side menu", "Open crates, your collection, the Battle Pass, the shop and the settings from this menu.", nil, "menu" },
 	{ "📅", "Quick buttons", "CLAN: your clan powers.   STATS: spend attribute points.   DAILY: missions and login gifts.   RANK: top players by level.", nil, "botoes" },
 	{ "📜", "Missions", "Talk to people with a  !  above their head, or use the QUESTS board in the village square, to get missions and learn new jutsu." },

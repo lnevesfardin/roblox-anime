@@ -1,6 +1,6 @@
 -- LocalScript: StarterPlayerScripts > KekkeiClient
 -- Tela BLOODLINE: aparece depois do PLAY, antes da roleta do clã, para quem ainda não usou
--- o único giro de Kekkei Genkai. Também mostra a kekkei genkai no HUD, ao lado do STATS.
+-- o único giro de Kekkei Genkai. Também mostra a kekkei genkai no HUD, na fileira de botões, depois do HELP.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -166,7 +166,7 @@ player:GetAttributeChangedSignal("Jogando"):Connect(checar)
 checar()
 
 ---------------------------------------------------------------
--- Selo no HUD, ao lado do STATS
+-- Selo no HUD, na fileira de botões (depois do HELP)
 ---------------------------------------------------------------
 
 local selo
@@ -193,11 +193,20 @@ local function atualizarSelo()
 			end
 		end
 		selo.AutoButtonColor = false
-		selo.Position = stats.Position + UDim2.fromOffset(stats.Size.X.Offset + 8, 0)
-		selo.Size = UDim2.new(0, 150, stats.Size.Y.Scale, stats.Size.Y.Offset)
+		selo.Size = UDim2.fromOffset(150, stats.Size.Y.Offset)
 		selo.TextScaled = true
 		new("UITextSizeConstraint", { MaxTextSize = stats.TextSize, Parent = selo })
 		new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), Parent = selo })
+		-- mesma escala e mesma linha dos botões do HUD (clã 16, STATS 158, DAILY 274, RANK 400, HELP 512): vem depois do HELP
+		local seloEscala = new("UIScale", { Parent = selo })
+		local function posicionarSelo()
+			local v = workspace.CurrentCamera.ViewportSize
+			local sc = require(ReplicatedStorage:WaitForChild("HudEscala")).Hud(v)
+			seloEscala.Scale = sc
+			selo.Position = UDim2.fromOffset(624 * sc, game:GetService("GuiService"):GetGuiInset().Y + 80 * sc)
+		end
+		posicionarSelo()
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(posicionarSelo)
 		selo.Parent = stats.Parent
 	end
 	selo.Visible = k ~= nil

@@ -299,7 +299,7 @@ local function concluir(player, esp)
 	if r.PrimeiroJutsu then
 		local clan = ClanPowers.Sincronizar(data)
 		local c = clan and ClanPowers.Clans[clan]
-		if c then aviso(player, ("NEW JUTSU: %s  [%s]"):format(c.Powers[1].Name, ClanPowers.KEYS[1]), true) end
+		if c then aviso(player, ("NEW JUTSU: %s  [%s]"):format(c.Powers[1].Name, ClanPowers.TEXTO[1]), true) end
 	end
 	if r.KekkeiPoder then
 		local k = KekkeiData.DoSave(data)
@@ -357,7 +357,7 @@ local function concluir(player, esp)
 		local c = ClanPowers.Clans[missao.Cla]
 		local poder = c and c.Powers[r.Poder]
 		if poder then
-			aviso(player, ("NEW POWER: %s  [%s]"):format(poder.Name, ClanPowers.KEYS[r.Poder]), true)
+			aviso(player, ("NEW POWER: %s  [%s]"):format(poder.Name, ClanPowers.TEXTO[r.Poder]), true)
 		end
 		local atualizar = ServerStorage:FindFirstChild("AtualizarPoderes")
 		if atualizar then atualizar:Fire(player) end

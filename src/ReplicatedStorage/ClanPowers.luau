@@ -1,5 +1,5 @@
 -- ModuleScript: ReplicatedStorage > ClanPowers
--- Caminho de poderes de cada clã (Fase 4). Cada clã tem 3 poderes: Q, E e R.
+-- Caminho de poderes de cada clã (Fase 4). Cada clã tem 3 poderes: 1, E e R.
 -- Poderes nunca são comprados: o jogador nasce só com os socos. Os 3 poderes vêm por missões do MESTRE do clã
 -- (ClanPowers.Mestres): a 1ª depois do passo HIST_PRIMEIRO da história; 2ª e 3ª por nível + rank.
 -- As missões do clã ficam em MissionData (ids C1_<Clã>, C2_<Clã> e C3_<Clã>).
@@ -7,7 +7,10 @@
 
 local ClanPowers = {}
 
-ClanPowers.KEYS = { "Q", "E", "R" }
+-- Q e C agora são o Dash (CombatClient), então o poder 1 do clã usa a tecla 1.
+-- KEYS = KeyCode (Enum.KeyCode[...]); TEXTO = o que aparece no slot/aviso.
+ClanPowers.KEYS = { "One", "E", "R" }
+ClanPowers.TEXTO = { "1", "E", "R" }
 
 -- Requisitos de cada posição. Missao = precisa concluir a missão do clã daquela posição.
 -- passo da história (MissionData) que ensina o 1º jutsu do clã

@@ -119,7 +119,7 @@ local function objetivo(missao, p)
 	if t == "praticar" then return ("Practice at %s  %d/%d"):format(MissionData.Lugares[missao.Alvo].Name, p, missao.N) end
 	if t == "coletar" then return ("Collect glowing herbs in the forest  %d/%d"):format(p, missao.N) end
 	if t == "exame" then return "Talk to " .. nomeNpc(missao.Npc) .. " to start the exam" end
-	if t == "ondas" then return ("Win a wave run (Snake's Den or Rogue Ninja Raid)  %d/%d"):format(p, missao.N) end
+	if t == "ondas" then return ("Win a wave run (Snake's Den or Pain's Assault)  %d/%d"):format(p, missao.N) end
 	return ""
 end
 
@@ -132,7 +132,7 @@ local mIcone = label(marca, "◆", 22, COR.ouro, { Size = UDim2.new(1, 0, 0, 24)
 new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 2, Parent = mIcone })
 local mDist = label(marca, "", 12, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 18), Font = Enum.Font.GothamBlack })
 new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Parent = mDist })
--- segundo marcador: missões com duas direções (H9: Snake's Den e Rogue Ninja Raid)
+-- segundo marcador: missões com duas direções (H9: Snake's Den e Pain's Assault)
 local ancora2 = new("Part", { Name = "MarcadorMissao2", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1, Size = Vector3.one, Parent = workspace })
 local marca2 = new("BillboardGui", { Name = "MarcaMissao", Size = UDim2.fromOffset(170, 46), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 100000, StudsOffset = Vector3.new(0, 7, 0), Enabled = false, Parent = ancora2 })
 local mIcone2 = label(marca2, "◆", 22, COR.ouro, { Size = UDim2.new(1, 0, 0, 24), Font = Enum.Font.GothamBlack })

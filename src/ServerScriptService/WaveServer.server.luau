@@ -233,6 +233,19 @@ local LOOKS = {
 	Taka = { Pele = Color3.fromRGB(235, 210, 190), Torso = Color3.fromRGB(25, 25, 30), Bracos = Color3.fromRGB(25, 25, 30), Pernas = Color3.fromRGB(20, 20, 25), Capa = Color3.fromRGB(20, 20, 26), Faixa = Color3.fromRGB(200, 30, 30), Careca = true },
 }
 
+-- Os Caminhos do Pain: capa preta com nuvens vermelhas, olhos Rinnegan, piercings e cabelo de cor própria
+local function pain(cabelo, extra)
+	local t = { Pele = Color3.fromRGB(232, 212, 196), Torso = Color3.fromRGB(24, 24, 30), Bracos = Color3.fromRGB(24, 24, 30), Pernas = Color3.fromRGB(24, 24, 30), Capa = Color3.fromRGB(20, 20, 26), Faixa = Color3.fromRGB(190, 30, 35), Cabelo = cabelo, Espetos = true, Piercing = true, Rinnegan = true, Nuvens = true }
+	for k, v in pairs(extra or {}) do t[k] = v end
+	return t
+end
+LOOKS.PainDeva = pain(Color3.fromRGB(240, 130, 45))
+LOOKS.PainAnimal = pain(Color3.fromRGB(235, 125, 40))
+LOOKS.PainAsura = pain(Color3.fromRGB(150, 45, 35))
+LOOKS.PainHumano = pain(Color3.fromRGB(215, 150, 70), { Espetos = false })
+LOOKS.PainPreta = pain(Color3.fromRGB(30, 25, 25), { Espetos = false })
+LOOKS.PainNaraka = pain(false, { Espetos = false })
+
 local function peca(model, base, tamanho, offset, cor, material, forma)
 	if not base then
 		return nil
@@ -341,6 +354,30 @@ local function aplicarLook(model, look, soCores)
 		peca(model, torso, Vector3.new(2.5, 0.5, 1.3), CFrame.new(0, 0.8, 0.1), cfg.Capa, Enum.Material.Fabric)
 		peca(model, torso, Vector3.new(0.3, 2.6, 0.1), CFrame.new(0, -0.5, -0.65), cfg.Faixa, Enum.Material.SmoothPlastic)
 		peca(model, low, Vector3.new(2.3, 0.2, 1.25), CFrame.new(0, -0.9, 0.1), cfg.Faixa, Enum.Material.SmoothPlastic)
+	end
+	if cfg.Espetos and cfg.Cabelo and head then
+		-- cabelo espetado do Pain
+		for i = -2, 2 do
+			peca(model, head, Vector3.new(0.28, 0.85, 0.28), CFrame.new(i * 0.28, 0.8, 0.05) * CFrame.Angles(0, 0, math.rad(-i * 14)), cfg.Cabelo, Enum.Material.SmoothPlastic)
+		end
+		peca(model, head, Vector3.new(0.3, 0.7, 0.3), CFrame.new(0, 0.7, 0.45) * CFrame.Angles(math.rad(28), 0, 0), cfg.Cabelo, Enum.Material.SmoothPlastic)
+	end
+	if cfg.Rinnegan and head then
+		for _, sx in ipairs({ -0.27, 0.27 }) do
+			peca(model, head, Vector3.new(0.26, 0.26, 0.08), CFrame.new(sx, 0.08, -0.62), Color3.fromRGB(175, 150, 215), Enum.Material.Neon)
+		end
+	end
+	if cfg.Piercing and head then
+		local metal = Color3.fromRGB(35, 35, 40)
+		for _, pos in ipairs({ Vector3.new(0, 0.28, -0.63), Vector3.new(-0.18, -0.15, -0.63), Vector3.new(0.18, -0.15, -0.63), Vector3.new(-0.62, -0.05, 0.05), Vector3.new(0.62, -0.05, 0.05), Vector3.new(0, -0.3, -0.63) }) do
+			peca(model, head, Vector3.new(0.11, 0.11, 0.11), CFrame.new(pos), metal, Enum.Material.Metal, Enum.PartType.Ball)
+		end
+	end
+	if cfg.Nuvens and torso then
+		-- nuvens vermelhas da Akatsuki no peito e nas costas
+		for _, o in ipairs({ CFrame.new(-0.75, 0.35, -0.62), CFrame.new(0.75, -0.2, -0.62), CFrame.new(-0.6, 0.2, 0.62), CFrame.new(0.65, -0.3, 0.62) }) do
+			peca(model, torso, Vector3.new(0.7, 0.45, 0.08), o, cfg.Faixa, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		end
 	end
 end
 
@@ -654,7 +691,7 @@ local function bossSummon(e, cfg, floorY, centro)
 		local z = math.clamp(p.Z, centro.Position.Z - 46, centro.Position.Z + 46)
 		if cfg.Minion then
 			local mn = cfg.Minion
-			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health * difAtual.Vida, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed, nil, nil, mn.Skin)
+			local ent = spawnEnemy(mn.Name, mn.Color, mn.Scale or 1, mn.Health * difAtual.Vida, mn.Damage, Vector3.new(x, floorY + 3, z), false, mn.Speed, nil, mn.Look, mn.Skin)
 			if ent then
 				ent.isMinion = true
 			end
@@ -1097,7 +1134,7 @@ local function runMap(mapId)
 		broadcast({ text = duelo and ("DUEL: %s!"):format(cfg.BossName) or ("Wave %d/%d: BOSS %s!"):format(total, total, cfg.BossName) })
 		task.wait(3)
 		local boss = spawnEnemy(cfg.BossName, cfg.BossColor, cfg.BossScale or 2.5, cfg.BossHealth * hpScale, cfg.BossDamage,
-			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss, nil, cfg.BossSkin, nil, cfg.BossHeadScale)
+			Vector3.new(centro.Position.X, floorY + 10, centro.Position.Z - 20), true, nil, cfg.PlainBoss, cfg.BossLook, cfg.BossSkin, nil, cfg.BossHeadScale)
 		if boss then
 			boss.nextSlam = os.clock() + cfg.BossSlamEvery
 			boss.nextBite = os.clock() + 5

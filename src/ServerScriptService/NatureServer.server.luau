@@ -31,7 +31,7 @@ local function estado(player)
 	for id in pairs(n.Jutsus) do
 		if NatureData.Jutsu(id) then table.insert(jutsus, id) end
 	end
-	return { Rolou = n.Rolou == true, Afinidade = n.Afinidade or false, Lista = n.Lista, Jutsus = jutsus, Equip = { n.Equip[1] or false, n.Equip[2] or false, n.Equip[3] or false, n.Equip[4] or false }, Pendente = n.Pendente }
+	return { Rolou = n.Rolou == true, Afinidade = n.Afinidade or false, Lista = n.Lista, Jutsus = jutsus, Equip = { n.Equip[1] or false, n.Equip[2] or false, n.Equip[3] or false, n.Equip[4] or false }, Pendente = n.Pendente, Fichas = n.Fichas or 0 }
 end
 
 local function aplicar(player)
@@ -71,7 +71,9 @@ acao.OnServerInvoke = function(player, pedido, a, b, c)
 		end
 		if pedido == "regirar" then
 			if not n.Rolou then return { ok = false, erro = "Spin first." } end
-			if not PlayerData.SpendGems(player, NatureData.CUSTO_REGIRAR) then
+			if (n.Fichas or 0) > 0 then
+				n.Fichas -= 1 -- ficha de re-giro (premio do pergaminho): gira de graca
+			elseif not PlayerData.SpendGems(player, NatureData.CUSTO_REGIRAR) then
 				return { ok = false, erro = "You need " .. NatureData.CUSTO_REGIRAR .. " gems.", estado = estado(player) }
 			end
 		end

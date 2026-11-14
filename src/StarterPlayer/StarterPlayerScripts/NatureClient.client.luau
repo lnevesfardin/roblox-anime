@@ -44,6 +44,11 @@ end
 local function canto(o, r) new("UICorner", { CornerRadius = UDim.new(0, r), Parent = o }) end
 
 local estado = { Rolou = false, Afinidade = false, Lista = {}, Jutsus = {}, Equip = { false, false, false, false }, Pendente = {} }
+-- texto do botao de re-giro: usa a ficha do pergaminho se houver, senao custa gemas
+local function textoRegirar()
+	if (estado.Fichas or 0) > 0 then return ("RE-SPIN NATURES  (%d free)"):format(estado.Fichas) end
+	return ("RE-SPIN NATURES  (%d gems)"):format(NatureData.CUSTO_REGIRAR)
+end
 local function sabe(id) return table.find(estado.Jutsus, id) ~= nil end
 local function tem(nat) return table.find(estado.Lista, nat) ~= nil end
 
@@ -431,7 +436,7 @@ atualizar = function()
 		end
 	end
 	if os.clock() > confirmarAte then
-		pGirar.Text = ("RE-SPIN NATURES  (%d gems)"):format(NatureData.CUSTO_REGIRAR)
+		pGirar.Text = textoRegirar()
 		pGirar.BackgroundColor3 = COR.card
 	end
 	montarPainel()
@@ -474,7 +479,7 @@ RunService.RenderStepped:Connect(function()
 		slots[i].tempo.Text = left > 0 and tostring(math.ceil(left)) or ""
 	end
 	if os.clock() > confirmarAte and pGirar.BackgroundColor3 ~= COR.card then
-		pGirar.Text = ("RE-SPIN NATURES  (%d gems)"):format(NatureData.CUSTO_REGIRAR)
+		pGirar.Text = textoRegirar()
 		pGirar.BackgroundColor3 = COR.card
 	end
 end)

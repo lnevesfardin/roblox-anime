@@ -1,12 +1,15 @@
 -- Script: ServerScriptService > CrateServer
 -- Abre caixas: cobra moedas ou gemas (ou usa uma caixa grátis do Battle Pass),
--- sorteia a raridade (com garantia na caixa básica) e entrega o personagem.
+-- sorteia a raridade (com garantia na caixa básica) e depois um prêmio da lista daquela raridade:
+-- moedas, gemas, boosts, acessórios ou fichas de re-giro (ver CharacterData.CrateRewards).
 -- Toda a lógica fica no servidor: o cliente só pede e mostra a animação do resultado.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local CharacterData = require(ReplicatedStorage:WaitForChild("CharacterData"))
+local EconomyData = require(ReplicatedStorage:WaitForChild("EconomyData"))
+local NatureData = require(ReplicatedStorage:WaitForChild("NatureData"))
 local PlayerData = require(ServerStorage:WaitForChild("PlayerData"))
 
 -- O cliente chama este "telefone" para pedir a abertura de uma caixa
@@ -51,6 +54,65 @@ local function pickCharacter(rarityIndex)
 		end
 	end
 	return nil
+end
+
+-- Entrega moedas/gemas e devolve { reward, nome, simbolo } para a tela de resultado.
+local function entregarDinheiro(player, p)
+	if p.Gems then
+		local n = math.random(p.Gems[1], p.Gems[2])
+		PlayerData.AddGems(player, n)
+		return { Gems = n }, "+" .. n .. " GEMS", "💎"
+	end
+	local n = math.random(p.Coins[1], p.Coins[2])
+	PlayerData.AddCoins(player, n)
+	return { Coins = n }, "+" .. n .. " COINS", "💰"
+end
+
+-- Sorteia um premio da lista (pesos W) e entrega. Retorna reward, nome, simbolo.
+local function sortearPremio(player, data, lista)
+	local total = 0
+	for _, p in ipairs(lista) do total += p.W end
+	local pick = math.random() * total
+	local escolhido = lista[#lista]
+	local acc = 0
+	for _, p in ipairs(lista) do
+		acc += p.W
+		if pick <= acc then escolhido = p break end
+	end
+	local p = escolhido
+
+	if p.Item then
+		local item = EconomyData.Items[p.Item]
+		if item then
+			PlayerData.AddItem(player, p.Item, 1)
+			return { Item = p.Item }, item.Name:upper(), item.Stat == "Coins" and "💰" or "⚡"
+		end
+	elseif p.Cosmetic then
+		-- sorteia um acessorio que o jogador ainda nao tem
+		local livres = {}
+		for _, id in ipairs(p.Cosmetic) do
+			if EconomyData.Items[id] and (data.Items[id] or 0) < 1 then table.insert(livres, id) end
+		end
+		if #livres > 0 then
+			local id = livres[math.random(1, #livres)]
+			PlayerData.AddItem(player, id, 1)
+			local simbolo = ({ Cabeca = "🥷", Pescoco = "🧣", Aura = "✨", Rastro = "💨" })[EconomyData.Items[id].Slot] or "🎁"
+			return { Item = id }, EconomyData.Items[id].Name:upper(), simbolo
+		end
+		return entregarDinheiro(player, p.Fallback) -- ja tem todos: vira dinheiro
+	elseif p.Ficha then
+		local n = p.N and math.random(p.N[1], p.N[2]) or 1
+		if p.Ficha == "cla" then
+			data.Cla.Giros = (tonumber(data.Cla.Giros) or 0) + n
+			return { Ficha = "cla", N = n }, "+" .. n .. " CLAN SPIN", "🌀"
+		end
+		local nat = NatureData.Garantir(data)
+		nat.Fichas += n
+		local av = ServerStorage:FindFirstChild("AtualizarNatureza")
+		if av then av:Fire(player) end
+		return { Ficha = "natureza", N = n }, "+" .. n .. " NATURE SPIN", "🍃"
+	end
+	return entregarDinheiro(player, p.Gems and p or p.Coins and p or { Coins = { 30, 60 } })
 end
 
 -- useFree = true: usa uma "caixa grátis" do inventário (só a caixa básica)
@@ -112,7 +174,7 @@ openCrate.OnServerInvoke = function(player, crateId, useFree)
 		local rarityId = CharacterData.Rarities[rarityIndex].Id
 		local tabela = CharacterData.CrateRewards[crateId]
 		local rw = tabela and tabela[rarityId]
-		if not rw then
+		if not rw or #rw == 0 then
 			-- Não deveria acontecer, mas devolve o pagamento por segurança
 			refund()
 			result = { ok = false, reason = "No reward available." }
@@ -122,16 +184,13 @@ openCrate.OnServerInvoke = function(player, crateId, useFree)
 			data.Pity = 0
 		end
 
-		-- a caixa entrega moedas ou gemas (não dá mais personagens)
-		local reward, nome, simbolo
-		if rw.Gems then
-			local n = math.random(rw.Gems[1], rw.Gems[2])
-			PlayerData.AddGems(player, n)
-			reward, nome, simbolo = { Gems = n }, "+" .. n .. " GEMS", "💎"
-		else
-			local n = math.random(rw.Coins[1], rw.Coins[2])
-			PlayerData.AddCoins(player, n)
-			reward, nome, simbolo = { Coins = n }, "+" .. n .. " COINS", "💰"
+		-- o pergaminho entrega um premio variado (moedas, gemas, boosts, acessorios ou fichas de re-giro)
+		local okPremio, reward, nome, simbolo = pcall(sortearPremio, player, data, rw)
+		if not okPremio then
+			warn("[CrateServer] Erro ao sortear o premio: " .. tostring(reward))
+			refund()
+			result = { ok = false, reason = "No reward available." }
+			return
 		end
 		result = {
 			ok = true,

@@ -68,7 +68,7 @@ NatureData.Tipos = {
 			{ t = "area", r = 18, mult = 2.4, force = 70, stun = 1.2 }) },
 		{ J("nat_vento3a", "Great Breakthrough", 22, 52, "A giant gale tears through a wide cone.", "4.6 dmg in a cone + huge knockback",
 			{ t = "cone", range = 45, deg = 40, mult = 4.6, force = 90 }),
-		  J("nat_vento3b", "Vacuum Sphere", 22, 55, "A sphere of compressed air that bursts on impact.", "4.8 dmg, big blast + knockback",
+		  J("nat_vento3b", "Rasengan", 22, 55, "A spinning sphere of compressed wind chakra that bursts on impact.", "4.8 dmg, big blast + knockback",
 			{ t = "proj", n = 1, size = 3, speed = 90, range = 60, blast = 10, mult = 4.8, force = 50 }) },
 		{ J("nat_vento4a", "Typhoon Wall", 40, 85, "A towering wall of wind races forward and crushes everything.", "7 dmg in a wide line + huge knockback",
 			{ t = "line", len = 55, width = 16, mult = 7, force = 80 }),
@@ -81,7 +81,7 @@ NatureData.Tipos = {
 		{ J("nat_raio2", "Thunder Chain", 16, 38, "Lightning jumps between up to 5 enemies.", "2.2 dmg x up to 5 enemies"),
 		  J("nat_raio2b", "Thunder Clap", 15, 36, "A thunderclap around you shocks and freezes enemies in place.", "2.6 dmg around you + hold 1.5s",
 			{ t = "area", r = 16, mult = 2.6, stun = 1.5 }) },
-		{ J("nat_raio3a", "Lightning Beast Run", 22, 55, "A beast of lightning charges in a straight line.", "5 dmg in a line + hold 1.5s",
+		{ J("nat_raio3a", "Raikiri", 22, 55, "A blade of lightning in your hand: dash in a straight line, piercing and stunning.", "5 dmg in a line + hold 1.5s",
 			{ t = "line", len = 50, width = 8, mult = 5, stun = 1.5 }),
 		  J("nat_raio3b", "Storm Cage", 22, 55, "Bolts lock up to 4 enemies in place.", "3.4 dmg x4 targets + hold 2s",
 			{ t = "target", range = 40, count = 4, mult = 3.4, stun = 2 }) },
@@ -155,6 +155,7 @@ function NatureData.Garantir(data)
 	if type(n.Jutsus) ~= "table" then n.Jutsus = {} end
 	if type(n.Equip) ~= "table" then n.Equip = {} end
 	if type(n.Pendente) ~= "table" then n.Pendente = {} end
+	n.Fichas = math.max(0, math.floor(tonumber(n.Fichas) or 0)) -- fichas de re-giro (vem do pergaminho)
 	for i = 1, #NatureData.KEYS do
 		if n.Equip[i] == nil then n.Equip[i] = false end
 	end

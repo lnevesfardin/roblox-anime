@@ -57,15 +57,69 @@ CharacterData.Crates = {
 	},
 }
 
--- O que cada caixa entrega por raridade: moedas ou gemas (mínimo, máximo). As caixas não dão mais personagens.
+-- O que cada pergaminho entrega: a raridade sorteada escolhe uma LISTA de premios e cada premio tem um peso W.
+-- Tipos de premio: Coins = {min, max} | Gems = {min, max} | Item = "idDoItem" (boost) |
+-- Cosmetic = { "id1", "id2" } (sorteia um que o jogador ainda nao tem; se tiver todos, vira Fallback) |
+-- Ficha = "natureza" ou "cla" (ficha de re-giro; N = {min, max} quantidade, padrao 1).
+-- Ficha "cla" = giro gratis na roleta de cla; ficha "natureza" = re-giro gratis das naturezas.
 CharacterData.CrateRewards = {
 	Basica = {
-		Comum = { Coins = { 30, 60 } }, Raro = { Coins = { 80, 100 } }, Epico = { Coins = { 200, 240 } },
-		Lendario = { Gems = { 8, 8 } }, Mistico = { Gems = { 25, 25 } },
+		Comum = {
+			{ W = 50, Coins = { 30, 60 } },
+			{ W = 25, Item = "boost_xp_15" },
+			{ W = 25, Item = "boost_coins_15" },
+		},
+		Raro = {
+			{ W = 35, Coins = { 80, 100 } },
+			{ W = 15, Item = "boost_xp_15" },
+			{ W = 15, Item = "boost_coins_15" },
+			{ W = 35, Cosmetic = { "bandana_azul", "bandana_vermelha", "cachecol_vermelho", "cachecol_verde" }, Fallback = { Coins = { 80, 100 } } },
+		},
+		Epico = {
+			{ W = 24, Coins = { 200, 240 } },
+			{ W = 16, Item = "boost_xp_30" },
+			{ W = 16, Item = "boost_coins_30" },
+			{ W = 24, Cosmetic = { "bandana_preta", "cachecol_shinobi", "rastro_fogo", "rastro_raio" }, Fallback = { Coins = { 200, 240 } } },
+			{ W = 10, Ficha = "cla" },
+			{ W = 10, Ficha = "natureza" },
+		},
+		Lendario = {
+			{ W = 20, Gems = { 8, 8 } },
+			{ W = 30, Cosmetic = { "aura_azul", "aura_roxa" }, Fallback = { Gems = { 8, 8 } } },
+			{ W = 25, Ficha = "cla" },
+			{ W = 25, Ficha = "natureza" },
+		},
+		Mistico = {
+			{ W = 20, Gems = { 25, 25 } },
+			{ W = 20, Cosmetic = { "aura_dourada" }, Fallback = { Gems = { 25, 25 } } },
+			{ W = 30, Ficha = "cla", N = { 2, 2 } },
+			{ W = 30, Ficha = "natureza", N = { 2, 2 } },
+		},
 	},
 	Rikudou = {
-		Raro = { Coins = { 1500, 1500 } }, Epico = { Coins = { 4000, 4000 } },
-		Lendario = { Gems = { 80, 80 } }, Mistico = { Gems = { 250, 250 } },
+		Raro = {
+			{ W = 40, Coins = { 1500, 1500 } },
+			{ W = 20, Item = "boost_xp_30" },
+			{ W = 20, Item = "boost_coins_30" },
+			{ W = 20, Cosmetic = { "rastro_fogo", "rastro_raio", "cachecol_shinobi" }, Fallback = { Coins = { 1500, 1500 } } },
+		},
+		Epico = {
+			{ W = 25, Coins = { 4000, 4000 } },
+			{ W = 25, Cosmetic = { "aura_azul", "aura_roxa" }, Fallback = { Coins = { 4000, 4000 } } },
+			{ W = 25, Ficha = "cla" },
+			{ W = 25, Ficha = "natureza" },
+		},
+		Lendario = {
+			{ W = 25, Gems = { 80, 80 } },
+			{ W = 25, Cosmetic = { "aura_dourada" }, Fallback = { Gems = { 80, 80 } } },
+			{ W = 25, Ficha = "cla", N = { 2, 2 } },
+			{ W = 25, Ficha = "natureza", N = { 2, 2 } },
+		},
+		Mistico = {
+			{ W = 40, Gems = { 250, 250 } },
+			{ W = 30, Ficha = "cla", N = { 3, 3 } },
+			{ W = 30, Ficha = "natureza", N = { 3, 3 } },
+		},
 	},
 }
 

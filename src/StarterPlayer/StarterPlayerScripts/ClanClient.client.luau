@@ -618,7 +618,7 @@ local function renderNatureza()
 		nBtn.Text = "SURE? Jutsus may be lost"
 		nBtn.BackgroundColor3 = COR.vermelho
 	else
-		nBtn.Text = "SPIN AGAIN  (" .. NatureData.CUSTO_REGIRAR .. " gems)"
+		nBtn.Text = (e.Fichas or 0) > 0 and ("SPIN AGAIN  (" .. e.Fichas .. " free)") or ("SPIN AGAIN  (" .. NatureData.CUSTO_REGIRAR .. " gems)")
 		nBtn.BackgroundColor3 = Color3.fromRGB(70, 95, 175) -- cor de gemas: destaca do fundo do painel
 		nInfo.Text = "You start with no jutsu: each nature's master teaches its jutsus through missions in the village."
 	end

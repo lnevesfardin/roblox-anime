@@ -656,8 +656,8 @@ local function cardCaixa(crateId, x, corA, corB, desc)
 	return gratis
 end
 
-local botaoGratis = cardCaixa("Basica", 0, Color3.fromRGB(230, 120, 40), Color3.fromRGB(150, 60, 20), "Spend coins earned in runs. Epic or better guaranteed every 20 crates.")
-cardCaixa("Rikudou", 0.5, Color3.fromRGB(255, 170, 50), Color3.fromRGB(120, 50, 200), "Never Common. Shown chances already count only characters that exist.")
+local botaoGratis = cardCaixa("Basica", 0, Color3.fromRGB(230, 120, 40), Color3.fromRGB(150, 60, 20), "Prizes: coins, gems, 2x boosts, cosmetics and re-spin tokens. Epic or better guaranteed every 20 scrolls.")
+cardCaixa("Rikudou", 0.5, Color3.fromRGB(255, 170, 50), Color3.fromRGB(120, 50, 200), "Never Common. Bigger prizes: coins, gems, boosts, auras, clan and nature re-spin tokens.")
 
 local function atualizarGratis()
 	botaoGratis.Text = caixasGratis > 0 and ("OPEN FREE  (x%d)"):format(caixasGratis) or "NO FREE CRATES"
@@ -789,7 +789,7 @@ local function animarAbertura(crateId, r, deNovo)
 	grad(retrato, cor:Lerp(Color3.new(1, 1, 1), 0.35), cor:Lerp(Color3.new(0, 0, 0), 0.4), 120)
 	stroke(retrato, Color3.new(1, 1, 1), 4)
 	label(retrato, r.symbol or r.name:sub(1, 1), 70, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })
-	label(card, r.name, 28, COR.texto, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 196), Font = Enum.Font.GothamBlack })
+	label(card, r.name, #r.name > 15 and 19 or 28, COR.texto, { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 196), Font = Enum.Font.GothamBlack })
 	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 240), Size = UDim2.fromOffset(160, 32), BackgroundColor3 = (r.isNew or r.reward) and COR.verde or COR.azul, Parent = card })
 	corner(tag, 6)
 	label(tag, r.reward and "ADDED!" or r.isNew and "NEW!" or ("COPY  x" .. tostring(r.copies)), 17, Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBlack })

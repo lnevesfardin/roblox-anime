@@ -113,3 +113,20 @@
 
 ## Ícones dos jutsus (`IconesData`)
 - Emoji por jutsu de clã e de Kekkei Genkai nos slots Q/E/R/V (entre a tecla e o tempo de recarga) e na lista do painel POWERS; bloqueado mostra ❓. Naturezas já usam o emoji do elemento.
+
+## Rasengan e Raikiri (`NatureData`)
+- Não são jutsus novos: renomeei duas opções da etapa 3 que já existiam. `nat_vento3b` (Vento, esfera de ar) virou **Rasengan** e `nat_raio3a` (Relâmpago, investida em linha) virou **Raikiri**. IDs e efeitos iguais, então nada se perde nos saves. Continua escolhendo 1 de 2 na etapa.
+
+## Pergaminho com prêmios variados (`CharacterData.CrateRewards`, `CrateServer`)
+- A raridade sorteada escolhe uma lista de prêmios, cada um com peso `W`: `Coins`, `Gems`, `Item` (boost 2x XP / 2x moedas), `Cosmetic` (bandana, cachecol, rastro, aura) e `Ficha` (re-giro). Pergaminho Básico e Rikudou têm listas próprias.
+- Acessório: sorteia um que o jogador ainda não tem; se já tem todos da lista, vira `Fallback` (moedas ou gemas).
+- Fichas: `cla` soma +1 em `data.Cla.Giros` (giro grátis da roleta de clã) e `natureza` soma em `data.Natureza.Fichas` (o re-giro das naturezas gasta a ficha antes das 50 gemas). Os botões mostram "(N free)" quando há ficha.
+- Se o sorteio do prêmio falhar, o pagamento é devolvido.
+
+## Easter eggs do lado leste (`SegredosData`, `SegredosServer`, `SegredosClient`)
+- Passo 1: 3 selos 🌳👁🍃 escondidos em cantos do leste (posições em `SegredosData.Simbolos`; o servidor acha a altura do chão). Cada jogador acha os seus com a tecla E e o progresso fica salvo em `data.Segredos`.
+- Passo 2: com os 3 selos aparece só para ele o santuário secreto (desenhado no cliente, em `SegredosData.Altar`) com um pilar de luz visível de longe.
+- Passo 3: três pedestais (tecla E, segurar 1,5 s). O servidor confere: 3 selos, perto do altar e clã certo. O poder fica liberado para sempre.
+- Poderes (tecla, recarga): 🌳 Gene do Hashirama (B, 60 s, qualquer jogador): cura 4% da vida máxima por segundo durante 10 s. 👁 Olho do Shisui (N, 75 s, só clã Uchiwa): inimigos em 45 studs (até 6) ficam imobilizados 6 s e perdem 5% da vida por segundo; o boss se solta em 40% do tempo e perde 25% disso; a kill conta para quem usou. 🦊 Manto da Kurama (M, 90 s, só clã Uzu): +40% de dano e +6 de velocidade por 12 s, pelos atributos `BuffDano` e `BuffVelocidade`.
+- Para criar mais um: acrescente em `SegredosData.Poderes` e `Ordem` e escreva o efeito em `EFEITOS` no `SegredosServer`.
+- Cliente: botões com recarga no canto inferior direito (só aparecem com `Jogando` e o poder liberado), aviso no topo, atalhos B, N e M.

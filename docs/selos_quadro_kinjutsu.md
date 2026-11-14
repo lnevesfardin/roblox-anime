@@ -150,3 +150,9 @@
 - **Dash em Q e em C:** `SocoInvestida` (CombatClient) agora tem `Enum.KeyCode.C` e `Enum.KeyCode.Q`. O slot da barra mostra "Q/C"; o botão de toque continua "C".
 - **Poder 1 do clã na tecla 1:** como Q virou Dash, `ClanPowers.KEYS = { "One", "E", "R" }` (KeyCode) e `ClanPowers.TEXTO = { "1", "E", "R" }` (o que aparece no slot, nos avisos "NEW POWER" e no tour). Para mudar de volta ou escolher outra tecla, é só editar essas duas listas.
 - **Selo da Kekkei (ex.: BOIL RELEASE):** fica na fileira de botões do HUD depois do HELP (x = 624 no espaço do HUD, mesma linha e mesma `HudEscala.Hud`). Antes era clone do STATS sem o `UIScale` e caía em cima de DAILY/RANK.
+
+## Caminho até Genin (nível 5) e a H9
+- O **Exame Ninja** (H8) agora exige **nível 5** (`MissionData.Ranks.Genin.Level` também). Antes eram 10 (~21.400 XP acumulados contra só 2.950 da história).
+- XP da história rebalanceado: H5 600, H6 750, H7 1500 (total da história ≈ 3.500, o suficiente para chegar ao nível 5 sem grind; nível 5 = 3.042 XP).
+- **H9 "The Road East"** (Sensei Kaito, depois do exame, só para Genin): ele sugere os portais de ondas (Snake's Den na floresta e Rogue Ninja Raid na Torre do Hokage) para ganhar XP antes do leste. Objetivo novo `Tipo = "ondas"`: vencer 1 partida de ondas (`PartidaVencida` com qualquer mapa que não seja o `ExameNinja`). Recompensa 1500 XP, 400 moedas, 2 pontos. A conversa cita o nível exigido pela Fire Country Woods (`WorldData.Zonas[1].NivelMin`, hoje 10).
+- `MissionServer.dados`: quem é Genin pula a história só até `MissionData.HistoriaGenin` (o exame); Chunin ou mais pula tudo. Antes qualquer rank acima de Estudante pulava a história inteira, o que esconderia a H9.

@@ -6,7 +6,7 @@
 -- MissionEvent  (RemoteEvent, servidor -> cliente): { tipo = "dialogo" | "concluida" | "aviso" | "estado" ... }
 -- Outros scripts avisam progresso pelo BindableEvent ServerStorage.MissaoProgresso: Fire(player, tipo, quantidade)
 -- A partida do Exame começa pelo BindableEvent ServerStorage.IniciarPartida (WaveServer) e
--- a vitória chega pelo ServerStorage.PartidaVencida (player, mapId).
+-- a vitória chega pelo ServerStorage.PartidaVencida (player, mapId); partidas de ondas também contam para as missões "ondas".
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -54,7 +54,11 @@ local function dados(player)
 		if type(m.Ativa) == "table" and tostring(m.Ativa.Id):match("^H%d") then m.Ativa = nil end
 		m.V = 3
 	end
-	if type(data.Rank) == "string" and data.Rank ~= "Estudante" then m.Historia = MissionData.TotalHistoria end
+	if type(data.Rank) == "string" and data.Rank ~= "Estudante" then
+		-- rank acima de Estudante já passou pelo exame; Genin ainda faz a H9, Chunin ou mais pula a história toda
+		local alvo = data.Rank == "Genin" and MissionData.HistoriaGenin or MissionData.TotalHistoria
+		if m.Historia < alvo then m.Historia = alvo end
+	end
 	if type(m.Cool) ~= "table" then m.Cool = {} end
 	if type(m.Feitas) ~= "table" then m.Feitas = {} end -- missões únicas já feitas
 	-- o 1º jutsu do clã passou a vir do mestre do clã (C1_<Clã>): quem já tinha aprendido na história continua com ele
@@ -425,6 +429,8 @@ task.spawn(function()
 			if not data then return end
 			if acharAtiva(m, function(x) return x.Tipo == "exame" and x.Mapa == mapId end) then
 				progredir(player, "exame", 1)
+			elseif mapId ~= "ExameNinja" then
+				progredir(player, "ondas", 1) -- qualquer partida de ondas vencida (Snake's Den, Rogue Ninja Raid)
 			end
 		end)
 	end

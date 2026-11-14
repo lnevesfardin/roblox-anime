@@ -7,12 +7,16 @@
 --   derrotar = derrotar N bandidos nos esconderijos
 --   coletar  = coletar N ervas na floresta
 --   exame    = vencer a partida do Exame Ninja (vira Genin)
+--   ondas    = vencer N partidas de ondas (Snake's Den ou Rogue Ninja Raid, nos portais)
 --   praticar = praticar N vezes no ponto de treino da natureza (Alvo = "Pratica_<Natureza>", um dos Lugares)
 -- Missões com Quadro = true são as do balcão QUESTS: aleatórias, por rank (D, C, B, A), sem dono.
 -- Recompensas especiais: PrimeiroJutsu (1º jutsu do clã), Poder (2º/3º do clã), Estilo (estilo de luta),
 -- Jutsu (jutsu de natureza), NovaNatureza (mais uma natureza de chakra).
 
 local MissionData = {}
+
+-- nível exigido pela Fire Country Woods (portão leste): o Sensei Kaito cita o número na conversa da H9
+local NIVEL_LESTE = require(script.Parent:WaitForChild("WorldData")).Zonas[1].NivelMin
 
 MissionData.COOLDOWN = 8 * 60 -- segundos até a mesma missão repetível poder ser feita de novo
 -- Quadro de missões (balcão QUESTS)
@@ -25,7 +29,7 @@ MissionData.QuadroRank = { Estudante = { "D" }, Genin = { "D", "C" }, Chunin = {
 
 MissionData.Ranks = {
 	{ Id = "Estudante", Name = "Academy Student", Level = 1 },
-	{ Id = "Genin", Name = "Genin", Level = 10, Exame = true }, -- só com o Exame Ninja
+	{ Id = "Genin", Name = "Genin", Level = 5, Exame = true }, -- só com o Exame Ninja
 	{ Id = "Chunin", Name = "Chunin", Level = 25 },
 	{ Id = "Jonin", Name = "Jonin", Level = 45 },
 	{ Id = "Elite", Name = "Elite Jonin", Level = 65 },
@@ -150,11 +154,11 @@ MissionData.Missoes = {
 	-- Parte 2: virar Genin (obrigatório para as missões de rank C e para sair da vila pelo portão leste).
 	{ Id = "H5", Npc = "Tsunade", Historia = 5, Rank = "D", Name = "Basic Training",
 		Desc = "Train twice at the Ninja Academy stations.",
-		Tipo = "treinar", N = 2, Recompensa = { XP = 500, Coins = 120, Pontos = 1 } },
+		Tipo = "treinar", N = 2, Recompensa = { XP = 600, Coins = 120, Pontos = 1 } },
 	-- o jogador nasce só com os socos: depois deste passo (ClanPowers.HIST_PRIMEIRO = 6) o mestre do clã ensina o 1º jutsu
 	{ Id = "H6", Npc = "Kakashi", Historia = 6, Rank = "D", Name = "Prove Your Fists",
 		Desc = "Prove yourself with only your fists: defeat 2 rogue ninjas. Then Sensei Kaito will send you to your clan's master.",
-		Tipo = "derrotar", Alvo = "Acampamento", N = 2, Recompensa = { XP = 600, Coins = 150 },
+		Tipo = "derrotar", Alvo = "Acampamento", N = 2, Recompensa = { XP = 750, Coins = 150 },
 		Conversa = {
 			{ Fala = "You met everyone. Good. Now tell me: you have no jutsu yet. Why do you think that is?", Opcoes = {
 				{ T = "Because I have to earn it first.", R = "Exactly. A jutsu in untrained hands only hurts its owner.", Bom = true },
@@ -165,10 +169,23 @@ MissionData.Missoes = {
 	{ Id = "H7", Npc = "Kakashi", Historia = 7, Rank = "D", Name = "Rogue Ninjas Nearby",
 		Desc = "Rogue ninjas keep coming. Scout the Rogue Ninja Hideouts in the forest and report what you see.",
 		Tipo = "ir", Alvo = "Acampamento", N = 1, Obj = "Scout the Rogue Ninja Hideouts",
-		Recompensa = { XP = 1200, Coins = 250, Pontos = 2 } },
-	{ Id = "H8", Npc = "Kakashi", Historia = 8, Rank = "C", Name = "The Ninja Exam", Nivel = 10,
+		Recompensa = { XP = 1500, Coins = 250, Pontos = 2 } },
+	{ Id = "H8", Npc = "Kakashi", Historia = 8, Rank = "C", Name = "The Ninja Exam", Nivel = 5,
 		Desc = "The Ninja Exam is a duel: defeat Sensei Kaito to become a Genin.",
 		Tipo = "exame", Mapa = "ExameNinja", N = 1, Recompensa = { XP = 1500, Coins = 500, Pontos = 3 }, Promove = "Genin" },
+	-- Depois do exame: o Sensei manda o novo Genin ganhar XP nos portais de ondas antes de explorar o leste.
+	{ Id = "H9", Npc = "Kakashi", Historia = 9, Rank = "C", Name = "The Road East", RankMin = "Genin",
+		Desc = "Win a wave run, at the Snake's Den in the forest or the Rogue Ninja Raid by the Hokage Tower, to earn the XP the east gate demands.",
+		Tipo = "ondas", N = 1, Recompensa = { XP = 1500, Coins = 400, Pontos = 2 },
+		Conversa = {
+			{ Fala = "Genin. It suits you. The east gate is open to you now, but that road leads into the Fire Country Woods, bandits and rogue ninja all the way. Would you walk in as you are?", Opcoes = {
+				{ T = "Not yet. I need to get stronger.", R = "Wise. Fear is what keeps a ninja alive.", Bom = true },
+				{ T = "I would crush them all.", R = "Confidence is free. Funerals are not." } } },
+			{ Fala = "The fastest way to grow is the wave portals. One is in the forest, the Snake's Den. Another is by the Hokage Tower, the Rogue Ninja Raid. Wave after wave, a boss at the end, and good XP for whoever wins.", Opcoes = {
+				{ T = "I'll clear one today.", R = "Good. Win a wave run and come back to me.", Bom = true },
+				{ T = "Can't I just go east?", R = "You can try. The woods ask for level " .. NIVEL_LESTE .. " for a reason." } } },
+			{ Fala = "Reach level " .. NIVEL_LESTE .. " and the east is yours to explore. Go on." },
+		} },
 	-- (Chunin e Jonin: continuação do caminho, a definir)
 }
 
@@ -394,6 +411,11 @@ end
 MissionData.TotalHistoria = 0
 for _, m in ipairs(MissionData.Missoes) do
 	if m.Historia then MissionData.TotalHistoria = math.max(MissionData.TotalHistoria, m.Historia) end
+end
+-- passo da história que promove a Genin (o exame): quem já é Genin só pula a história até aqui, a H9 continua sendo oferecida
+MissionData.HistoriaGenin = 0
+for _, m in ipairs(MissionData.Missoes) do
+	if m.Historia and m.Promove == "Genin" then MissionData.HistoriaGenin = m.Historia end
 end
 function MissionData.DaHistoria(n)
 	for _, m in ipairs(MissionData.Missoes) do

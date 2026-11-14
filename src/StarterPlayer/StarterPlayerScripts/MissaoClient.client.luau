@@ -119,6 +119,7 @@ local function objetivo(missao, p)
 	if t == "praticar" then return ("Practice at %s  %d/%d"):format(MissionData.Lugares[missao.Alvo].Name, p, missao.N) end
 	if t == "coletar" then return ("Collect glowing herbs in the forest  %d/%d"):format(p, missao.N) end
 	if t == "exame" then return "Talk to " .. nomeNpc(missao.Npc) .. " to start the exam" end
+	if t == "ondas" then return ("Win a wave run (Snake's Den or Rogue Ninja Raid)  %d/%d"):format(p, missao.N) end
 	return ""
 end
 

@@ -7,7 +7,7 @@ Itens abaixo vivem no place (TeamCreate), não em `src/`. Se o place for recriad
 Luta do Exame Ninja: **gramado só no centro, floresta em volta**.
 
 - `MapData.Maps.ExameNinja.Arena = "ExameNinja"` faz o WaveServer usar `workspace.Mapa_ExameNinja`.
-  Os mapas Ninja e Hokage continuam usando `Mapa_Ninja`.
+  O mapa Ninja (Snake's Den) usa `Mapa_Ninja`; o Hokage (Rogue Ninja Raid) agora tem arena própria, `Mapa_Hokage` (abaixo).
 - Contrato exigido pelo WaveServer (`runMap`): filhos `ArenaSpawn` e `Centro`,
   atributos `PisoY` (2.3) e `RaioSpawn` (30).
 - Posições: `ArenaSpawn` (-525, 3, -1200), `Centro` (-525, 2, -1230).
@@ -15,6 +15,18 @@ Luta do Exame Ninja: **gramado só no centro, floresta em volta**.
 - Conteúdo (833 filhos, ~320 x 324 studs): `Gramado` (disco no centro), `ChaoFloresta`,
   195 `Tronco`, 585 `Copa`, 36 `Arbusto`, 8 `Pedra`, 4 `Muro` (paredes invisíveis), `LuzArena`.
 - Verificado em Play: `[WaveServer] Ninja Exam iniciado com 1 jogador(es)` sem aviso de "Mapa não encontrado".
+
+## Workspace.Mapa_Hokage (arena da Rogue Ninja Raid)
+
+Pátio murado de Konoha sob ataque, **separado** do covil da cobra. `MapData.Maps.Hokage.Arena = "Hokage"`.
+
+- Posição: centro em (-525, 2, -1560), no terreno livre ao sul do `Mapa_ExameNinja`. Piso em y = 2.
+- Contrato do WaveServer: filhos `ArenaSpawn` (-525, 3, -1520, lado sul) e `Centro` (-525, 2, -1560); atributos `PisoY` (2) e `RaioSpawn` (40).
+- Conteúdo (~240 descendentes): `Chao` e `Praca` (praça redonda com anel vermelho), 4 muros com beiral de telha, pilares, portão fechado ao sul,
+  4 `Limite*` invisíveis (paredes altas, ninguém sai), `TorreHokage` e `Penhasco` ao fundo (norte), `CasasFora` (cenário fora dos muros leste e oeste),
+  `Decoracao` (9 tochas com fogo e luz, 6 estandartes, caixas e barris nos cantos e perto do portão, entulho com fogo/fumaça, marcas de queimado) e `LuzArena`.
+- Obstáculos ficam nas bordas (a IA dos inimigos anda só a ±44-46 studs do `Centro`).
+- Verificado em Play: `[WaveServer] Rogue Ninja Raid iniciado com 1 jogador(es)`; o jogador aparece em `ArenaSpawn` e a 1ª onda nasce dentro do pátio.
 
 ## ServerStorage.PecasNPC.KibaHair
 

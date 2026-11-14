@@ -96,10 +96,10 @@ MapData.Maps = {
 		RewardCoins = 300,
 	},
 
-	-- Portal perto do prédio do Hokage: ninjas renegados atacando a vila (luta na arena Mapa_Ninja)
+	-- Portal perto do prédio do Hokage: ninjas renegados atacando a vila (luta na arena própria Mapa_Hokage: pátio murado com a torre ao fundo)
 	Hokage = {
 		Name = "Rogue Ninja Raid",
-		Arena = "Ninja",
+		Arena = "Hokage",
 
 		Waves = {
 			{ Name = "Rogue Genin", Enemies = {

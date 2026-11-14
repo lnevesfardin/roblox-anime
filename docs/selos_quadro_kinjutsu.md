@@ -139,3 +139,9 @@
 - 🏺 **Kohaku no Jōhei** (L, 60 s): sela a alma do inimigo MAIS FORTE (maior vida máxima) em 50 studs. Ele fica imobilizado 3 s e depois some (a kill conta para quem usou). Boss resiste: fica preso 1,5 s e só perde 12% da vida.
 - Ajustes rápidos em `SegredosData` (`Cooldown`, `Dano`, `Chakra`, `Elementos`, `Duracao`). Elementos novos: acrescente em `Elementos` (Nome, Emoji, Cor + Burn/Force/Stun/Mult).
 - Testado em Play: bloqueio por rank (Estudante/Chunin/Genin), bloqueio sem chakra, gasto de chakra, recarga, ciclo dos 5 elementos (dano, fogo, empurrão e imobilização), Kohaku no mais forte e no boss, botões e pedestais no cliente.
+
+## Tamanho do HUD (`ReplicatedStorage.HudEscala`)
+- Um só lugar controla o tamanho: `HudEscala.Fator` (hoje 0.85; 1 = cheio, 0.78 = o compacto antigo). Quer maior ou menor? Mude só esse número.
+- `HudEscala.Hud(viewport)`: barra de nível, menu da esquerda, STATS, DAILY, RANK, HELP e o chip do clã. Além da largura, limita pela altura: o menu da esquerda precisa caber abaixo da fileira de botões do topo (antes, em janelas baixas, ele subia e passava por cima dela).
+- `HudEscala.Barras(viewport)`: barras de baixo (golpes X Y C, poderes Q E R V, naturezas G H J K) e os botões dos easter eggs (M, L...).
+- Usado em: HUD, ExtrasClient, AtributosClient, ClanClient, TutorialClient, AbilityClient, CombatClient, NatureClient e SegredosClient.

@@ -60,7 +60,7 @@ local bRank = criarBotao("BotaoRank", "🏆 RANK", 400, 100)
 
 local function posicionar()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1)
+	local sc = require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Hud(v)
 	for _, e in ipairs(botoes) do
 		e.escala.Scale = sc
 		e.b.Position = UDim2.fromOffset(e.x * sc, GuiService:GetGuiInset().Y + 80 * sc)

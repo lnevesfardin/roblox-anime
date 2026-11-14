@@ -42,7 +42,7 @@ barra.AnchorPoint = Vector2.new(0, 1)
 barra.Position = UDim2.new(0.5, -119, 1, -12)
 local escalaBarra = Instance.new("UIScale", barra)
 local function ajustarBarra() -- cabe na tela: maior em telas grandes, menor no celular (mesma conta do CombatClient e NatureClient)
-	escalaBarra.Scale = math.clamp((workspace.CurrentCamera.ViewportSize.X / 2 + 111) / 864, 0.55, 0.95)
+	escalaBarra.Scale = require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Barras(workspace.CurrentCamera.ViewportSize)
 end
 ajustarBarra()
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajustarBarra)

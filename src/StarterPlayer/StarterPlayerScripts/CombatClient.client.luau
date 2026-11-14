@@ -336,7 +336,7 @@ barra.Size = UDim2.fromOffset(168, 66)
 barra.AnchorPoint = Vector2.new(0, 1)
 local escalaBarra = Instance.new("UIScale", barra)
 local function ajustarBarra() -- mesma escala da barra de poderes (AbilityClient)
-	local S = math.clamp((workspace.CurrentCamera.ViewportSize.X / 2 + 111) / 864, 0.55, 0.95)
+	local S = require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Barras(workspace.CurrentCamera.ViewportSize)
 	escalaBarra.Scale = S
 	barra.Position = UDim2.new(0.5, -119 - 8 - 168 * S, 1, -12)
 end

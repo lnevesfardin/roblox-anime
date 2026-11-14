@@ -45,7 +45,7 @@ local bolinha = label(abrir, "", 12, Color3.new(1, 1, 1), { AnchorPoint = Vector
 corner(bolinha, 10)
 local function posicionar()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1) -- escala cheia (mesma escala do HUD)
+	local sc = require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Hud(v) -- mesma escala do HUD
 	escalaBtn.Scale = sc
 	abrir.Position = UDim2.fromOffset((16 + 142) * sc, GuiService:GetGuiInset().Y + 80 * sc)
 end

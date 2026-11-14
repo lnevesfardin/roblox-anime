@@ -245,7 +245,7 @@ local function ajustarEscala()
 	local cam = workspace.CurrentCamera
 	if not cam then return end
 	local vp = cam.ViewportSize
-	escala.Scale = math.clamp(math.min(vp.X / 1150, vp.Y / 680), 0.6, 1.1)
+	escala.Scale = require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Barras(vp)
 end
 ajustarEscala()
 

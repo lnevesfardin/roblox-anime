@@ -267,7 +267,7 @@ new("UIStroke", { Color = COR.linha, Thickness = 2, ApplyStrokeMode = Enum.Apply
 local escalaBotao = new("UIScale", { Parent = botao })
 local function posicionarBotao()
 	local v = workspace.CurrentCamera.ViewportSize
-	local sc = math.clamp(math.min(v.X / 1150, v.Y / 680), 0.5, 1.1)
+	local sc = require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Hud(v)
 	escalaBotao.Scale = sc
 	botao.Position = UDim2.fromOffset(512 * sc, GuiService:GetGuiInset().Y + 80 * sc)
 end

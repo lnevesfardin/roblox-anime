@@ -167,7 +167,7 @@ checarRoleta()
 ---------------------------------------------------------------
 local ICONE_NAT = { Fogo = "🔥", Vento = "💨", Raio = "⚡", Terra = "🌍", Agua = "💧" } -- imagem no lugar de texto
 local function escalaHotbar() -- mesma conta da barra de poderes (AbilityClient)
-	return math.clamp((workspace.CurrentCamera.ViewportSize.X / 2 + 111) / 864, 0.55, 0.95)
+	return require(game:GetService("ReplicatedStorage"):WaitForChild("HudEscala")).Barras(workspace.CurrentCamera.ViewportSize)
 end
 local hud = new("ScreenGui", { Name = "HudNatureza", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = pg })
 local barra = new("Frame", { AnchorPoint = Vector2.new(0, 1), Size = UDim2.fromOffset(350, 84), BackgroundTransparency = 1, Visible = false, Parent = hud })

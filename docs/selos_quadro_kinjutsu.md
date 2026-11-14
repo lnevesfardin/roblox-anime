@@ -126,7 +126,16 @@
 ## Easter eggs do lado leste (`SegredosData`, `SegredosServer`, `SegredosClient`)
 - Passo 1: 3 selos 🌳👁🍃 escondidos em cantos do leste (posições em `SegredosData.Simbolos`; o servidor acha a altura do chão). Cada jogador acha os seus com a tecla E e o progresso fica salvo em `data.Segredos`.
 - Passo 2: com os 3 selos aparece só para ele o santuário secreto (desenhado no cliente, em `SegredosData.Altar`) com um pilar de luz visível de longe.
-- Passo 3: dois pedestais (tecla E, segurar 1,5 s). O servidor confere: 3 selos, perto do altar e clã certo. O poder fica liberado para sempre.
+- Passo 3: quatro pedestais (tecla E, segurar 1,5 s). O servidor confere: 3 selos, perto do altar, clã certo e rank mínimo (`RankMin`). O poder fica liberado para sempre.
 - Poderes (tecla, recarga): 🌳 Gene do Hashirama (B, 60 s, qualquer jogador): cura 4% da vida máxima por segundo durante 10 s. 👁 Olho do Shisui (N, 75 s, só clã Uchiwa): inimigos em 45 studs (até 6) ficam imobilizados 6 s e perdem 5% da vida por segundo; o boss se solta em 40% do tempo e perde 25% disso; a kill conta para quem usou.
 - Para criar mais um: acrescente em `SegredosData.Poderes` e `Ordem` e escreva o efeito em `EFEITOS` no `SegredosServer`.
-- Cliente: botões com recarga no canto inferior direito (só aparecem com `Jogando` e o poder liberado), aviso no topo, atalhos B e N.
+- Cliente: botões com recarga no canto inferior direito (só aparecem com `Jogando`, o poder liberado e o rank certo), aviso no topo, atalhos B, N, M e L.
+
+## Tesouros do Sábio dos Seis Caminhos (`SegredosData.Poderes.bashosen` / `kohaku`, `SegredosServer.EFEITOS`)
+- Ficam como pedestais extras no santuário secreto do leste. **Só Jonin ou maior** pega e usa (`RankMin = "Jonin"`; ordem em `SegredosData.RankOrdem`). Abaixo disso o pedestal mostra "Jonin rank only" e o botão não aparece.
+- **Separados dos jutsus:** teclas próprias (M e L), botões e recargas próprios, e o dano não usa Ninjutsu, `BuffDano` nem jutsus equipados: é uma fatia da vida máxima do inimigo. Não mexem na barra de jutsus (Q E R V, G H J K).
+- **Chakra:** o uso gasta uma fração do `ChakraMax` (`Chakra`: Bashosen 80%, Kohaku 60%). Sem chakra suficiente o poder NÃO dispara, nada é gasto, não entra em recarga e aparece "Not enough chakra!". Sem punição de exaustão.
+- 🌿 **Bashosen** (M, 45 s): explosão enorme em 35 studs (até 12 inimigos) de UM dos cinco elementos por uso, em ordem; o botão mostra o próximo. Dano base 35% da vida máxima (boss: 20% disso). 🔥 Fogo: queima 5%/s por 4 s. 💧 Água: empurra e imobiliza 1,5 s. 🌪 Vento: empurrão forte. ⚡ Raio: imobiliza 3 s. 🪨 Terra: dano x1,3 e imobiliza 2 s. O boss se solta em 40% do tempo e é empurrado menos.
+- 🏺 **Kohaku no Jōhei** (L, 60 s): sela a alma do inimigo MAIS FORTE (maior vida máxima) em 50 studs. Ele fica imobilizado 3 s e depois some (a kill conta para quem usou). Boss resiste: fica preso 1,5 s e só perde 12% da vida.
+- Ajustes rápidos em `SegredosData` (`Cooldown`, `Dano`, `Chakra`, `Elementos`, `Duracao`). Elementos novos: acrescente em `Elementos` (Nome, Emoji, Cor + Burn/Force/Stun/Mult).
+- Testado em Play: bloqueio por rank (Estudante/Chunin/Genin), bloqueio sem chakra, gasto de chakra, recarga, ciclo dos 5 elementos (dano, fogo, empurrão e imobilização), Kohaku no mais forte e no boss, botões e pedestais no cliente.

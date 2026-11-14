@@ -3,6 +3,8 @@
 --  * Cria os 3 selos escondidos (ProximityPrompt, tecla E) e guarda quais cada jogador achou.
 --  * SegredosAcao (RemoteFunction): "pegar", idDoPoder  -> libera o poder no santuario (so com os 3 selos, perto do altar e do cla certo)
 --                                   "usar", idDoPoder   -> usa o poder (cooldown e efeito no servidor)
+--  * Tesouros do Sabio dos Seis Caminhos (def.RankMin): so Jonin ou maior pega e usa; gastam chakra (atributo "Chakra" do
+--    jogador; sem chakra suficiente o poder nao dispara e nada e gasto). Os poderes daqui sao separados dos jutsus.
 --  * SegredosAviso (RemoteEvent): o servidor manda avisos (selo achado, santuario revelado) para o cliente mostrar.
 --  * Atributo do jogador "SegredosEstado" (JSON): { Simbolos = {bool,bool,bool}, Pegos = { gene = true }, Completo = bool, AltarY = n }
 -- Salvo em PlayerData: data.Segredos = { Simbolos = { ["1"] = true }, Pegos = { gene = true } }
@@ -271,6 +273,75 @@ local function brilho(parent, nome, cor, dur)
 	return hl
 end
 
+-- imobiliza um inimigo por "dur" segundos (mesmo protocolo do "prender" do AbilityServer); chefe nao fica atordoado
+local function prender(e, dur, chefe)
+	local h = e.hum
+	if h:GetAttribute("VelPreso") == nil then h:SetAttribute("VelPreso", h.WalkSpeed) end
+	local token = (h:GetAttribute("PresoToken") or 0) + 1
+	h:SetAttribute("PresoToken", token)
+	h.WalkSpeed = 0
+	if not chefe then e.model:SetAttribute("Atordoado", os.clock() + dur) end
+	task.delay(dur, function()
+		if h.Parent and h:GetAttribute("PresoToken") == token then
+			h.WalkSpeed = h:GetAttribute("VelPreso") or 13
+			h:SetAttribute("VelPreso", nil)
+		end
+	end)
+end
+
+-- esfera de luz que cresce e some (explosao)
+local function esfera(pos, diametro, cor, tempo)
+	local b = Instance.new("Part")
+	b.Anchored = true
+	b.CanCollide = false
+	b.CanQuery = false
+	b.Shape = Enum.PartType.Ball
+	b.Material = Enum.Material.Neon
+	b.Color = cor
+	b.Transparency = 0.35
+	b.Size = Vector3.new(3, 3, 3)
+	b.CFrame = CFrame.new(pos)
+	b.Parent = workspace
+	TweenService:Create(b, TweenInfo.new(tempo, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(diametro, diametro, diametro), Transparency = 1 }):Play()
+	Debris:AddItem(b, tempo + 0.1)
+end
+
+-- raio de luz de um ponto ate outro (efeito visual rapido)
+local function raio(de, para, cor, tempo)
+	local dist = (para - de).Magnitude
+	if dist < 1 then return end
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.Material = Enum.Material.Neon
+	p.Color = cor
+	p.Size = Vector3.new(0.8, 0.8, dist)
+	p.CFrame = CFrame.lookAt(de, para) * CFrame.new(0, 0, -dist / 2)
+	p.Parent = workspace
+	TweenService:Create(p, TweenInfo.new(tempo), { Transparency = 1, Size = Vector3.new(0.1, 0.1, dist) }):Play()
+	Debris:AddItem(p, tempo + 0.1)
+end
+
+-- emoji flutuando em cima do inimigo por alguns segundos
+local function emojiEm(e, emoji, dur)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(60, 60)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 4 + e.raio, 0)
+	bb.AlwaysOnTop = true
+	bb.Adornee = e.root
+	bb.Parent = e.model
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Size = UDim2.fromScale(1, 1)
+	t.Text = emoji
+	t.TextScaled = true
+	t.Parent = bb
+	Debris:AddItem(bb, dur)
+	return bb
+end
+
 local EFEITOS = {}
 
 -- Gene do Hashirama: cura rapida por alguns segundos
@@ -319,33 +390,10 @@ EFEITOS.olho = function(player, def)
 		local chefe = e.raio > 2
 		local dur = chefe and def.Duracao * 0.4 or def.Duracao -- o boss se solta mais rapido e perde menos vida
 		local h = e.hum
-		-- imobilizar (mesmo protocolo do "prender" do AbilityServer)
-		if h:GetAttribute("VelPreso") == nil then h:SetAttribute("VelPreso", h.WalkSpeed) end
-		local token = (h:GetAttribute("PresoToken") or 0) + 1
-		h:SetAttribute("PresoToken", token)
-		h.WalkSpeed = 0
-		if not chefe then e.model:SetAttribute("Atordoado", os.clock() + dur) end
-		task.delay(dur, function()
-			if h.Parent and h:GetAttribute("PresoToken") == token then
-				h.WalkSpeed = h:GetAttribute("VelPreso") or 13
-				h:SetAttribute("VelPreso", nil)
-			end
-		end)
+		prender(e, dur, chefe)
 		-- marca do olho em cima do inimigo
 		local hl = brilho(e.model, "OlhoMarca", def.Cor, dur + 0.2)
-		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(60, 60)
-		bb.StudsOffsetWorldSpace = Vector3.new(0, 4 + e.raio, 0)
-		bb.AlwaysOnTop = true
-		bb.Adornee = e.root
-		bb.Parent = e.model
-		local t = Instance.new("TextLabel")
-		t.BackgroundTransparency = 1
-		t.Size = UDim2.fromScale(1, 1)
-		t.Text = def.Emoji
-		t.TextScaled = true
-		t.Parent = bb
-		Debris:AddItem(bb, dur + 0.2)
+		local bb = emojiEm(e, def.Emoji, dur + 0.2)
 		-- dreno de vida: a cada 0.5s, uma fatia da vida maxima (boss perde so um quarto disso)
 		task.spawn(function()
 			local passou = 0
@@ -370,6 +418,121 @@ EFEITOS.olho = function(player, def)
 	return true
 end
 
+-- Bashosen (leque do Sabio): explosao enorme de UM dos cinco elementos por uso, em ordem (o proximo fica no atributo
+-- "BashosenElem" do jogador). O dano e uma fatia da vida maxima de cada inimigo: nao usa Ninjutsu, buffs nem jutsus.
+EFEITOS.bashosen = function(player, def)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (root and hum and hum.Health > 0) then return false, "You can't use it now." end
+	local alvos = inimigosPerto(root.Position, def.Alcance)
+	if #alvos == 0 then return false, "No enemies nearby." end
+
+	local total = #def.Elementos
+	local idx = player:GetAttribute("BashosenElem") or 1
+	if idx < 1 or idx > total then idx = 1 end
+	local el = def.Elementos[idx]
+	player:SetAttribute("BashosenElem", idx % total + 1)
+
+	local chao = root.Position - Vector3.new(0, 2.6, 0)
+	anel(chao, def.Alcance * 2, el.Cor, 0.8)
+	anel(chao, def.Alcance * 1.3, el.Cor, 0.55)
+	esfera(root.Position, def.Alcance * 1.6, el.Cor, 0.7)
+
+	for i = 1, math.min(#alvos, def.Alvos) do
+		local e = alvos[i]
+		local h = e.hum
+		local chefe = e.raio > 2
+		local pct = def.Dano * (el.Mult or 1) * (chefe and 0.2 or 1) -- o boss aguenta bem mais
+		local dano = math.max(1, h.MaxHealth * pct)
+		local alvoPos = e.root.Position
+		h:SetAttribute("UltimoAtacante", player.UserId) -- a kill conta para quem usou o leque
+		e.model:SetAttribute("DanoJutsu", true)
+		h:TakeDamage(dano)
+		numeroEvent:FireClient(player, alvoPos + Vector3.new(0, 1.5 + e.raio, 0), math.floor(dano + 0.5), el.Cor, "jutsu")
+		raio(root.Position, alvoPos, el.Cor, 0.5)
+		if h.Health > 0 and e.root.Parent then
+			brilho(e.model, "BashosenMarca", el.Cor, el.Burn and 4.2 or 1.2)
+			emojiEm(e, el.Emoji, el.Burn and 4.2 or 1.2)
+			if el.Stun then prender(e, el.Stun * (chefe and 0.4 or 1), chefe) end
+			if el.Force then
+				local dir = Vector3.new(alvoPos.X - root.Position.X, 0, alvoPos.Z - root.Position.Z)
+				dir = dir.Magnitude > 0.1 and dir.Unit or root.CFrame.LookVector
+				e.root.AssemblyLinearVelocity = dir * el.Force * (chefe and 0.3 or 1) + Vector3.new(0, 30, 0)
+			end
+			if el.Burn then -- fogo: continua queimando por 4 segundos
+				task.spawn(function()
+					for _ = 1, 4 do
+						task.wait(1)
+						if not h.Parent or h.Health <= 0 then break end
+						local d = math.max(1, h.MaxHealth * el.Burn * (chefe and 0.25 or 1))
+						h:SetAttribute("UltimoAtacante", player.UserId)
+						e.model:SetAttribute("DanoJutsu", true)
+						h:TakeDamage(d)
+						if e.root.Parent then
+							numeroEvent:FireClient(player, e.root.Position + Vector3.new(0, 1.5 + e.raio, 0), math.floor(d + 0.5), el.Cor, "queima")
+						end
+					end
+				end)
+			end
+		end
+	end
+	return true
+end
+
+-- Kohaku no Johei (jarro de ambar): sela a alma do inimigo MAIS FORTE por perto. Ele fica imobilizado e, passado o
+-- tempo, some (a alma e selada: conta como kill de quem usou). Chefe resiste: solta antes e so perde uma fatia da vida.
+EFEITOS.kohaku = function(player, def)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (root and hum and hum.Health > 0) then return false, "You can't use it now." end
+	local alvos = inimigosPerto(root.Position, def.Alcance)
+	if #alvos == 0 then return false, "No enemies nearby." end
+
+	local e = alvos[1]
+	for _, a in ipairs(alvos) do
+		if a.hum.MaxHealth > e.hum.MaxHealth then e = a end
+	end
+	local h = e.hum
+	local chefe = e.raio > 2
+	local dur = chefe and def.Duracao * 0.5 or def.Duracao
+	prender(e, dur, chefe)
+
+	local chaoAlvo = e.root.Position - Vector3.new(0, e.root.Size.Y / 2, 0)
+	anel(chaoAlvo, 14 + e.raio * 2, def.Cor, 0.8)
+	raio(root.Position, e.root.Position, def.Cor, 0.6)
+	brilho(e.model, "KohakuMarca", def.Cor, dur + 0.2)
+	emojiEm(e, def.Emoji, dur + 0.2)
+	local alma = Instance.new("ParticleEmitter") -- a alma sobe em espiral
+	alma.Color = ColorSequence.new(def.Cor)
+	alma.LightEmission = 1
+	alma.Rate = 40
+	alma.Lifetime = NumberRange.new(0.8, 1.2)
+	alma.Speed = NumberRange.new(8, 14)
+	alma.SpreadAngle = Vector2.new(25, 25)
+	alma.EmissionDirection = Enum.NormalId.Top
+	alma.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 0) })
+	alma.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+	alma.Parent = e.root
+	Debris:AddItem(alma, dur + 0.3)
+
+	task.delay(dur, function()
+		if not h.Parent or h.Health <= 0 then return end
+		local pos = e.root.Parent and e.root.Position
+		local dano = chefe and math.max(1, h.MaxHealth * def.DanoBoss) or h.MaxHealth + 1
+		h:SetAttribute("UltimoAtacante", player.UserId)
+		e.model:SetAttribute("DanoJutsu", true)
+		h:TakeDamage(dano)
+		if pos then
+			anel(pos - Vector3.new(0, e.root.Size.Y / 2, 0), 10 + e.raio * 2, def.Cor, 0.5)
+			esfera(pos, 8 + e.raio * 2, def.Cor, 0.5)
+			numeroEvent:FireClient(player, pos + Vector3.new(0, 1.5 + e.raio, 0), math.floor(math.min(dano, h.MaxHealth) + 0.5), def.Cor, "jutsu")
+		end
+	end)
+	return true
+end
+
 ---------------------------------------------------------------
 -- Pedidos do cliente
 ---------------------------------------------------------------
@@ -377,6 +540,20 @@ local cooldown = {} -- [player] = { [idDoPoder] = os.clock() em que libera }
 
 local function claOk(player, def)
 	return def.Cla == nil or player:GetAttribute("Cla") == def.Cla
+end
+
+-- rank ninja minimo (def.RankMin); o atributo "Rank" do jogador vem do MissionServer
+local function rankOk(player, def)
+	if def.RankMin == nil then return true end
+	local meu = SegredosData.RankOrdem[player:GetAttribute("Rank")] or 0
+	return meu >= (SegredosData.RankOrdem[def.RankMin] or 99)
+end
+
+-- chakra que o uso gasta (fracao do ChakraMax); 0 = nao gasta
+local function custoChakra(player, def)
+	if not def.Chakra then return 0 end
+	local max = player:GetAttribute("ChakraMax") or 100
+	return math.max(1, math.floor(max * def.Chakra + 0.5))
 end
 
 acao.OnServerInvoke = function(player, pedido, id)
@@ -395,6 +572,9 @@ acao.OnServerInvoke = function(player, pedido, id)
 		if not claOk(player, def) then
 			return { ok = false, erro = ("Only the %s clan can awaken this."):format(def.ClaNome or def.Cla) }
 		end
+		if not rankOk(player, def) then
+			return { ok = false, erro = ("Only %s rank or higher can claim this."):format(def.RankNome or def.RankMin) }
+		end
 		if s.Pegos[id] then return { ok = false, erro = "Already awakened." } end
 		s.Pegos[id] = true
 		publicar(player)
@@ -406,6 +586,9 @@ acao.OnServerInvoke = function(player, pedido, id)
 		if not claOk(player, def) then
 			return { ok = false, erro = ("Only the %s clan can use this."):format(def.ClaNome or def.Cla) }
 		end
+		if not rankOk(player, def) then
+			return { ok = false, erro = ("Only %s rank or higher can use this."):format(def.RankNome or def.RankMin) }
+		end
 		local cds = cooldown[player]
 		if not cds then
 			cds = {}
@@ -413,8 +596,16 @@ acao.OnServerInvoke = function(player, pedido, id)
 		end
 		local resta = (cds[id] or 0) - os.clock()
 		if resta > 0 then return { ok = false, erro = "Recharging...", resta = resta } end
+		-- sem chakra suficiente o poder nao dispara (e nada e gasto)
+		local custo = custoChakra(player, def)
+		if custo > 0 and (player:GetAttribute("Chakra") or 0) < custo then
+			return { ok = false, erro = ("Not enough chakra! You need %d."):format(custo), semChakra = true }
+		end
 		local ok, erro = EFEITOS[id](player, def)
 		if not ok then return { ok = false, erro = erro } end
+		if custo > 0 then
+			player:SetAttribute("Chakra", math.max(0, (player:GetAttribute("Chakra") or 0) - custo))
+		end
 		cds[id] = os.clock() + def.Cooldown
 		return { ok = true, cd = def.Cooldown }
 	end

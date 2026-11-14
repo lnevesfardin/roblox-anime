@@ -1,6 +1,6 @@
 -- LocalScript: StarterPlayerScripts > SegredosClient
 -- Easter eggs do leste (veja SegredosData): avisos, santuario secreto (so aparece para quem achou os 3 selos),
--- botoes dos poderes (teclas B e N) e a recarga de cada um. O servidor decide tudo; aqui so se mostra.
+-- botoes dos poderes (teclas B, N, M e L) e a recarga de cada um. O servidor decide tudo; aqui so se mostra.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,9 +37,16 @@ local function claOk(def)
 	return def.Cla == nil or player:GetAttribute("Cla") == def.Cla
 end
 
+-- rank ninja minimo do poder (Tesouros do Sabio: Jonin ou maior); o atributo "Rank" vem do servidor
+local function rankOk(def)
+	if def.RankMin == nil then return true end
+	local meu = SegredosData.RankOrdem[player:GetAttribute("Rank")] or 0
+	return meu >= (SegredosData.RankOrdem[def.RankMin] or 99)
+end
+
 local function desbloqueado(id)
 	local def = SegredosData.Poderes[id]
-	return def ~= nil and estado.Pegos[id] == true and claOk(def)
+	return def ~= nil and estado.Pegos[id] == true and claOk(def) and rankOk(def)
 end
 
 ---------------------------------------------------------------
@@ -119,7 +126,7 @@ end)
 local barra = Instance.new("Frame")
 barra.AnchorPoint = Vector2.new(1, 1)
 barra.Position = UDim2.new(1, -100, 1, -16)
-barra.Size = UDim2.fromOffset(240, 68)
+barra.Size = UDim2.fromOffset(300, 68)
 barra.BackgroundTransparency = 1
 barra.Parent = gui
 local lista = Instance.new("UIListLayout")
@@ -180,7 +187,7 @@ for i, id in ipairs(SegredosData.Ordem) do
 	tecla.ZIndex = 4
 	tecla.Parent = b
 	canto(tecla, 5)
-	chips[id] = { botao = b, sombra = sombra, tempo = tempo, ate = 0, total = def.Cooldown }
+	chips[id] = { botao = b, borda = borda, sombra = sombra, tempo = tempo, ate = 0, total = def.Cooldown }
 end
 
 local function atualizarChips()
@@ -188,6 +195,16 @@ local function atualizarChips()
 	for id, c in pairs(chips) do
 		c.botao.Visible = jogando and desbloqueado(id)
 	end
+end
+
+-- o leque (Bashosen) mostra no botao o PROXIMO elemento da fila (o servidor guarda no atributo "BashosenElem")
+local function atualizarElemento()
+	local c = chips.bashosen
+	local def = SegredosData.Poderes.bashosen
+	if not (c and def and def.Elementos) then return end
+	local el = def.Elementos[player:GetAttribute("BashosenElem") or 1] or def.Elementos[1]
+	c.botao.Text = el.Emoji
+	c.borda.Color = el.Cor
 end
 
 local ocupado = false
@@ -206,6 +223,9 @@ local function usar(id)
 	elseif r.resta then
 		c.total = def.Cooldown
 		c.ate = os.clock() + r.resta
+	elseif r.semChakra then
+		-- sem chakra suficiente o poder nao dispara (nada e gasto)
+		mostrar("erro", "Not enough chakra!", ("%s needs %d%% of your chakra."):format(def.Nome, math.floor((def.Chakra or 0) * 100 + 0.5)), Color3.fromRGB(80, 170, 255))
 	elseif r.erro then
 		mostrar("erro", def.Nome, r.erro, def.Cor)
 	end
@@ -356,6 +376,11 @@ local function atualizarAltar()
 			p.nome.Text = ("%s\n%s clan only"):format(def.Nome, def.ClaNome or def.Cla)
 			p.prompt.ActionText = "Locked"
 			p.prompt.Enabled = true
+		elseif not rankOk(def) then
+			p.icone.TextTransparency = 0.45
+			p.nome.Text = ("%s\n%s rank only"):format(def.Nome, def.RankNome or def.RankMin)
+			p.prompt.ActionText = "Locked"
+			p.prompt.Enabled = true
 		else
 			p.icone.TextTransparency = 0
 			p.nome.Text = def.Nome
@@ -394,9 +419,10 @@ end)
 local function tudo()
 	lerEstado()
 	atualizarChips()
+	atualizarElemento()
 	atualizarAltar()
 end
-for _, nome in ipairs({ "SegredosEstado", "Cla", "Jogando" }) do
+for _, nome in ipairs({ "SegredosEstado", "Cla", "Jogando", "Rank", "BashosenElem" }) do
 	player:GetAttributeChangedSignal(nome):Connect(tudo)
 end
 local cam = workspace.CurrentCamera

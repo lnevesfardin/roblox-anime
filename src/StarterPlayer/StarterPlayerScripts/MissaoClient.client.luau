@@ -51,11 +51,11 @@ local estado = { NpcsComMissao = {}, Rank = "Estudante" }
 ---------------------------------------------------------------
 -- Missão atual (canto superior direito)
 ---------------------------------------------------------------
-local tracker = new("Frame", { AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(240, 74), BackgroundColor3 = COR.painel, BackgroundTransparency = 0.1, Parent = gui })
+local tracker = new("Frame", { AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(240, 58), BackgroundColor3 = COR.painel, BackgroundTransparency = 0.1, Parent = gui })
 corner(tracker, 10)
 new("UIStroke", { Color = COR.linha, Thickness = 1.5, Parent = tracker })
-local tRank = label(tracker, "", 11, COR.laranja, { Position = UDim2.fromOffset(10, 5), Size = UDim2.new(1, -40, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
-local tNome = label(tracker, "", 14, COR.texto, { Position = UDim2.fromOffset(10, 20), Size = UDim2.new(1, -20, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
+-- (sem linha de rank no painel: o rank não aparece mais no HUD)
+local tNome = label(tracker, "", 14, COR.texto, { Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBlack })
 
 -- selo vermelho (losango) das missões principais da história, no lugar da letra do rank
 local VERMELHO_PRINCIPAL = Color3.fromRGB(220, 45, 50)
@@ -74,14 +74,14 @@ local function principal(id)
 	local m = MissionData.Get(id)
 	return m ~= nil and m.Historia ~= nil
 end
-local tSelo = selo(tracker, UDim2.fromOffset(18, 29), 12)
+local tSelo = selo(tracker, UDim2.fromOffset(18, 15), 12)
 tSelo.Visible = false
 local function nomeComSelo(com)
 	tSelo.Visible = com
-	tNome.Position = UDim2.fromOffset(com and 30 or 10, 20)
+	tNome.Position = UDim2.fromOffset(com and 30 or 10, 6)
 	tNome.Size = UDim2.new(1, com and -40 or -20, 0, 18)
 end
-local tObj = label(tracker, "", 12, COR.fraco, { Position = UDim2.fromOffset(10, 39), Size = UDim2.new(1, -20, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+local tObj = label(tracker, "", 12, COR.fraco, { Position = UDim2.fromOffset(10, 25), Size = UDim2.new(1, -20, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
 local tDrop = botao(tracker, "X", COR.card, UDim2.fromOffset(22, 18), UDim2.new(1, -28, 0, 4))
 tDrop.TextSize = 11
 tDrop.Visible = false -- a missão principal não pode ser abandonada
@@ -99,7 +99,7 @@ lDrop.TextSize = 11
 local function posicionarTracker()
 	-- lado direito, abaixo da lista de jogadores do Roblox
 	tracker.Position = UDim2.new(1, -12, 0.3, 0)
-	lado.Position = UDim2.new(1, -12, 0.3, 80)
+	lado.Position = UDim2.new(1, -12, 0.3, 66)
 end
 posicionarTracker()
 
@@ -127,11 +127,22 @@ end
 -- Marcador do objetivo no mundo
 ---------------------------------------------------------------
 local ancora = new("Part", { Name = "MarcadorMissao", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1, Size = Vector3.one, Parent = workspace })
-local marca = new("BillboardGui", { Name = "MarcaMissao", Size = UDim2.fromOffset(120, 46), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 100000, StudsOffset = Vector3.new(0, 7, 0), Enabled = false, Parent = ancora })
+local marca = new("BillboardGui", { Name = "MarcaMissao", Size = UDim2.fromOffset(170, 46), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 100000, StudsOffset = Vector3.new(0, 7, 0), Enabled = false, Parent = ancora })
 local mIcone = label(marca, "◆", 22, COR.ouro, { Size = UDim2.new(1, 0, 0, 24), Font = Enum.Font.GothamBlack })
 new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 2, Parent = mIcone })
 local mDist = label(marca, "", 12, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 18), Font = Enum.Font.GothamBlack })
 new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Parent = mDist })
+-- segundo marcador: missões com duas direções (H9: Snake's Den e Rogue Ninja Raid)
+local ancora2 = new("Part", { Name = "MarcadorMissao2", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1, Size = Vector3.one, Parent = workspace })
+local marca2 = new("BillboardGui", { Name = "MarcaMissao", Size = UDim2.fromOffset(170, 46), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 100000, StudsOffset = Vector3.new(0, 7, 0), Enabled = false, Parent = ancora2 })
+local mIcone2 = label(marca2, "◆", 22, COR.ouro, { Size = UDim2.new(1, 0, 0, 24), Font = Enum.Font.GothamBlack })
+new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 2, Parent = mIcone2 })
+local mDist2 = label(marca2, "", 12, Color3.new(1, 1, 1), { Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 18), Font = Enum.Font.GothamBlack })
+new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Parent = mDist2 })
+local marcas = {
+	{ ancora = ancora, marca = marca, dist = mDist },
+	{ ancora = ancora2, marca = marca2, dist = mDist2 },
+}
 
 local function npcModelo(key)
 	for _, tag in ipairs({ "NPC", "NPCParado" }) do
@@ -179,7 +190,6 @@ CollectionService:GetInstanceAddedSignal("NPC"):Connect(placaNpc)
 ---------------------------------------------------------------
 local missaoMarcada = nil
 local function atualizar()
-	tRank.Text = "RANK · " .. string.upper(MissionData.RankName(estado.Rank or "Estudante"))
 	local missao = estado.Ativa and MissionData.Get(estado.Ativa.Id)
 	local missaoLado = estado.Lado and MissionData.Get(estado.Lado.Id)
 	local proxima = nil
@@ -214,31 +224,48 @@ local function atualizar()
 	end
 	-- o marcador aponta para a principal; sem ela, para a lateral
 	missaoMarcada = missao or missaoLado
-	local pos = alvoMarcador(missaoMarcada)
-	if not pos and proxima then
-		local quem = npcModelo(proxima.Npc)
-		pos = quem and quem:GetPivot().Position
-	end
-	if pos then
-		ancora.Position = pos
-		marca.Enabled = true
+	local destinos = {}
+	if missaoMarcada and missaoMarcada.Alvos then
+		-- missão com várias direções (H9): um marcador para cada destino, com o nome do lugar
+		for _, id in ipairs(missaoMarcada.Alvos) do
+			local l = MissionData.Lugares[id]
+			if l then table.insert(destinos, { pos = l.Pos, nome = l.Name }) end
+		end
 	else
-		marca.Enabled = false
+		local pos = alvoMarcador(missaoMarcada)
+		if not pos and proxima then
+			local quem = npcModelo(proxima.Npc)
+			pos = quem and quem:GetPivot().Position
+		end
+		if pos then destinos[1] = { pos = pos } end
+	end
+	for i, mk in ipairs(marcas) do
+		local d = destinos[i]
+		mk.nome = d and d.nome
+		if d then
+			mk.ancora.Position = d.pos
+			mk.marca.Enabled = true
+		else
+			mk.marca.Enabled = false
+		end
 	end
 end
 
 task.spawn(function()
 	while true do
 		task.wait(0.25)
-		if marca.Enabled then
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			local missao = missaoMarcada
-			if missao and (missao.Tipo == "falar" or missao.Tipo == "exame") then
-				local pos = alvoMarcador(missao)
-				if pos then ancora.Position = pos end
-			end
-			if root then
-				mDist.Text = math.floor((root.Position - ancora.Position).Magnitude) .. "m"
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local missao = missaoMarcada
+		if marcas[1].marca.Enabled and missao and (missao.Tipo == "falar" or missao.Tipo == "exame") then
+			local pos = alvoMarcador(missao)
+			if pos then marcas[1].ancora.Position = pos end
+		end
+		if root then
+			for _, mk in ipairs(marcas) do
+				if mk.marca.Enabled then
+					local m = math.floor((root.Position - mk.ancora.Position).Magnitude) .. "m"
+					mk.dist.Text = mk.nome and (mk.nome .. " · " .. m) or m
+				end
 			end
 		end
 	end

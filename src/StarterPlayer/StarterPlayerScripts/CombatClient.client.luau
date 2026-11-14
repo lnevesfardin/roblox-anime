@@ -1,5 +1,5 @@
 -- LocalScript: StarterPlayerScripts > CombatClient
--- Clique / toque / F = combo. X (segurar) = soco carregado, Y = soco aéreo, C = soco com investida. Também mostra o aviso das ondas e a barra do boss.
+-- Clique / toque / F = combo. X (segurar) = soco carregado, Y = soco aéreo, Q = soco com investida (dash). Também mostra o aviso das ondas e a barra do boss.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -75,7 +75,7 @@ statusEvent.OnClientEvent:Connect(function(p)
 end)
 
 ---------------------------------------------------------------
--- Golpes: combo, soco carregado (X), soco aéreo (Y) e soco com investida (C)
+-- Golpes: combo, soco carregado (X), soco aéreo (Y) e soco com investida (Q)
 ---------------------------------------------------------------
 
 -- valores do estilo de luta equipado (Fase 5: ReplicatedStorage > FightStyles)
@@ -346,7 +346,7 @@ barra.BackgroundTransparency = 1
 barra.Parent = gui
 
 local slots = {}
-for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash", "Q/C" } }) do
+for i, info in ipairs({ { "X", "Charge" }, { "Y", "Air" }, { "C", "Dash", "Q" } }) do
 	local f = Instance.new("Frame")
 	f.Size = UDim2.fromOffset(52, 52)
 	f.Position = UDim2.fromOffset((i - 1) * 58, 7)
@@ -488,7 +488,7 @@ local function acaoAereo(_, estado)
 	return Enum.ContextActionResult.Sink
 end
 
--- C: avança na direção do inimigo mais próximo (ou para a frente) batendo em quem tocar
+-- Q: avança na direção do inimigo mais próximo (ou para a frente) batendo em quem tocar
 local function acaoInvestida(_, estado)
 	if estado ~= Enum.UserInputState.Begin or os.clock() < readyAt.C or not temChakra(estilo().C) then
 		return Enum.ContextActionResult.Sink
@@ -574,7 +574,7 @@ local acoes = {
 	{ "PortaoLee", acaoPortao, Enum.KeyCode.Z, "Gates", UDim2.new(1, -75, 1, -350) },
 	{ "SocoCarregado", acaoCarregado, Enum.KeyCode.X, "X", UDim2.new(1, -75, 1, -110) },
 	{ "SocoAereo", acaoAereo, Enum.KeyCode.Y, "Y", UDim2.new(1, -75, 1, -190) },
-	{ "SocoInvestida", acaoInvestida, Enum.KeyCode.C, "C", UDim2.new(1, -75, 1, -270), Enum.KeyCode.Q }, -- Dash também no Q
+	{ "SocoInvestida", acaoInvestida, Enum.KeyCode.Q, "Q", UDim2.new(1, -75, 1, -270) }, -- Dash só no Q (a C é o poder 1 do clã)
 }
 for _, a in ipairs(acoes) do
 	if a[6] then

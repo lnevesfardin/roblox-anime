@@ -807,6 +807,7 @@ local KIN_NOMES = {
 	Veneno = "Forbidden Poison Mist",
 }
 local KIN_ALCANCE = { Selo = 16, Chamas = 36, Maldicao = 45, Veneno = 45 }
+local KIN_RITMO = 0.7 -- multiplica o intervalo (KinCada) de todos os inimigos: menor = mais jutsus
 
 local function kinAura(e, dur)
 	local h = Instance.new("Highlight")
@@ -1069,10 +1070,10 @@ local function runMap(mapId)
 						end
 					end)
 				end
-				if ent and t.Kin then -- kinjutsu: o primeiro vem entre 0.5x e 1.5x do intervalo
+				if ent and t.Kin then -- kinjutsu: o primeiro vem cedo (0.15x a 0.4x do intervalo), senão a onda acaba antes
 					ent.kin = t.Kin
-					ent.kinCada = t.KinCada or 10
-					ent.nextKin = os.clock() + ent.kinCada * (0.5 + math.random())
+					ent.kinCada = (t.KinCada or 10) * KIN_RITMO
+					ent.nextKin = os.clock() + ent.kinCada * (0.15 + math.random() * 0.25)
 				end
 			end
 		end
@@ -1147,11 +1148,26 @@ local function runMap(mapId)
 	cleanup()
 end
 
+local MAX_JOGADORES = 2 -- você + 1 amigo por partida
+
 local function onPortal(player, mapId, difId)
 	if not PlayerData.Get(player) then
 		return
 	end
 	if state == "countdown" then
+		if not participants[player] then
+			local n = 0
+			for _ in pairs(participants) do n += 1 end
+			if n >= MAX_JOGADORES then
+				statusEvent:FireClient(player, { text = "This run is full: you can play with 1 friend at a time." })
+				task.delay(3, function()
+					if player.Parent and not participants[player] then
+						statusEvent:FireClient(player, { clear = true })
+					end
+				end)
+				return
+			end
+		end
 		participants[player] = true
 		player:SetAttribute("InRun", true)
 		return

@@ -27,13 +27,13 @@ MapData.Maps = {
 		-- Count = quantos nascem; Extra = quantos a mais para cada jogador além do primeiro
 		Waves = {
 			{ Name = "Guinea Pigs", Enemies = {
-				{ Look = "Cientista", Skin = "guinea pig", Name = "Guinea Pig", Color = Color3.fromRGB(190, 225, 190), Health = 35, Damage = 4, Speed = 11, Count = 4, Extra = 2 },
+				{ Look = "Cientista", Skin = "guinea pig", Name = "Guinea Pig", Color = Color3.fromRGB(190, 225, 190), Health = 35, Damage = 4, Speed = 11, Count = 4, Extra = 2, Kin = "Selo", KinCada = 16 },
 			} },
 			{ Name = "Sound Ninjas", Enemies = {
-				{ Look = "Som", Skin = "ninjas do som", Name = "Sound Ninja", Color = Color3.fromRGB(85, 55, 120), Health = 50, Damage = 5, Speed = 15, Count = 5, Extra = 2 },
+				{ Look = "Som", Skin = "ninjas do som", Name = "Sound Ninja", Color = Color3.fromRGB(85, 55, 120), Health = 50, Damage = 5, Speed = 15, Count = 5, Extra = 2, Kin = "Maldicao", KinCada = 12 },
 			} },
 			{ Name = "Kab Clones", Enemies = {
-				{ Look = "Clone", Skin = "kab", Name = "Kab Clone", Color = Color3.fromRGB(135, 145, 175), Health = 55, Damage = 6, Speed = 14, Count = 6, Extra = 2 },
+				{ Look = "Clone", Skin = "kab", Name = "Kab Clone", Color = Color3.fromRGB(135, 145, 175), Health = 55, Damage = 6, Speed = 14, Count = 6, Extra = 2, Kin = "Veneno", KinCada = 12 },
 			} },
 			{ Name = "Team Taka", Enemies = {
 				{ Look = "Taka", Skin = "taka", SkinIdx = 1, Name = "Taka: Blade", Color = Color3.fromRGB(210, 80, 40), Health = 85, Damage = 8, Speed = 16, Count = 1, Kin = "Chamas", KinCada = 9 },
@@ -109,7 +109,7 @@ MapData.Maps = {
 				{ Look = "Nevoa", Name = "Mist Assassin", Color = Color3.fromRGB(150, 165, 185), Health = 50, Damage = 6, Speed = 18, Count = 5, Extra = 2, Kin = "Maldicao", KinCada = 13 },
 			} },
 			{ Name = "Puppet Squad", Enemies = {
-				{ Look = "Marionete", Name = "Battle Puppet", Color = Color3.fromRGB(160, 120, 80), Health = 65, Damage = 7, Speed = 14, Count = 6, Extra = 2 },
+				{ Look = "Marionete", Name = "Battle Puppet", Color = Color3.fromRGB(160, 120, 80), Health = 65, Damage = 7, Speed = 14, Count = 6, Extra = 2, Kin = "Chamas", KinCada = 12 },
 			} },
 			{ Name = "Rogue Jonin", Enemies = {
 				{ Look = "Renegado", Name = "Rogue Jonin: Blade", Health = 100, Color = Color3.fromRGB(90, 100, 80), Damage = 9, Speed = 17, Count = 1, Kin = "Chamas", KinCada = 9 },

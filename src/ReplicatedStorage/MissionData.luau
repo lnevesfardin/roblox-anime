@@ -42,6 +42,9 @@ MissionData.Lugares = {
 	Academia = { Name = "Ninja Academy", Pos = Vector3.new(-120, 3, -530), Raio = 20 },
 	Oeste = { Name = "West District", Pos = Vector3.new(-295, 3, -280), Raio = 20 },
 	Praca = { Name = "Village Square", Pos = Vector3.new(63, 3, -12), Raio = 18 },
+	-- portais de ondas (marcadores da missão H9 "The Road East")
+	Covil = { Name = "Snake's Den", Pos = Vector3.new(163, 3, 219), Raio = 20 },
+	RaidHokage = { Name = "Rogue Ninja Raid", Pos = Vector3.new(77, 3, -731), Raio = 20 },
 	Acampamento = { Name = "Rogue Ninja Hideouts", Pos = Vector3.new(220, 3, 140), Raio = 30 },
 	Floresta = { Name = "Forest", Pos = Vector3.new(63, 3, 330), Raio = 120 },
 	Escritorio = { Name = "Elder's Office", Pos = Vector3.new(45, 3, -650), Raio = 16 },
@@ -177,6 +180,7 @@ MissionData.Missoes = {
 	{ Id = "H9", Npc = "Kakashi", Historia = 9, Rank = "C", Name = "The Road East", RankMin = "Genin",
 		Desc = "Win a wave run, at the Snake's Den in the forest or the Rogue Ninja Raid by the Hokage Tower, to earn the XP the east gate demands.",
 		Tipo = "ondas", N = 1, Recompensa = { XP = 1500, Coins = 400, Pontos = 2 },
+		Alvos = { "Covil", "RaidHokage" }, -- as duas direções: o rastreador mostra um marcador para cada portal
 		Conversa = {
 			{ Fala = "Genin. It suits you. The east gate is open to you now, but that road leads into the Fire Country Woods, bandits and rogue ninja all the way. Would you walk in as you are?", Opcoes = {
 				{ T = "Not yet. I need to get stronger.", R = "Wise. Fear is what keeps a ninja alive.", Bom = true },

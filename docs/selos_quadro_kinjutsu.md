@@ -126,7 +126,7 @@
 ## Easter eggs do lado leste (`SegredosData`, `SegredosServer`, `SegredosClient`)
 - Passo 1: 3 selos 🌳👁🍃 escondidos em cantos do leste (posições em `SegredosData.Simbolos`; o servidor acha a altura do chão). Cada jogador acha os seus com a tecla E e o progresso fica salvo em `data.Segredos`.
 - Passo 2: com os 3 selos aparece só para ele o santuário secreto (desenhado no cliente, em `SegredosData.Altar`) com um pilar de luz visível de longe.
-- Passo 3: três pedestais (tecla E, segurar 1,5 s). O servidor confere: 3 selos, perto do altar e clã certo. O poder fica liberado para sempre.
-- Poderes (tecla, recarga): 🌳 Gene do Hashirama (B, 60 s, qualquer jogador): cura 4% da vida máxima por segundo durante 10 s. 👁 Olho do Shisui (N, 75 s, só clã Uchiwa): inimigos em 45 studs (até 6) ficam imobilizados 6 s e perdem 5% da vida por segundo; o boss se solta em 40% do tempo e perde 25% disso; a kill conta para quem usou. 🦊 Manto da Kurama (M, 90 s, só clã Uzu): +40% de dano e +6 de velocidade por 12 s, pelos atributos `BuffDano` e `BuffVelocidade`.
+- Passo 3: dois pedestais (tecla E, segurar 1,5 s). O servidor confere: 3 selos, perto do altar e clã certo. O poder fica liberado para sempre.
+- Poderes (tecla, recarga): 🌳 Gene do Hashirama (B, 60 s, qualquer jogador): cura 4% da vida máxima por segundo durante 10 s. 👁 Olho do Shisui (N, 75 s, só clã Uchiwa): inimigos em 45 studs (até 6) ficam imobilizados 6 s e perdem 5% da vida por segundo; o boss se solta em 40% do tempo e perde 25% disso; a kill conta para quem usou.
 - Para criar mais um: acrescente em `SegredosData.Poderes` e `Ordem` e escreva o efeito em `EFEITOS` no `SegredosServer`.
-- Cliente: botões com recarga no canto inferior direito (só aparecem com `Jogando` e o poder liberado), aviso no topo, atalhos B, N e M.
+- Cliente: botões com recarga no canto inferior direito (só aparecem com `Jogando` e o poder liberado), aviso no topo, atalhos B e N.

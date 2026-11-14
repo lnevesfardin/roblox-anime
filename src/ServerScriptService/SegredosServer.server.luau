@@ -370,27 +370,6 @@ EFEITOS.olho = function(player, def)
 	return true
 end
 
--- Manto da Kurama: mais dano e mais velocidade (usa os atributos de buff que o combate ja le)
-EFEITOS.manto = function(player, def)
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not (root and hum and hum.Health > 0) then return false, "You can't use it now." end
-	local token = (player:GetAttribute("BuffToken") or 0) + 1
-	player:SetAttribute("BuffToken", token)
-	player:SetAttribute("BuffDano", def.Dano)
-	player:SetAttribute("BuffVelocidade", def.Velocidade)
-	brilho(char, "BuffBrilho", def.Cor, def.Duracao)
-	anel(root.Position - Vector3.new(0, 2.6, 0), 18, def.Cor, 0.8)
-	task.delay(def.Duracao, function()
-		if player:GetAttribute("BuffToken") == token then
-			player:SetAttribute("BuffDano", 0)
-			player:SetAttribute("BuffVelocidade", 0)
-		end
-	end)
-	return true
-end
-
 ---------------------------------------------------------------
 -- Pedidos do cliente
 ---------------------------------------------------------------

@@ -37,13 +37,7 @@ SegredosData.Poderes = {
 		Cla = "Uchiwa", ClaNome = "Uchiwa",
 		Desc = "Genjutsu: nearby enemies freeze for 6 seconds and keep losing health.",
 	},
-	manto = {
-		Nome = "Kurama's Cloak", Emoji = "🦊", Cor = Color3.fromRGB(255, 150, 50), Tecla = "M",
-		Cooldown = 90, Duracao = 12, Dano = 0.4, Velocidade = 6,
-		Cla = "Uzu", ClaNome = "Uzu",
-		Desc = "Chakra cloak: +40% damage and faster running for 12 seconds.",
-	},
 }
-SegredosData.Ordem = { "gene", "olho", "manto" }
+SegredosData.Ordem = { "gene", "olho" }
 
 return SegredosData

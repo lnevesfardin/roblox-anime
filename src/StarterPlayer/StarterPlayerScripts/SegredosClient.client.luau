@@ -1,6 +1,6 @@
 -- LocalScript: StarterPlayerScripts > SegredosClient
 -- Easter eggs do leste (veja SegredosData): avisos, santuario secreto (so aparece para quem achou os 3 selos),
--- botoes dos poderes (teclas B, N, M) e a recarga de cada um. O servidor decide tudo; aqui so se mostra.
+-- botoes dos poderes (teclas B e N) e a recarga de cada um. O servidor decide tudo; aqui so se mostra.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

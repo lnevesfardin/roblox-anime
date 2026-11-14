@@ -96,53 +96,45 @@ MapData.Maps = {
 		RewardCoins = 300,
 	},
 
-	-- Portal na Vila Destruída (Konoha em ruínas depois do ataque do Pain): ondas dos Pains e o Deva Path no fim.
-	-- Luta na arena própria Mapa_Hokage. Os Pains usam o visual por código (Look "Pain..."); troque por skins em Aparencias quando quiser.
+	-- Portal na Vila Destruída (Konoha em ruínas): 3 rodadas de clones + chefe, na arena Mapa_Hokage (também em ruínas).
+	-- Skins em ServerStorage.Aparencias: clone_nuvem, guardiao, guardiao_ferido, sabio.
 	Hokage = {
-		Name = "Pain's Assault",
+		Name = "Rain Assault",
 		Arena = "Hokage",
 
 		Waves = {
-			{ Name = "Animal Path", Enemies = {
-				{ Look = "PainAnimal", Name = "Animal Path", Color = Color3.fromRGB(235, 125, 40), Health = 50, Damage = 6, Speed = 19, Count = 5, Extra = 2, Kin = "Veneno", KinCada = 12 },
+			{ Name = "Crimson Cloud Clones Lv.1", Enemies = {
+				{ Skin = "clone_nuvem", Name = "Crimson Cloud Clone Lv.1", Color = Color3.fromRGB(25, 25, 30), Health = 60, Damage = 6, Speed = 16, Count = 6, Extra = 2, Kin = "Selo", KinCada = 12 },
 			} },
-			{ Name = "Asura Path", Enemies = {
-				{ Look = "PainAsura", Name = "Asura Path", Color = Color3.fromRGB(150, 45, 35), Health = 65, Damage = 7, Speed = 15, Count = 5, Extra = 2, Kin = "Chamas", KinCada = 12 },
+			{ Name = "Rain Guardian Lv.2", Enemies = {
+				{ Skin = "guardiao", Name = "Rain Guardian Lv.2", Color = Color3.fromRGB(25, 25, 30), Health = 120, Damage = 9, Speed = 17, Count = 4, Extra = 1, Kin = "Chamas", KinCada = 11 },
 			} },
-			{ Name = "Human & Preta Paths", Enemies = {
-				{ Look = "PainHumano", Name = "Human Path", Color = Color3.fromRGB(215, 150, 70), Health = 55, Damage = 6, Speed = 16, Count = 3, Extra = 1, Kin = "Maldicao", KinCada = 12 },
-				{ Look = "PainPreta", Name = "Preta Path", Color = Color3.fromRGB(30, 25, 25), Health = 70, Damage = 7, Speed = 14, Count = 3, Extra = 1, Kin = "Selo", KinCada = 11 },
-			} },
-			{ Name = "The Five Paths", Enemies = {
-				{ Look = "PainAnimal", Name = "Animal Path", Color = Color3.fromRGB(235, 125, 40), Health = 90, Damage = 8, Speed = 19, Count = 1, Kin = "Veneno", KinCada = 9 },
-				{ Look = "PainAsura", Name = "Asura Path", Color = Color3.fromRGB(150, 45, 35), Health = 110, Damage = 9, Speed = 16, Count = 1, Kin = "Chamas", KinCada = 9 },
-				{ Look = "PainHumano", Name = "Human Path", Color = Color3.fromRGB(215, 150, 70), Health = 95, Damage = 8, Speed = 17, Count = 1, Kin = "Maldicao", KinCada = 9 },
-				{ Look = "PainPreta", Name = "Preta Path", Color = Color3.fromRGB(30, 25, 25), Health = 100, Damage = 8, Speed = 15, Count = 1, Kin = "Selo", KinCada = 9 },
-				{ Look = "PainNaraka", Name = "Naraka Path", Color = Color3.fromRGB(35, 30, 30), Health = 200, Damage = 10, Speed = 10, Scale = 1.35, Count = 1, Kin = "Selo", KinCada = 10 },
+			{ Name = "Wounded Rain Guardian Lv.3", Enemies = {
+				{ Skin = "guardiao_ferido", Name = "Wounded Rain Guardian Lv.3", Color = Color3.fromRGB(25, 25, 30), Health = 200, Damage = 12, Speed = 17, Scale = 1.15, Count = 3, Extra = 1, Kin = "Maldicao", KinCada = 9 },
 			} },
 		},
 
-		-- Onda 5: o boss
-		BossName = "Deva Path",
-		BossLook = "PainDeva",
-		BossColor = Color3.fromRGB(24, 24, 30),
-		BossHealth = 1300,
-		BossDamage = 22,
+		-- Rodada 4: o chefe
+		BossName = "Rain Sage",
+		BossSkin = "sabio",
+		BossColor = Color3.fromRGB(110, 30, 40),
+		BossHealth = 1500,
+		BossDamage = 24,
 		PlainBoss = true,
-		BossScale = 2.2,
+		BossScale = 2.0,
 		BossSlamEvery = 8,
 		BossBiteEvery = 12,
 		BossSummonEvery = 15,
-		SlamLabel = "Shinra Tensei!",
+		SlamLabel = "Almighty Push!",
 		SlamColor = Color3.fromRGB(150, 190, 255),
 		SlamPool = false,
-		BiteLabel = "Watch out: Bansho Ten'in!",
+		BiteLabel = "Watch out: Universal Pull!",
 		BiteColor = Color3.fromRGB(255, 150, 60),
-		SummonLabel = " calls the other Paths!",
-		Minion = { Name = "Summoned Path", Look = "PainAnimal", Color = Color3.fromRGB(235, 125, 40), Health = 30, Damage = 6, Speed = 20 },
+		SummonLabel = " calls his clones!",
+		Minion = { Name = "Crimson Cloud Clone", Skin = "clone_nuvem", Color = Color3.fromRGB(25, 25, 30), Health = 35, Damage = 6, Speed = 19 },
 
-		RewardXP = 350,
-		RewardCoins = 280,
+		RewardXP = 400,
+		RewardCoins = 300,
 	},
 }
 

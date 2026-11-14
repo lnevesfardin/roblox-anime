@@ -7,7 +7,7 @@
 --   derrotar = derrotar N bandidos nos esconderijos
 --   coletar  = coletar N ervas na floresta
 --   exame    = vencer a partida do Exame Ninja (vira Genin)
---   ondas    = vencer N partidas de ondas (Snake's Den ou Pain's Assault, nos portais)
+--   ondas    = vencer N partidas de ondas (Snake's Den ou Rain Assault, nos portais)
 --   praticar = praticar N vezes no ponto de treino da natureza (Alvo = "Pratica_<Natureza>", um dos Lugares)
 -- Missões com Quadro = true são as do balcão QUESTS: aleatórias, por rank (D, C, B, A), sem dono.
 -- Recompensas especiais: PrimeiroJutsu (1º jutsu do clã), Poder (2º/3º do clã), Estilo (estilo de luta),
@@ -44,7 +44,7 @@ MissionData.Lugares = {
 	Praca = { Name = "Village Square", Pos = Vector3.new(63, 3, -12), Raio = 18 },
 	-- portais de ondas (marcadores da missão H9 "The Road East")
 	Covil = { Name = "Snake's Den", Pos = Vector3.new(163, 3, 219), Raio = 20 },
-	RaidHokage = { Name = "Pain's Assault", Pos = Vector3.new(-37, 3, 219), Raio = 20 },
+	RaidHokage = { Name = "Rain Assault", Pos = Vector3.new(-37, 3, 219), Raio = 20 },
 	Acampamento = { Name = "Rogue Ninja Hideouts", Pos = Vector3.new(220, 3, 140), Raio = 30 },
 	Floresta = { Name = "Forest", Pos = Vector3.new(63, 3, 330), Raio = 120 },
 	Escritorio = { Name = "Elder's Office", Pos = Vector3.new(45, 3, -650), Raio = 16 },
@@ -178,14 +178,14 @@ MissionData.Missoes = {
 		Tipo = "exame", Mapa = "ExameNinja", N = 1, Recompensa = { XP = 1500, Coins = 500, Pontos = 3 }, Promove = "Genin" },
 	-- Depois do exame: o Sensei manda o novo Genin ganhar XP nos portais de ondas antes de explorar o leste.
 	{ Id = "H9", Npc = "Kakashi", Historia = 9, Rank = "C", Name = "The Road East", RankMin = "Genin",
-		Desc = "Win a wave run, at the Snake's Den in the forest or Pain's Assault in the ruined village, to earn the XP the east gate demands.",
+		Desc = "Win a wave run, at the Snake's Den in the forest or the Rain Assault in the ruined village, to earn the XP the east gate demands.",
 		Tipo = "ondas", N = 1, Recompensa = { XP = 1500, Coins = 400, Pontos = 2 },
 		Alvos = { "Covil", "RaidHokage" }, -- as duas direções: o rastreador mostra um marcador para cada portal
 		Conversa = {
 			{ Fala = "Genin. It suits you. The east gate is open to you now, but that road leads into the Fire Country Woods, bandits and rogue ninja all the way. Would you walk in as you are?", Opcoes = {
 				{ T = "Not yet. I need to get stronger.", R = "Wise. Fear is what keeps a ninja alive.", Bom = true },
 				{ T = "I would crush them all.", R = "Confidence is free. Funerals are not." } } },
-			{ Fala = "The fastest way to grow is the wave portals. One is in the forest, the Snake's Den. Another is in the ruined village, Pain's Assault. Wave after wave, a boss at the end, and good XP for whoever wins.", Opcoes = {
+			{ Fala = "The fastest way to grow is the wave portals. One is in the forest, the Snake's Den. Another is in the ruined village, the Rain Assault. Wave after wave, a boss at the end, and good XP for whoever wins.", Opcoes = {
 				{ T = "I'll clear one today.", R = "Good. Win a wave run and come back to me.", Bom = true },
 				{ T = "Can't I just go east?", R = "You can try. The woods ask for level " .. NIVEL_LESTE .. " for a reason." } } },
 			{ Fala = "Reach level " .. NIVEL_LESTE .. " and the east is yours to explore. Go on." },

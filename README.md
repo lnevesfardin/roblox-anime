@@ -1,3 +1,5 @@
+> **ATENCAO:** o Studio (Team Create) e a fonte da verdade; este repo esta defasado. Leia `AGENTS.md` antes de mexer.
+
 # Roblox Anime RPG
 
 RPG de anime para Roblox: o jogador é ele mesmo, ganha personagens em caixas (Common → Mythic), se transforma neles e enfrenta mapas com 5 ondas, sendo a última um boss.
